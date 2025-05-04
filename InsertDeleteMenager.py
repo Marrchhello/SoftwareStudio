@@ -1,7 +1,8 @@
 from sqlalchemy import create_engine, ForeignKey, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.exc import IntegrityError
-
+from models import Student, CourseCatalog, Teacher, Degree, Room, CourseTeacher, CourseStudent, Grade
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column   
 class DatabaseManager:
     def __init__(self, engine):
         self.engine = engine
@@ -190,3 +191,109 @@ class DatabaseManager:
         with self.Session() as session:
             session.query(Grade).filter(Grade.id == grade_id).delete(synchronize_session=False)
             session.commit()
+
+    # ----------- Role-Based Access Methods -----------
+
+    def get_student_info(self, student_id):
+        """Student can view their own information"""
+        with self.Session() as session:
+            return session.query(Student).filter(Student.studentId == student_id).first()
+
+    def get_student_courses(self, student_id):
+        """Student can view their enrolled courses"""
+        with self.Session() as session:
+            return (session.query(CourseCatalog)
+                   .join(CourseStudent, CourseStudent.courseId == CourseCatalog.courseId)
+                   .filter(CourseStudent.studentId == student_id)
+                   .all())
+
+    def get_student_grades(self, student_id):
+        """Student can view their own grades"""
+        with self.Session() as session:
+            return (session.query(Grade, CourseCatalog.courseName)
+                   .join(CourseStudent, CourseStudent.key == Grade.key)
+                   .join(CourseCatalog, CourseCatalog.courseId == CourseStudent.courseId)
+                   .filter(CourseStudent.studentId == student_id)
+                   .all())
+
+    def get_teacher_courses(self, teacher_id):
+        """Teacher can view their assigned courses"""
+        with self.Session() as session:
+            return (session.query(CourseCatalog)
+                   .filter(CourseCatalog.teacherId == teacher_id)
+                   .all())
+
+    def get_teacher_students(self, teacher_id):
+        """Teacher can view students in their courses"""
+        with self.Session() as session:
+            return (session.query(Student)
+                   .join(CourseStudent, CourseStudent.studentId == Student.studentId)
+                   .join(CourseCatalog, CourseCatalog.courseId == CourseStudent.courseId)
+                   .filter(CourseCatalog.teacherId == teacher_id)
+                   .distinct()
+                   .all())
+
+    def get_teacher_course_students(self, teacher_id, course_id):
+        """Teacher can view students and grades for a specific course"""
+        with self.Session() as session:
+            return (session.query(Student, Grade)
+                   .join(CourseStudent, CourseStudent.studentId == Student.studentId)
+                   .join(CourseCatalog, CourseCatalog.courseId == CourseStudent.courseId)
+                   .outerjoin(Grade, Grade.key == CourseStudent.key)
+                   .filter(CourseCatalog.teacherId == teacher_id)
+                   .filter(CourseCatalog.courseId == course_id)
+                   .all())
+        
+
+    def register_user(self, role, user_id, **kwargs):
+        """
+        Register a user as a 'student' or 'teacher'.
+        kwargs can include name, title, email, semester, year, etc.
+        """
+        with self.Session() as session:
+            try:
+                if role == 'student':
+                    student = Student(
+                        studentId=user_id,
+                        semester=kwargs.get('semester', 1),
+                        year=kwargs.get('year', 1),
+                        degreeId=kwargs.get('degreeId', 0),
+                        age=kwargs.get('age'),
+                        email=kwargs.get('email')
+                    )
+                    session.add(student)
+                elif role == 'teacher':
+                    teacher = Teacher(
+                        teacherId=user_id,
+                        name=kwargs.get('name'),
+                        title=kwargs.get('title'),
+                        email=kwargs.get('email')
+                    )
+                    session.add(teacher)
+                else:
+                    raise ValueError("Role must be either 'student' or 'teacher'")
+                session.commit()
+                print(f"{role.capitalize()} registered successfully!")
+            except IntegrityError:
+                session.rollback()
+                print(f"{role.capitalize()} with ID {user_id} already exists.")
+
+    # ----------- New: Login -----------
+
+    def login_user(self, user_id):
+        """
+        Login a user by ID. Detects automatically whether the user is a student or a teacher.
+        """
+        with self.Session() as session:
+            student = session.get(Student, user_id)
+            if student:
+                print(f"Student logged in: ID={student.studentId}")
+                return 'student', student
+
+            teacher = session.get(Teacher, user_id)
+            if teacher:
+                print(f"Teacher logged in: ID={teacher.teacherId}")
+                return 'teacher', teacher
+
+            print("User not found.")
+            return None, None
