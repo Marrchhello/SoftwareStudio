@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 # Initialize FastAPI
 app = FastAPI()
 
+#Setup
 # Setup templates directory
 templates = Jinja2Templates(directory="templates")
 
