@@ -1,0 +1,33 @@
+# File to showcase how to create a user, and how the can_create_user function works.
+# can_create_user is used in create_user, so you can just pass in the args directly
+# instead of calling can_create_user. 
+
+import sqlalchemy
+from sqlalchemy import *
+from sqlalchemy.orm import *
+from database_I import *
+from user_managment import create_user, can_create_user
+
+engine = create_engine('postgresql+psycopg://postgres:password@localhost/postgres')
+Base.metadata.create_all(engine)
+
+# Create user
+print(create_user(engine, 1, 1, 'ben', 'banana', Roles.STUDENT))
+
+# test can create user:
+
+# Error: account for student exists
+res = can_create_user(engine, 2, 1, Roles.STUDENT)
+print(f"Success?: {res[0]}, Error: {res[1]}")
+
+# error: user id exists
+res = can_create_user(engine, 1, 1, Roles.STUDENT)
+print(f"Success?: {res[0]}, Error: {res[1]}")
+
+# error, role id does not exists in role table
+res = can_create_user(engine, 0, 4, Roles.STUDENT)
+print(f"Success?: {res[0]}, Error: {res[1]}")
+
+# no error
+res = can_create_user(engine, 2, 0, Roles.STUDENT)
+print(f"Success?: {res[0]}, Error: {res[1]}")
