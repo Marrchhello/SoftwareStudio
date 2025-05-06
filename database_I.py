@@ -47,7 +47,7 @@ class ClassDateTime(Base):
     
     __tablename__ = "ClassDateTime"
     classDateTimeId: Mapped[int] = mapped_column(primary_key=True)
-    courseId: Mapped[int]
+    courseId: Mapped[int] = mapped_column(ForeignKey('CourseCatalog.courseId'))
     dateStartTime: Mapped[datetime.datetime]
     endTime: Mapped[datetime.time]
     
@@ -56,6 +56,7 @@ class ClassDateTime(Base):
     
 
 # Change log V1 -> V2: add docstring, remove year (simple calc from semester), update __repr__
+# Change log V2 -> V3: add foreign keys
 class Student(Base):
     """Student table for postgres.
     
@@ -63,13 +64,13 @@ class Student(Base):
     semester: def(1) int (which semester is the student in)
     degreeId: def(0) int (Degree the student is trying to earn)
     age: opt int
-    email: opt int
+    email: opt str
     """
     
     __tablename__ = 'Student'
     studentId: Mapped[int] = mapped_column(primary_key=True)
     semester: Mapped[int] = mapped_column(insert_default=1)
-    degreeId: Mapped[int] = mapped_column(insert_default=0)
+    degreeId: Mapped[int] = mapped_column(ForeignKey('Degree.degreeId'), insert_default=0)
     age: Mapped[Optional[int]]
     email: Mapped[Optional[str]]
 
@@ -117,6 +118,7 @@ class Degree(Base):
 
 # Change log V1 -> V2: add docstring, rename id to roomId (clear confusion), make building optional, make room number optional, add dates array, add start_time, add end_time, update __repr__
 # Change log V2b: remove time from room and add it to seperate table linking to course.
+# Change log V2b -> V3: add foreign keys
 class Room(Base):
     """Room table for postgres.
     
@@ -128,7 +130,7 @@ class Room(Base):
     
     __tablename__ = 'Room'
     roomId: Mapped[int] = mapped_column(primary_key=True)
-    courseId: Mapped[int]
+    courseId: Mapped[int] = mapped_column(ForeignKey('CourseCatalog.courseId'))
     building: Mapped[Optional[str]]
     roomNumber: Mapped[Optional[int]]
 
@@ -137,6 +139,7 @@ class Room(Base):
 
 
 # Change log V1 -> V2: make teacherId optional (teacher unassigned), rename id to courseTeacherId, add docstring, update __repr__
+# Change log V2 -> V3: add foreign keys
 class CourseTeacher(Base):
     """CourseTeacher table for postgres.
     
@@ -147,14 +150,15 @@ class CourseTeacher(Base):
     
     __tablename__ = 'CourseTeacher'
     courseTeacherId: Mapped[int] = mapped_column(primary_key=True)
-    courseId: Mapped[int]
-    teacherId: Mapped[Optional[int]]
+    courseId: Mapped[int] = mapped_column(ForeignKey('CourseCatalog.courseId'))
+    teacherId: Mapped[Optional[int]] = mapped_column(ForeignKey('Teacher.teacherId'))
 
     def __repr__(self):
         return f"Course-Teacher ID: {self.courseTeacherId}, Course ID: {self.courseId}, Teacher ID: {self.teacherId}"
 
 
 # Change log V1 -> V2: add docstring, rename key to courseStudentId, add optional group field (group number student belongs to), update __repr__
+# Change log V2 -> V3: add foreign keys
 class CourseStudent(Base):
     """CourseStudent table for postgres.
     
@@ -166,8 +170,8 @@ class CourseStudent(Base):
     
     __tablename__ = 'CourseStudent'
     courseStudentId: Mapped[int] = mapped_column(primary_key=True)
-    courseId: Mapped[int]
-    studentId: Mapped[int]
+    courseId: Mapped[int] = mapped_column(ForeignKey('CourseCatalog.courseId'))
+    studentId: Mapped[int] = mapped_column(ForeignKey('Student.studentId'))
     group: Mapped[Optional[int]]
 
     def __repr__(self):
@@ -175,6 +179,7 @@ class CourseStudent(Base):
 
 
 # Change log V1 -> V2: create assignment table, fields, and __repr__ 
+# Change log V2 -> V3: add foreign keys
 class Assignment(Base):
     """Assignment table for postgres.
         
@@ -196,12 +201,13 @@ class Assignment(Base):
     assignmentIntro: Mapped[Optional[str]]
     validFileTypes: Mapped[Optional[str]]
     group: Mapped[Optional[int]]
-    courseId: Mapped[int]
+    courseId: Mapped[int] = mapped_column(ForeignKey('CourseCatalog.courseId'))
     
     def __repr__(self):
         return f"Assignment ID: {self.assignmentId}, Name: {self.name}, Due Date and Time: {self.dueDateTime}, Needs Submission: {self.needsSubmission}, Assignment Intro: {self.assignmentIntro}, Valid File Types: {self.validFileTypes}, Group Number: {self.group}, Course ID: {self.courseId}"
 
 # Change log V1 -> V2: Create grades table, fields, and __repr__
+# Change log V2 -> V3: add foreign keys
 class Grade(Base):
     """Grade table for postgres.
     
@@ -213,9 +219,9 @@ class Grade(Base):
     
     __tablename__ = 'Grade'
     gradeId: Mapped[int] = mapped_column(primary_key=True)
-    studentId: Mapped[int]
+    studentId: Mapped[int] = mapped_column(ForeignKey('Student.studentId'))
     grade: Mapped[Optional[float]]
-    assignmentId: Mapped[Optional[int]]
+    assignmentId: Mapped[Optional[int]] = mapped_column(ForeignKey('Assignment.assignmentId'))
 
     def __repr__(self):
         return f"Grade ID: {self.gradeId}, Student ID: {self.studentId}, Grade: {self.grade}, Assignment ID: {self.assignmentId}"
