@@ -39,18 +39,20 @@ class CourseCatalog(Base):
 class ClassDateTime(Base):
     """ClassDateTime table for postgres.
     
-    courseId: int primary
+    classDateTimeId: int primary
+    courseId: int
     dateStartTime: datetime.datetime (stores both the date and the start time. unfortunately, sqlalchemy doesnt like datetime.date, can also store timezone (pytz))
     endTime: datetime.time (end time for the class)
     """
     
     __tablename__ = "ClassDateTime"
-    courseId: Mapped[int] = mapped_column(primary_key=True)
+    classDateTimeId: Mapped[int] = mapped_column(primary_key=True)
+    courseId: Mapped[int]
     dateStartTime: Mapped[datetime.datetime]
     endTime: Mapped[datetime.time]
     
     def __repr__(self):
-        return f"Course ID: {self.courseId}, Date and Start Time: {self.dateStartTime}, End Time: {self.endTime}"
+        return f"Class Date Time ID: {self.classDateTimeId}, Course ID: {self.courseId}, Date and Start Time: {self.dateStartTime}, End Time: {self.endTime}"
     
 
 # Change log V1 -> V2: add docstring, remove year (simple calc from semester), update __repr__
