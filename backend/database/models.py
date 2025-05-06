@@ -7,6 +7,8 @@ class Base(DeclarativeBase):
 
 class Student(Base):
     __tablename__ = 'Student'
+    hashed_password: Mapped[Optional[str]] = mapped_column(default=None)
+
     studentId: Mapped[int] = mapped_column(primary_key=True)
     semester: Mapped[int] = mapped_column(insert_default=1)
     year: Mapped[int] = mapped_column(insert_default=1)
@@ -31,6 +33,8 @@ class CourseCatalog(Base):
 
 class Teacher(Base):
     __tablename__ = 'Teacher'
+    hashed_password: Mapped[Optional[str]] = mapped_column(default=None)
+
     teacherId: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[Optional[str]]
     title: Mapped[Optional[str]]

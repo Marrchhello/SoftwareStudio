@@ -9,7 +9,14 @@ from typing import Optional
 
 Base = declarative_base()
 
+class Grade(Base):
+    __tablename__ = 'Grade'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[int] = mapped_column(ForeignKey('CourseStudent.key'))
+    grade: Mapped[float]
 
+    def __repr__(self):
+        return f"Grade(id={self.id}, grade={self.grade})"
 
 # Courses, teacher, semester/year, ects credits, course id (primary)
 class CourseCatalog(Base):
@@ -34,6 +41,8 @@ class CourseCatalog(Base):
 # student name, id (primary), semester, year, degree id, age, email
 class Student(Base):
     __tablename__ = 'Student'
+    hashed_password: Mapped[Optional[str]] = mapped_column(default=None)
+
     studentId: Mapped[int] = mapped_column(primary_key=True)
     semester: Mapped[int] = mapped_column(insert_default=1)
     year: Mapped[int] = mapped_column(insert_default=1)
@@ -48,6 +57,8 @@ class Student(Base):
 # teacher name, teacher id (primary), title/job, email
 class Teacher(Base):
     __tablename__ = 'Teacher'
+    hashed_password: Mapped[Optional[str]] = mapped_column(default=None)
+
     teacherId: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[Optional[str]]
     title: Mapped[Optional[str]]

@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import insert, select, update, delete
-from database_I import  Degree, Student  # Add Degree to the import
+from backend.database.database_I import  Degree, Student  # Add Degree to the import
 
 # Insert data
 async def insert_data(session: AsyncSession, table, data: dict):

@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from database import DatabaseManager
-from models import Student, Teacher
+from backend.database.models import Student, Teacher
 from sqlalchemy import create_engine
 
 # Initialize FastAPI
