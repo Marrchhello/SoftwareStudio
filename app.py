@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Request, Form, Depends
+from fastapi import FastAPI, Request, Form, Depends, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from database import DatabaseManager
-from models import Student, Teacher
+from database_I import *
 from sqlalchemy import create_engine
 
 # Initialize FastAPI
@@ -11,6 +11,7 @@ app = FastAPI()
 #Setup
 # Setup templates directory
 templates = Jinja2Templates(directory="templates")
+
 
 # Database connection
 engine = create_engine("sqlite:///university.db", echo=True)
