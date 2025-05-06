@@ -237,6 +237,7 @@ class Roles(enum.Enum):
 
 
 # Change log V1 -> V2: Create user table, fields, verify password function, __repr__. 
+# Change log V2 -> V3: add roleId column.
 class User(Base):
     """User table for postgres.
     
@@ -244,6 +245,7 @@ class User(Base):
     username: str
     password: bytes
     role: enum(Roles) : STUDENT/TEACHER/STAFF
+    roleId: int (studentId/teacherId/staffId)
     
     verify_password(self, pass_bytes) -> bool
     """
@@ -253,6 +255,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(16), nullable=False)
     password: Mapped[bytes] = mapped_column(nullable=False)
     role: Mapped[Enum[Roles]] = mapped_column(Enum(Roles), nullable=False)
+    roleId: Mapped[int] = mapped_column(nullable=False)
 
     def verify_password(self, pass_bytes):
         """Verify user password.
@@ -267,4 +270,4 @@ class User(Base):
         return bcrypt.checkpw(pass_bytes, self.password)
 
     def __repr__(self):
-        return f"User ID: {self.userId}, Username: {self.username}, Hashed Password: {self.password}, Role: {self.role}"
+        return f"User ID: {self.userId}, Username: {self.username}, Hashed Password: {self.password}, Role: {self.role}, Role ID: {self.roleId}"
