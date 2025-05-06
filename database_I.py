@@ -1,7 +1,13 @@
+# Change log V1 -> V2: import enum, datetime, bcrypt, pytz
+
+import enum
 import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from typing import Optional
+import bcrypt
+import datetime
+import pytz
 
 ########################################################################################################################
 # CREATE TABLES
@@ -9,44 +15,58 @@ from typing import Optional
 
 Base = declarative_base()
 
-
-
-# Courses, teacher, semester/year, ects credits, course id (primary)
+# Change log V1 -> V2: remove year (simple calc from semester), remove teacherId (in CourseTeacher), remove old style comments, add docstring, update __repr__ for changes
 class CourseCatalog(Base):
+    """CourseCatalog table for postgres.
+    
+    courseId: int primary
+    courseName: str 
+    semester: def(1) int (what semester does this course appear in)
+    ects: def(1) int
+    """
+
     __tablename__ = 'CourseCatalog'
-    #courseId = Column(Integer, primary_key=True)
     courseId: Mapped[int] = mapped_column(primary_key=True)
-    #courseName = Column(Text)
     courseName: Mapped[str]
-    #teacherId = Column(Integer)
-    teacherId: Mapped[Optional[int]]
-    #semester = Column(Integer, default=1)
     semester: Mapped[int] = mapped_column(insert_default=1)
-    #year = Column(Integer, default=1)
-    year: Mapped[int] = mapped_column(insert_default=1)
-    #ects = Column(Integer, default=1)
     ects: Mapped[int] = mapped_column(insert_default=1)
 
     def __repr__(self):
-        return f"{self.courseId}, {self.courseName}, {self.teacher}, {self.semester}, {self.year}, {self.ects}"
+        return f"Course ID: {self.courseId}, Course Name: {self.courseName}, Semester: {self.semester}, ECTS: {self.ects}"
 
 
-# student name, id (primary), semester, year, degree id, age, email
+# Change log V1 -> V2: add docstring, remove year (simple calc from semester), update __repr__
 class Student(Base):
+    """Student table for postgres.
+    
+    studentId: int primary
+    semester: def(1) int (which semester is the student in)
+    degreeId: def(0) int (Degree the student is trying to earn)
+    age: opt int
+    email: opt int
+    """
+    
     __tablename__ = 'Student'
     studentId: Mapped[int] = mapped_column(primary_key=True)
     semester: Mapped[int] = mapped_column(insert_default=1)
-    year: Mapped[int] = mapped_column(insert_default=1)
     degreeId: Mapped[int] = mapped_column(insert_default=0)
     age: Mapped[Optional[int]]
     email: Mapped[Optional[str]]
 
     def __repr__(self):
-        return f"{self.studentId}, {self.semester}, {self.year}, {self.degreeId}, {self.age}, {self.email}"
+        return f"Student ID: {self.studentId}, Semester: {self.semester}, Degree ID: {self.degreeId}, Age: {self.age}, Email: {self.email}"
 
 
-# teacher name, teacher id (primary), title/job, email
+# Change log V1 -> V2: add docstring, update __repr__
 class Teacher(Base):
+    """Teacher table for postgres.
+    
+    teacherId: int primary
+    name: opt str (Teacher name)
+    title: opt str (Teacher's title)
+    email: opt str (Teacher's email)
+    """
+    
     __tablename__ = 'Teacher'
     teacherId: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[Optional[str]]
@@ -54,49 +74,176 @@ class Teacher(Base):
     email: Mapped[Optional[str]]
 
     def __repr__(self):
-        return f"{self.teacherId}, {self.name}, {self.title}, {self.email}"
+        return f"Teacher ID: {self.teacherId}, Name: {self.name}, Title: {self.title}, Email: {self.email}"
 
 
-# degree id, degree name
+# Change log V1 -> V2: add numSemesters, add docstring, update __repr__
 class Degree(Base):
+    """Degree table for postgres.
+    
+    degreeId: int primary
+    name: opt str
+    numSemesters: def(7) int (how many semesters are there for this degree)
+    """
+    
     __tablename__ = 'Degree'
     degreeId: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[Optional[str]]
+    numSemesters: Mapped[int] = mapped_column(default=7)
 
     def __repr__(self):
-        return f"{self.degreeId}, {self.name}"
+        return f"Degree ID: {self.degreeId}, Name: {self.name}, Number of Semesters: {self.numSemesters}"
 
 
-# course id, room number, row id (primary)
+# Change log V1 -> V2: add docstring, rename id to roomId (clear confusion), make building optional, make room number optional, add dates array, add start_time, add end_time, update __repr__
 class Room(Base):
+    """Room table for postgres.
+    
+    roomId: int primary
+    courseId: int (course the room is for)
+    building: opt str 
+    roomNumber: opt int 
+    dates: opt array of Dates (int year, int month, int day)
+    start_time: opt time (int hr, int min) (uses 24hr format)
+    end_time: opt time (int hr, int min) (uses 24hr format)
+    """
+    
     __tablename__ = 'Room'
-    id: Mapped[int] = mapped_column(primary_key=True)
+    roomId: Mapped[int] = mapped_column(primary_key=True)
     courseId: Mapped[int]
-    building: Mapped[str]
-    roomNumber: Mapped[int]
+    building: Mapped[Optional[str]]
+    roomNumber: Mapped[Optional[int]]
+    dates: Mapped[Optional[list[Date]]] = Column(ARRAY(Date))
+    start_time: Mapped[Optional[Time]] = Column(Time)
+    end_time: Mapped[Optional[Time]] = Column(Time)
 
     def __repr__(self):
-        return f"{self.id}, {self.courseId}, {self.building}, {self.roomNumber}"
+        return f"Room ID: {self.roomId}, Course ID: {self.courseId}, Building: {self.building}, Room Number: {self.roomNumber}, Dates: {self.dates}, Start Time: {self.start_time}, End Time: {self.end_time}"
 
 
-# teacher id, course id, row id (primary)
+# Change log V1 -> V2: make teacherId optional (teacher unassigned), rename id to courseTeacherId, add docstring, update __repr__
 class CourseTeacher(Base):
+    """CourseTeacher table for postgres.
+    
+    courseTeacherId: int primary
+    courseId: int (course the teacher is in)
+    teacherId: opt int (Teacher assigned to the course)
+    """
+    
     __tablename__ = 'CourseTeacher'
-    id: Mapped[int] = mapped_column(primary_key=True)
+    courseTeacherId: Mapped[int] = mapped_column(primary_key=True)
     courseId: Mapped[int]
-    teacherId: Mapped[int]
+    teacherId: Mapped[Optional[int]]
 
     def __repr__(self):
-        return f"{self.id}, {self.courseId}, {self.teacherId}"
+        return f"Course-Teacher ID: {self.courseTeacherId}, Course ID: {self.courseId}, Teacher ID: {self.teacherId}"
 
 
-# student id, course id, key (primary)
+# Change log V1 -> V2: add docstring, rename key to courseStudentId, add optional group field (group number student belongs to), update __repr__
 class CourseStudent(Base):
+    """CourseStudent table for postgres.
+    
+    courseStudentId: int primary
+    courseId: int (course the student is in)
+    studentId: int (Student)
+    group: opt int (group the student is in for this course)
+    """
+    
     __tablename__ = 'CourseStudent'
-    key: Mapped[int] = mapped_column(primary_key=True)
+    courseStudentId: Mapped[int] = mapped_column(primary_key=True)
     courseId: Mapped[int]
     studentId: Mapped[int]
+    group: Mapped[Optional[int]]
 
     def __repr__(self):
-        return f"{self.key}, {self.courseId}, {self.studentId}"
+        return f"Course-Student ID: {self.courseStudentId}, Course ID: {self.courseId}, Student ID: {self.studentId}, Group Number: {self.group}"
 
+
+# Change log V1 -> V2: create assignment table, fields, and __repr__ 
+class Assignment(Base):
+    """Assignmnet table for postgres.
+        
+    assignmentId: int primary
+    name: str
+    dueDateTime: opt datetime.datetime (create object datetime.datetime, set year/month/day/hour/minute/second/timezone)
+    needsSubmission: def(False) bool
+    assignmentIntro: opt str (describes the assignment)
+    validFileTypes: opt str (format: "pdf,jpg,jpeg,png,txt")
+    group: opt int (show to only specific groups)
+    courseId: int (course the assignment belongs to)
+    """
+    
+    __tablename__ = "Assignment"
+    assignmentId: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[Optional[str]]
+    dueDateTime: Mapped[Optional[datetime.datetime]]
+    needsSubmission: Mapped[bool] = mapped_column(default=False)
+    assignmentIntro: Mapped[Optional[str]]
+    validFileTypes: Mapped[Optional[str]]
+    group: Mapped[Optional[int]]
+    courseId: Mapped[int]
+    
+    def __repr__(self):
+        return f"Assignment ID: {self.assignmentId}, Name: {self.name}, Due Date and Time: {self.dueDateTime}, Needs Submission: {self.needsSubmission}, Assignment Intro: {self.assignmentIntro}, Valid File Types: {self.validFileTypes}, Group Number: {self.group}, Course ID: {self.courseId}"
+
+# Change log V1 -> V2: Create grades table, fields, and __repr__
+class Grade(Base):
+    """Grade table for postgres.
+    
+    gradeId: int primary
+    studentId: int (points to Student)
+    grade: opt float
+    assignmentId: opt int (points to Assignment)
+    """
+    
+    __tablename__ = 'Grade'
+    gradeId: Mapped[int] = mapped_column(primary_key=True)
+    studentId: Mapped[int]
+    grade: Mapped[Optional[float]]
+    assignmentId: Mapped[Optional[int]]
+
+    def __repr__(self):
+        return f"Grade ID: {self.gradeId}, Student ID: {self.studentId}, Grade: {self.grade}, Assignment ID: {self.assignmentId}"
+
+
+# Change log V1 -> V2: create Roles enum 
+class Roles(enum.Enum):
+    """Roles: STUDENT, TEACHER, STAFF"""
+    
+    STUDENT = 'student'
+    TEACHER = 'teacher'
+    STAFF = 'staff'
+
+
+# Change log V1 -> V2: Create user table, fields, verify password function, __repr__. 
+class User(Base):
+    """User table for postgres.
+    
+    userId: int
+    username: str
+    password: bytes
+    role: enum(Roles) : STUDENT/TEACHER/STAFF
+    
+    verify_password(self, pass_bytes) -> bool
+    """
+    
+    __tablename__ = 'User'
+    userId: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(16), nullable=False)
+    password: Mapped[bytes] = mapped_column(nullable=False)
+    role: Mapped[Enum[Roles]] = mapped_column(Enum(Roles), nullable=False)
+
+    def verify_password(self, pass_bytes):
+        """Verify user password.
+        
+        Param:
+        pass_bytes
+        Requires password passed in as bytes. {password}.encode()
+        
+        Returns: 
+        boolean True / False
+        """
+        return bcrypt.checkpw(pass_bytes, self.password)
+
+    def __repr__(self):
+        return f"User ID: {self.userId}, Username: {self.username}, Hashed Password: {self.password}, Role: {self.role}"
