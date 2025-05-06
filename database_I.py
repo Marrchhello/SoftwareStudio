@@ -35,6 +35,24 @@ class CourseCatalog(Base):
         return f"Course ID: {self.courseId}, Course Name: {self.courseName}, Semester: {self.semester}, ECTS: {self.ects}"
 
 
+# Change log V1 -> V2: add table ClassDateTime to handle the dates and times for each course.
+class ClassDateTime(Base):
+    """ClassDateTime table for postgres.
+    
+    courseId: int primary
+    dateStartTime: datetime.datetime (stores both the date and the start time. unfortunately, sqlalchemy doesnt like datetime.date, can also store timezone (pytz))
+    endTime: datetime.time (end time for the class)
+    """
+    
+    __tablename__ = "ClassDateTime"
+    courseId: Mapped[int] = mapped_column(primary_key=True)
+    dateStartTime: Mapped[datetime.datetime]
+    endTime: Mapped[datetime.time]
+    
+    def __repr__(self):
+        return f"Course ID: {self.courseId}, Date and Start Time: {self.dateStartTime}, End Time: {self.endTime}"
+    
+
 # Change log V1 -> V2: add docstring, remove year (simple calc from semester), update __repr__
 class Student(Base):
     """Student table for postgres.
@@ -96,6 +114,7 @@ class Degree(Base):
 
 
 # Change log V1 -> V2: add docstring, rename id to roomId (clear confusion), make building optional, make room number optional, add dates array, add start_time, add end_time, update __repr__
+# Change log V2b: remove time from room and add it to seperate table linking to course.
 class Room(Base):
     """Room table for postgres.
     
@@ -103,9 +122,6 @@ class Room(Base):
     courseId: int (course the room is for)
     building: opt str 
     roomNumber: opt int 
-    dates: opt array of Dates (int year, int month, int day)
-    start_time: opt time (int hr, int min) (uses 24hr format)
-    end_time: opt time (int hr, int min) (uses 24hr format)
     """
     
     __tablename__ = 'Room'
@@ -113,12 +129,9 @@ class Room(Base):
     courseId: Mapped[int]
     building: Mapped[Optional[str]]
     roomNumber: Mapped[Optional[int]]
-    dates: Mapped[Optional[list[Date]]] = Column(ARRAY(Date))
-    start_time: Mapped[Optional[Time]] = Column(Time)
-    end_time: Mapped[Optional[Time]] = Column(Time)
 
     def __repr__(self):
-        return f"Room ID: {self.roomId}, Course ID: {self.courseId}, Building: {self.building}, Room Number: {self.roomNumber}, Dates: {self.dates}, Start Time: {self.start_time}, End Time: {self.end_time}"
+        return f"Room ID: {self.roomId}, Course ID: {self.courseId}, Building: {self.building}, Room Number: {self.roomNumber}"
 
 
 # Change log V1 -> V2: make teacherId optional (teacher unassigned), rename id to courseTeacherId, add docstring, update __repr__
@@ -161,7 +174,7 @@ class CourseStudent(Base):
 
 # Change log V1 -> V2: create assignment table, fields, and __repr__ 
 class Assignment(Base):
-    """Assignmnet table for postgres.
+    """Assignment table for postgres.
         
     assignmentId: int primary
     name: str
