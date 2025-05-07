@@ -1,22 +1,24 @@
-from sqlalchemy import create_engine, ForeignKey, select
+from sqlalchemy import create_engine, ForeignKey, select, engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.exc import IntegrityError
-from models import Student, CourseCatalog, Teacher, Degree, Room, CourseTeacher, CourseStudent, Grade
+from database_I import *
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column   
+import datetime as dt
+
+
 class DatabaseManager:
-    def __init__(self, engine):
+    def __init__(self, engine: Engine):
         self.engine = engine
         self.Session = sessionmaker(bind=engine)
 
     # ----------- Adding Records -----------
 
-    def add_student(self, student_id, semester=1, year=1, degree_id=0, age=None, email=None):
+    def add_student(self, student_id: int, semester: int = None, degree_id: int = None, age: int = None, email: str = None):
         # Add a new student to the database
         with self.Session() as session:
             student = Student(
                 studentId=student_id,
                 semester=semester,
-                year=year,
                 degreeId=degree_id,
                 age=age,
                 email=email
@@ -24,21 +26,19 @@ class DatabaseManager:
             session.add(student)
             session.commit()
 
-    def add_course(self, course_id, course_name, teacher_id=None, semester=1, year=1, ects=1):
+    def add_course(self, course_id: int, course_name: str, semester: int = None, ects: int = None):
         # Add a new course to the catalog
         with self.Session() as session:
             course = CourseCatalog(
                 courseId=course_id,
                 courseName=course_name,
-                teacherId=teacher_id,
                 semester=semester,
-                year=year,
                 ects=ects
             )
             session.add(course)
             session.commit()
 
-    def add_teacher(self, teacher_id, name=None, title=None, email=None):
+    def add_teacher(self, teacher_id: int, name: str = None, title: str = None, email: str = None):
         # Add a new teacher to the system
         with self.Session() as session:
             teacher = Teacher(
@@ -50,21 +50,22 @@ class DatabaseManager:
             session.add(teacher)
             session.commit()
 
-    def add_degree(self, degree_id, name=None):
+    def add_degree(self, degree_id: int, name: str = None, numSemesters: int = None):
         # Add a new degree program
         with self.Session() as session:
             degree = Degree(
                 degreeId=degree_id,
-                name=name
+                name=name,
+                numSemesters=numSemesters
             )
             session.add(degree)
             session.commit()
 
-    def add_room(self, room_id, course_id, building, room_number):
+    def add_room(self, room_id: int, course_id: int, building: str = None, room_number: int = None):
         # Assign a room to a course
         with self.Session() as session:
             room = Room(
-                id=room_id,
+                roomId=room_id,
                 courseId=course_id,
                 building=building,
                 roomNumber=room_number
@@ -72,37 +73,69 @@ class DatabaseManager:
             session.add(room)
             session.commit()
 
-    def add_course_teacher(self, ct_id, course_id, teacher_id):
+    def add_course_teacher(self, ct_id: int, course_id: int, teacher_id: int = None):
         # Add a teacher-course association
         with self.Session() as session:
             ct = CourseTeacher(
-                id=ct_id,
+                courseTeacherId=ct_id,
                 courseId=course_id,
                 teacherId=teacher_id
             )
             session.add(ct)
             session.commit()
 
-    def add_course_student(self, key, course_id, student_id):
+    def add_course_student(self, cs_id: int, course_id: int, student_id: int, group: int = None):
         # Enroll a student in a course
         with self.Session() as session:
             cs = CourseStudent(
-                key=key,
+                courseStudentId=cs_id,
                 courseId=course_id,
-                studentId=student_id
+                studentId=student_id,
+                group=group
             )
             session.add(cs)
             session.commit()
 
-    def add_grade(self, grade_id, key, grade_value):
+    def add_grade(self, grade_id: int, student_id: int, grade_value: float = None, assignment_id: int = None):
         # Add a grade for a student in a course
         with self.Session() as session:
             grade = Grade(
-                id=grade_id,
-                key=key,
-                grade=grade_value
+                gradeId=grade_id,
+                studentId=student_id,
+                grade=grade_value,
+                assignmentId=assignment_id
             )
             session.add(grade)
+            session.commit()
+            
+    def add_class_time(self, cdt_id: int, course_id: int, date_and_start_time: dt.datetime = None, end_time: dt.time = None):
+        # Add a grade for a student in a course
+        with self.Session() as session:
+            class_time = ClassDateTime(
+                classDateTimeId=cdt_id,
+                courseId=course_id,
+                dateStartTime=date_and_start_time,
+                endTime=end_time
+            )
+            session.add(class_time)
+            session.commit()
+            
+    def add_assignment(self, assignment_id: int, course_id: int, assignment_name: str, 
+                       due_date_time: dt.datetime = None, needs_submission: bool = None,
+                       desc: str = None, file_types: str = None, group: int = None):
+        # Add a grade for a student in a course
+        with self.Session() as session:
+            asgnmnt = Assignment(
+                assignmentId=assignment_id,
+                name=assignment_name,
+                dueDateTime=due_date_time,
+                needsSubmission=needs_submission,
+                assignmentIntro=desc,
+                validFileTypes=file_types,
+                group=group,
+                courseId=course_id
+            )
+            session.add(asgnmnt)
             session.commit()
 
     # ----------- Deleting Records -----------
