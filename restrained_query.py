@@ -4,6 +4,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 
 
+# Get all grades for a student.
 def getStudentGrades(engine: Engine, student_id: int):
     """Gets the grades for a student id.
     
@@ -27,6 +28,7 @@ def getStudentGrades(engine: Engine, student_id: int):
     return output
 
 
+# Get all grades for a student in a specific course.
 def getStudentGradesForCourse(engine: Engine, student_id: int, course_id):
     """Gets the grades for a student id and course_id.
     
@@ -51,6 +53,7 @@ def getStudentGradesForCourse(engine: Engine, student_id: int, course_id):
     return output
 
 
+# Get all courses a student is in.
 def getStudentCourses(engine: Engine, student_id: int):
     """Gets the list of subjects for a student id.
     
@@ -74,18 +77,79 @@ def getStudentCourses(engine: Engine, student_id: int):
     return output
 
 
+# Get all courses a student is in, limit by this semester.
+def getStudentCoursesSemester(engine: Engine, student_id: int):
+    """Gets the list of subjects for a student id, limit by current semester.
+    
+    Params:
+    engine: Engine connection to use
+    student_id: student id to get all subjects for.
+    
+    Returns:
+    output: []  list of dictionaries. Dict format: {"Course", "ID", "Group"}
+    """
+    
+    output = []
+    
+    with engine.connect() as conn:
+    
+        course_select = select(CourseCatalog.courseName, CourseCatalog.courseId, CourseStudent.group).where(and_(CourseStudent.studentId == student_id, CourseCatalog.courseId == CourseStudent.courseId, Student.semester == CourseCatalog.semester, Student.studentId == student_id))
+
+        for row in conn.execute(course_select):
+                output.append({"Course":row[0], "ID":row[1], "Group":row[2]})
+
+    return output
+
+
+# Get all courses a teacher is in.
+def getTeacherCourses(engine: Engine, teacher_id: int):
+    """Gets the list of subjects for a teacher id.
+    
+    Params:
+    engine: Engine connection to use
+    teacher_id: teacher id to get all subjects for.
+    
+    Returns:
+    output: []  list of dictionaries. Dict format: {"Course", "ID"}
+    """
+    
+    output = []
+    
+    with engine.connect() as conn:
+    
+        course_select = select(CourseCatalog.courseName, CourseCatalog.courseId).where(and_(CourseTeacher.teacherId == teacher_id, CourseCatalog.courseId == CourseTeacher.courseId))
+
+        for row in conn.execute(course_select):
+                output.append({"Course":row[0], "ID":row[1]})
+
+    return output
+
+
 # Test data
-# print(getStudentGrades(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
+# print("All grades, st_id 1: ", getStudentGrades(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
 # print()
-# print(getStudentGrades(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
+# print("All grades, st_id 0: ", getStudentGrades(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
 # print()
-# print(getStudentGradesForCourse(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1, 1))
+# print("Course grades, st_id 1, c_id 1: ", getStudentGradesForCourse(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1, 1))
 # print()
-# print(getStudentGradesForCourse(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0, 0))
+# print("Course grades, st_id 0, c_id 0: ", getStudentGradesForCourse(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0, 0))
 # print()
 # print()
 
-# print(getStudentCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
+# print("All student courses, st_id 0: ", getStudentCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
 # print()
-# print(getStudentCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
+# print("All student courses, st_id 1: ", getStudentCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
+# print()
+# print()
+
+# print("All student courses this semester, st_id 0: ", getStudentCoursesSemester(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
+# print()
+# print("All student courses this semester, st_id 1: ", getStudentCoursesSemester(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
+# print()
+# print()
+
+# print("All courses, t_id 0: ", getTeacherCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
+# print()
+# print("All courses, t_id 1: ", getTeacherCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
+# print()
 # print()
