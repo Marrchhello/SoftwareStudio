@@ -40,27 +40,14 @@ body {
   padding: 0 2rem;
 }
 
-/* Logo Styles - Added for the logo implementation */
+/* Logo Styles */
 .logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 15px;
 }
 
-.logo-image {
-  height: 40px;
-  transition: transform 0.3s ease;
-}
-
-.logo-image:hover {
-  transform: scale(1.05);
-}
-
-.futuristic-header .logo-image {
-  height: 36px;
-}
-
-.futuristic-header .logo span {
+.logo span {
   font-size: 2rem;
   font-weight: 700;
   margin: 0;
@@ -203,6 +190,35 @@ body {
   flex: 1;
   display: flex;
   justify-content: center;
+  position: relative;
+}
+
+.logo-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 25px rgba(0, 161, 224, 0.7);
+  transition: all 0.3s ease;
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.logo-circle:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 0 30px rgba(0, 161, 224, 0.9);
+}
+
+.logo-image {
+  height: 70px;
+  width: auto;
+  object-fit: contain;
 }
 
 .futuristic-circle {
@@ -212,6 +228,7 @@ body {
   background: radial-gradient(circle, var(--secondary-color) 0%, transparent 60%);
   opacity: 0.3;
   animation: pulse 8s infinite alternate;
+  position: relative;
 }
 
 @keyframes pulse {
@@ -440,10 +457,22 @@ body {
     justify-content: center;
   }
 
+  .hero-image {
+    margin-top: 2rem;
+  }
+
+  .logo-circle {
+    width: 100px;
+    height: 100px;
+  }
+
+  .logo-image {
+    height: 50px;
+  }
+
   .futuristic-circle {
     width: 300px;
     height: 300px;
-    margin-top: 2rem;
   }
 
   .announcement-card {
