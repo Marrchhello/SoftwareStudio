@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaSignInAlt, FaUserPlus, FaBell, FaBook, FaCalendarAlt, FaGraduationCap, FaQuestionCircle, FaEnvelope, FaFileAlt, FaShieldAlt } from 'react-icons/fa';
+import logoUPSOS from './logoUPSOS.png';
 import './UpsosHomepage.css';
 
 const UpsosHomepage = () => {
@@ -8,7 +9,9 @@ const UpsosHomepage = () => {
       {/* Header */}
       <header className="futuristic-header">
         <div className="header-container">
-          <h1 className="logo">UPSOS</h1>
+          <div className="logo">
+            <span>UPSOS</span>
+          </div>
           <nav className="main-nav">
             <ul>
               <li><a href="#about">About</a></li>
@@ -35,6 +38,9 @@ const UpsosHomepage = () => {
             </div>
           </div>
           <div className="hero-image">
+            <div className="logo-circle">
+              <img src={logoUPSOS} alt="UPSOS Logo" className="logo-image" />
+            </div>
             <div className="futuristic-circle"></div>
           </div>
         </div>
@@ -61,7 +67,7 @@ const UpsosHomepage = () => {
             <div className="feature-icon">
               <FaBook />
             </div>
-            <h3>One Uniwersity platform</h3>
+            <h3>Integrated Platform</h3>
             <p>Combined USOS and UPEL together as one platform</p>
           </div>
           <div className="feature-card">
