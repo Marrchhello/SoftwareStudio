@@ -208,20 +208,21 @@ class Assignment(Base):
 
 # Change log V1 -> V2: Create grades table, fields, and __repr__
 # Change log V2 -> V3: add foreign keys
+# Change log V3b: make assignmentId required
 class Grade(Base):
     """Grade table for postgres.
     
     gradeId: int primary
     studentId: int (points to Student)
     grade: opt float
-    assignmentId: opt int (points to Assignment)
+    assignmentId: int (points to Assignment)
     """
     
     __tablename__ = 'Grade'
     gradeId: Mapped[int] = mapped_column(primary_key=True)
     studentId: Mapped[int] = mapped_column(ForeignKey('Student.studentId'))
     grade: Mapped[Optional[float]]
-    assignmentId: Mapped[Optional[int]] = mapped_column(ForeignKey('Assignment.assignmentId'))
+    assignmentId: Mapped[int] = mapped_column(ForeignKey('Assignment.assignmentId'))
 
     def __repr__(self):
         return f"Grade ID: {self.gradeId}, Student ID: {self.studentId}, Grade: {self.grade}, Assignment ID: {self.assignmentId}"

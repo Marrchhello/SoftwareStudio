@@ -96,7 +96,7 @@ class DatabaseManager:
             session.add(cs)
             session.commit()
 
-    def add_grade(self, grade_id: int, student_id: int, grade_value: float = None, assignment_id: int = None):
+    def add_grade(self, grade_id: int, student_id: int, assignment_id: int, grade_value: float = None):
         # Add a grade for a student in a course
         with self.Session() as session:
             grade = Grade(
