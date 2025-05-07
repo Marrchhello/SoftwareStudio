@@ -124,32 +124,3 @@ def getTeacherCourses(engine: Engine, teacher_id: int):
 
     return output
 
-
-# Test data
-# print("All grades, st_id 1: ", getStudentGrades(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
-# print()
-# print("All grades, st_id 0: ", getStudentGrades(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
-# print()
-# print("Course grades, st_id 1, c_id 1: ", getStudentGradesForCourse(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1, 1))
-# print()
-# print("Course grades, st_id 0, c_id 0: ", getStudentGradesForCourse(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0, 0))
-# print()
-# print()
-
-# print("All student courses, st_id 0: ", getStudentCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
-# print()
-# print("All student courses, st_id 1: ", getStudentCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
-# print()
-# print()
-
-# print("All student courses this semester, st_id 0: ", getStudentCoursesSemester(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
-# print()
-# print("All student courses this semester, st_id 1: ", getStudentCoursesSemester(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
-# print()
-# print()
-
-# print("All courses, t_id 0: ", getTeacherCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
-# print()
-# print("All courses, t_id 1: ", getTeacherCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
-# print()
-# print()
