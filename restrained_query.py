@@ -74,17 +74,18 @@ def getStudentCourses(engine: Engine, student_id: int):
     return output
 
 
-print(getStudentGrades(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
-print()
-print(getStudentGrades(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
-print()
-print(getStudentGradesForCourse(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1, 1))
-print()
-print(getStudentGradesForCourse(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0, 0))
-print()
-print()
+# Test data
+# print(getStudentGrades(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
+# print()
+# print(getStudentGrades(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
+# print()
+# print(getStudentGradesForCourse(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1, 1))
+# print()
+# print(getStudentGradesForCourse(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0, 0))
+# print()
+# print()
 
-print(getStudentCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
-print()
-print(getStudentCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
-print()
+# print(getStudentCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 0))
+# print()
+# print(getStudentCourses(create_engine('postgresql+psycopg://postgres:password@localhost/postgres'), 1))
+# print()
