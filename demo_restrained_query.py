@@ -18,3 +18,14 @@ print("All student courses this semester, st_id 1: ", getStudentCoursesSemester(
 
 print("All courses, t_id 0: ", getTeacherCourses(engine, 0), "\n")
 print("All courses, t_id 1: ", getTeacherCourses(engine, 1), "\n\n")
+
+print("List of all Uni Events: ", getUniversityEvents(engine), "\n\n")
+
+print("List of all Custom Uni Events (today): ", getCustomUniversityEvents(engine), "\n\n")
+print("List of all Custom Uni Events (2025-05-11): ", getCustomUniversityEvents(engine, datetime.datetime(2025, 5, 11)), "\n\n")
+
+print("List of all Uni Holidays: ", getHolidays(engine), "\n\n")
+
+print("List of all Custom Uni Holidays (today): ", getCustomHolidays(engine), "\n\n")
+print("List of all Custom Uni Holidays (2025-05-11): ", getCustomHolidays(engine, datetime.datetime(2025, 5, 11)), "\n\n")
+

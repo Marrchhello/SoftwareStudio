@@ -124,3 +124,114 @@ def getTeacherCourses(engine: Engine, teacher_id: int):
 
     return output
 
+
+# Get All University Events
+def getUniversityEvents(engine: Engine):
+    """Gets all the events stored in UniversityEvents.
+    
+    Note:
+    The Date/Start and Date/End of output store a datetime.datetime object. It can be used normally.
+    
+    Params:
+    engine: Engine connection to use.
+    
+    Returns:
+    output: []  list of dictionaries. Dict format: {"Event ID", "Event Name", "Date and Start Time", "Date and End Time", "Holiday"}
+    """
+    
+    output = []
+    
+    with engine.connect() as conn:
+        
+        event_select = select(UniversityEvents)
+        
+        for row in conn.execute(event_select):
+            output.append({"Event ID":row[0], "Event Name":row[1], "Date and Start Time":row[2], "Date and End Time":row[3], "Holiday":row[4]})
+            
+    return output
+
+
+# Get University Events From Today On or From Custom Start Date/Time
+def getCustomUniversityEvents(engine: Engine, start_date: datetime.datetime = None):
+    """Gets all the events stored in UniversityEvents starting from either today, or custom start.
+    
+    Note:
+    The Date/Start and Date/End of output store a datetime.datetime object. It can be used normally.
+    
+    Params:
+    engine: Engine connection to use.
+    start_date: datetime.datetime (Custom start date and time)
+    
+    Returns:
+    output: []  list of dictionaries. Dict format: {"Event ID", "Event Name", "Date and Start Time", "Date and End Time", "Holiday"}
+    """
+    
+    output = []
+    
+    if start_date is None:
+        start_date = datetime.datetime.today()
+    
+    with engine.connect() as conn:
+        
+        event_select = select(UniversityEvents).where(UniversityEvents.dateStartTime >= start_date)
+        
+        for row in conn.execute(event_select):
+            output.append({"Event ID":row[0], "Event Name":row[1], "Date and Start Time":row[2], "Date and End Time":row[3], "Holiday":row[4]})
+            
+    return output
+
+
+# Get All Holidays From University Events
+def getHolidays(engine: Engine):
+    """Gets all the holidays stored in UniversityEvents.
+    
+    Note:
+    The Date/Start and Date/End of output store a datetime.datetime object. It can be used normally.
+    
+    Params:
+    engine: Engine connection to use.
+    
+    Returns:
+    output: []  list of dictionaries. Dict format: {"Event ID", "Event Name", "Date and Start Time", "Date and End Time", "Holiday"}
+    """
+    
+    output = []
+    
+    with engine.connect() as conn:
+        
+        event_select = select(UniversityEvents).where(UniversityEvents.isHoliday == True)
+        
+        for row in conn.execute(event_select):
+            output.append({"Event ID":row[0], "Event Name":row[1], "Date and Start Time":row[2], "Date and End Time":row[3], "Holiday":row[4]})
+            
+    return output
+
+
+# Get All Holidays From University Events From Today or Custom Start
+def getCustomHolidays(engine: Engine, start_date: datetime.datetime = None):
+    """Gets all the holidays stored in UniversityEvents, from today or from custom start.
+    
+    Note:
+    The Date/Start and Date/End of output store a datetime.datetime object. It can be used normally.
+    
+    Params:
+    engine: Engine connection to use.
+    start_date: datetime.datetime (Custom start date and time)
+    
+    Returns:
+    output: []  list of dictionaries. Dict format: {"Event ID", "Event Name", "Date and Start Time", "Date and End Time", "Holiday"}
+    """
+    
+    output = []
+    
+    if start_date is None:
+        start_date = datetime.datetime.today()
+    
+    with engine.connect() as conn:
+        
+        event_select = select(UniversityEvents).where(and_(UniversityEvents.isHoliday == True, UniversityEvents.dateStartTime >= start_date))
+        
+        for row in conn.execute(event_select):
+            output.append({"Event ID":row[0], "Event Name":row[1], "Date and Start Time":row[2], "Date and End Time":row[3], "Holiday":row[4]})
+            
+    return output
