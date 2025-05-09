@@ -45,9 +45,7 @@ def can_create_user(engine: Engine, uuid: int, roleId: int, role: Roles) -> (boo
         elif role == Roles.TEACHER:
             check_role_id = select(Teacher).where(Teacher.teacherId == roleId)
         elif role == Roles.STAFF:
-            # Howd i forget to imp a Staff table???
-            # check_role_id = select(Staff).where(Staff.staffId == roleId)
-            return (False, "Staff not implemented.")
+            check_role_id = select(Staff).where(Staff.staffId == roleId)
         else:
             return (False, "Invalid role.")
         

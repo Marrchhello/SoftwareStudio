@@ -226,6 +226,22 @@ class Grade(Base):
 
     def __repr__(self):
         return f"Grade ID: {self.gradeId}, Student ID: {self.studentId}, Grade: {self.grade}, Assignment ID: {self.assignmentId}"
+    
+    
+class Staff(Base):
+    """Staff table for postgres.
+    
+    staffId: int primary
+    name: str
+    email: opt str
+    administrator: def(False) bool
+    """
+    
+    __tablename__ = 'Staff'
+    staffId: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    email: Mapped[Optional[str]]
+    administrator: Mapped[bool] = mapped_column(default=False)
 
 
 # Change log V1 -> V2: create Roles enum 

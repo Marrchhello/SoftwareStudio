@@ -151,6 +151,19 @@ try:
         session.close()
         addlist.clear()
         
+        # Staff
+        addlist.append(Staff(staffId=0, name='ben'))
+        addlist.append(Staff(staffId=1, name='larry', email='creative@email.com', administrator=True))
+        
+        session = Session()
+        
+        for i in addlist:
+            session.add(i)
+        
+        session.commit()
+        session.close()
+        addlist.clear()
+        
 except sqlalchemy.exc.OperationalError:
     print("Login failed. Invalid username or password.")
     print()
