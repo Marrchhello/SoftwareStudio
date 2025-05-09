@@ -164,6 +164,19 @@ try:
         session.close()
         addlist.clear()
         
+        # University Events
+        addlist.append(UniversityEvents(eventId=0, eventName='Dog Day', dateStartTime= datetime.datetime(year=2025, month=5, day=10), dateEndTime=datetime.datetime(year=2025, month=5, day=11)))
+        addlist.append(UniversityEvents(eventId=1, eventName='Cat Day', dateStartTime= datetime.datetime(year=2025, month=5, day=11, hour=8), dateEndTime=datetime.datetime(year=2025, month=5, day=11, hour=23, minute=59), isHoliday=True))
+        
+        session = Session()
+        
+        for i in addlist:
+            session.add(i)
+        
+        session.commit()
+        session.close()
+        addlist.clear()
+        
 except sqlalchemy.exc.OperationalError:
     print("Login failed. Invalid username or password.")
     print()

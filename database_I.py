@@ -54,6 +54,28 @@ class ClassDateTime(Base):
     def __repr__(self):
         return f"Class Date Time ID: {self.classDateTimeId}, Course ID: {self.courseId}, Date and Start Time: {self.dateStartTime}, End Time: {self.endTime}"
     
+    
+# Change log V1: Create university wide events table. This is to make it easy to store days off and other important events.
+class UniversityEvents(Base):
+    """University Events table for postgres.
+    
+    eventId: int primary
+    eventName: str 
+    dateStartTime: datetime.datetime (Date and Start time of event)
+    dateEndTime: datetime.datetime (Date and End time of event)
+    isHoliday: def(False) bool (is it time off)
+    """
+    
+    __tablename__ = 'UniversityEvents'
+    eventId: Mapped[int] = mapped_column(primary_key=True)
+    eventName: Mapped[str]
+    dateStartTime: Mapped[datetime.datetime]
+    dateEndTime: Mapped[datetime.datetime]
+    isHoliday: Mapped[bool] = mapped_column(default=False)
+    
+    def __repr__(self):
+        return f"Event ID: {self.eventId}, Event Name: {self.eventName}, Date and Start Time: {self.dateStartTime}, Date and End Time: {self.dateEndTime}, Is Holliday?:{self.isHoliday}"
+    
 
 # Change log V1 -> V2: add docstring, remove year (simple calc from semester), update __repr__
 # Change log V2 -> V3: add foreign keys
@@ -227,7 +249,7 @@ class Grade(Base):
     def __repr__(self):
         return f"Grade ID: {self.gradeId}, Student ID: {self.studentId}, Grade: {self.grade}, Assignment ID: {self.assignmentId}"
     
-    
+# Change log V1 -> V2: Add repr in.    
 class Staff(Base):
     """Staff table for postgres.
     
@@ -242,6 +264,9 @@ class Staff(Base):
     name: Mapped[str]
     email: Mapped[Optional[str]]
     administrator: Mapped[bool] = mapped_column(default=False)
+    
+    def __repr__(self):
+        return f"Staff ID: {self.staffId}, Name: {self.name}, Email: {self.email}, Admin: {self.administrator}"
 
 
 # Change log V1 -> V2: create Roles enum 
