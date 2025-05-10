@@ -2,6 +2,7 @@ import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from typing import Optional
+from datetime import datetime
 
 ########################################################################################################################
 # CREATE TABLES
@@ -110,4 +111,17 @@ class CourseStudent(Base):
 
     def __repr__(self):
         return f"{self.key}, {self.courseId}, {self.studentId}"
+
+
+class LoginAttempts(Base):
+    __tablename__ = 'LoginAttempts'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int]
+    role: Mapped[str]  # 'student' or 'teacher'
+    attempt_time: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    is_successful: Mapped[bool] = mapped_column(default=False)
+    ip_address: Mapped[Optional[str]]
+
+    def __repr__(self):
+        return f"LoginAttempt(user_id={self.user_id}, role={self.role}, time={self.attempt_time})"
 

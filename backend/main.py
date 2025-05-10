@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from datetime import datetime, timedelta
@@ -34,10 +34,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 app = FastAPI()
 
-# CORS Middleware
+# Add CORS middleware before any routes
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -121,6 +121,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 # Routes
 @app.post("/auth/register", status_code=status.HTTP_201_CREATED)
 async def register_user(user_data: UserCreate):
+    # Accept both degree_id and degreeId for compatibility
+    degree_id = getattr(user_data, 'degree_id', None) or getattr(user_data, 'degreeId', None)
     # Check if user already exists
     if user_data.role == "student":
         existing = db_manager.get_student_info(user_data.user_id)
@@ -144,7 +146,7 @@ async def register_user(user_data: UserCreate):
             hashed_password=hashed_password,
             semester=user_data.semester,
             year=user_data.year,
-            degree_id=user_data.degree_id,
+            degreeId=degree_id,  # Always use camelCase for DB
             age=user_data.age
         )
     else:
@@ -159,7 +161,10 @@ async def register_user(user_data: UserCreate):
     return {"message": "User created successfully"}
 
 @app.post("/auth/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    request: Request = None
+):
     try:
         user_id = int(form_data.username)
     except ValueError:
@@ -171,26 +176,59 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     
     # Try student first
     student = db_manager.get_student_info(user_id)
-    if student and hasattr(student, 'hashed_password') and verify_password(form_data.password, student.hashed_password):
-        role = "student"
-    else:
-        # Try teacher
-        teacher = db_manager.get_teacher_info(user_id)
-        if teacher and hasattr(teacher, 'hashed_password') and verify_password(form_data.password, teacher.hashed_password):
-            role = "teacher"
-        else:
+    if student:
+        if db_manager.is_account_locked(user_id, "student"):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect user ID or password",
+                detail="Account is locked. Please try again in 15 minutes.",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        
+        valid_student = (student and 
+                        hasattr(student, 'hashed_password') and 
+                        verify_password(form_data.password, student.hashed_password))
+        
+        if valid_student:
+            db_manager.record_login_attempt(user_id, "student", True, request.client.host if request else None)
+            access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            access_token = create_access_token(
+                data={"sub": str(user_id), "role": "student"},
+                expires_delta=access_token_expires
+            )
+            return {"access_token": access_token, "token_type": "bearer"}
+        else:
+            db_manager.record_login_attempt(user_id, "student", False, request.client.host if request else None)
     
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": str(user_id), "role": role},
-        expires_delta=access_token_expires
+    # Try teacher if student check failed
+    teacher = db_manager.get_teacher_info(user_id)
+    if teacher:
+        if db_manager.is_account_locked(user_id, "teacher"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Account is locked. Please try again in 15 minutes.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        valid_teacher = (teacher and 
+                        hasattr(teacher, 'hashed_password') and 
+                        verify_password(form_data.password, teacher.hashed_password))
+        
+        if valid_teacher:
+            db_manager.record_login_attempt(user_id, "teacher", True, request.client.host if request else None)
+            access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            access_token = create_access_token(
+                data={"sub": str(user_id), "role": "teacher"},
+                expires_delta=access_token_expires
+            )
+            return {"access_token": access_token, "token_type": "bearer"}
+        else:
+            db_manager.record_login_attempt(user_id, "teacher", False, request.client.host if request else None)
+    
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Incorrect user ID or password",
+        headers={"WWW-Authenticate": "Bearer"},
     )
-    return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/auth/me", response_model=User)
 async def read_users_me(current_user: User = Depends(get_current_user)):
@@ -206,4 +244,42 @@ async def protected_route(current_user: User = Depends(get_current_user)):
     return {
         "message": f"Hello {current_user.role} {current_user.user_id}",
         "user_details": current_user
+    }
+
+@app.get("/student/schedule")
+async def get_student_schedule(current_user: User = Depends(get_current_user)):
+    if current_user.role != 'student':
+        raise HTTPException(status_code=403, detail="Only students can access their schedule.")
+    # Get enrolled courses for the student
+    courses = db_manager.get_student_courses(current_user.user_id)
+    # Example: Each course has a name, semester, year, and room (if available)
+    week = []
+    for course in courses:
+        # You can expand this logic to include real schedule data if you have it
+        week.append({
+            "day": "Monday",  # Placeholder, replace with real day if available
+            "classes": [{
+                "course": course.courseName,
+                "time": "10:00-12:00",  # Placeholder, replace with real time if available
+                "room": getattr(course, 'roomNumber', 'N/A')
+            }]
+        })
+    return {"week": week}
+
+@app.get("/student/grades")
+async def get_student_grades(current_user: User = Depends(get_current_user)):
+    if current_user.role != 'student':
+        raise HTTPException(status_code=403, detail="Only students can access their grades.")
+    grades = db_manager.get_student_grades(current_user.user_id)
+    return {"grades": [{"course": g[1], "grade": g[0].grade} for g in grades]}
+
+@app.get("/student/courses")
+async def get_student_courses(current_user: User = Depends(get_current_user)):
+    if current_user.role != 'student':
+        raise HTTPException(status_code=403, detail="Only students can access their courses.")
+    courses = db_manager.get_student_courses(current_user.user_id)
+    semester = courses[0].semester if courses else None
+    return {
+        "semester": semester,
+        "courses": [{"name": c.courseName, "ects": c.ects} for c in courses]
     }

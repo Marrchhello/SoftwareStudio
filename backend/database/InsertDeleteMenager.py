@@ -4,6 +4,8 @@ from sqlalchemy.exc import IntegrityError
 from database.database_I import Base,Grade, Student, CourseCatalog, Teacher, Degree, Room, CourseTeacher, CourseStudent
 # Remove Grade import if not in database_I.py
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column   
+from datetime import datetime, timedelta
+
 class DatabaseManager:
     def __init__(self, engine):
         self.engine = engine
@@ -300,33 +302,61 @@ class DatabaseManager:
             print("User not found.")
             return None, None
         
-def get_student_info(self, student_id):
-    with self.Session() as session:
-        return session.get(Student, student_id)
+    def record_login_attempt(self, user_id, role, is_successful, ip_address=None):
+        """Record a login attempt"""
+        with self.Session() as session:
+            attempt = LoginAttempts(
+                user_id=user_id,
+                role=role,
+                is_successful=is_successful,
+                ip_address=ip_address
+            )
+            session.add(attempt)
+            session.commit()
 
-def get_teacher_info(self, teacher_id):
-    with self.Session() as session:
-        return session.get(Teacher, teacher_id)
+    def get_failed_attempts(self, user_id, role, minutes=15):
+        """Get failed login attempts in the last X minutes"""
+        with self.Session() as session:
+            cutoff_time = datetime.utcnow() - timedelta(minutes=minutes)
+            return session.query(LoginAttempts).filter(
+                LoginAttempts.user_id == user_id,
+                LoginAttempts.role == role,
+                LoginAttempts.is_successful == False,
+                LoginAttempts.attempt_time > cutoff_time
+            ).count()
 
-def add_student(self, student_id, email=None, hashed_password=None, **kwargs):
-    with self.Session() as session:
-        student = Student(
-            studentId=student_id,
-            email=email,
-            hashed_password=hashed_password,
-            **kwargs
-        )
-        session.add(student)
-        session.commit()
+    def is_account_locked(self, user_id, role):
+        """Check if account is locked due to too many failed attempts"""
+        failed_attempts = self.get_failed_attempts(user_id, role)
+        return failed_attempts >= 5
 
-def add_teacher(self, teacher_id, name=None, email=None, hashed_password=None, **kwargs):
-    with self.Session() as session:
-        teacher = Teacher(
-            teacherId=teacher_id,
-            name=name,
-            email=email,
-            hashed_password=hashed_password,
-            **kwargs
-        )
-        session.add(teacher)
-        session.commit() 
+    def get_student_info(self, student_id):
+        with self.Session() as session:
+            return session.get(Student, student_id)
+
+    def get_teacher_info(self, teacher_id):
+        with self.Session() as session:
+            return session.get(Teacher, teacher_id)
+
+    def add_student(self, student_id, email=None, hashed_password=None, **kwargs):
+        with self.Session() as session:
+            student = Student(
+                studentId=student_id,
+                email=email,
+                hashed_password=hashed_password,
+                **kwargs
+            )
+            session.add(student)
+            session.commit()
+
+    def add_teacher(self, teacher_id, name=None, email=None, hashed_password=None, **kwargs):
+        with self.Session() as session:
+            teacher = Teacher(
+                teacherId=teacher_id,
+                name=name,
+                email=email,
+                hashed_password=hashed_password,
+                **kwargs
+            )
+            session.add(teacher)
+            session.commit() 

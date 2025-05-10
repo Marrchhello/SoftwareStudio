@@ -1,8 +1,30 @@
 import React from 'react';
-import { FaSignInAlt, FaUserPlus, FaBell, FaBook, FaCalendarAlt, FaGraduationCap, FaQuestionCircle, FaEnvelope, FaFileAlt, FaShieldAlt } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import {
+  FaSignInAlt,
+  FaUserPlus,
+  FaBell,
+  FaBook,
+  FaCalendarAlt,
+  FaGraduationCap,
+  FaQuestionCircle,
+  FaEnvelope,
+  FaFileAlt,
+  FaShieldAlt
+} from 'react-icons/fa';
 import './UpsosHomepage.css';
 
 const UpsosHomepage = () => {
+  const navigate = useNavigate();
+
+  const handleLogin = () => {
+    navigate('/login');
+  };
+
+  const handleRegister = () => {
+    navigate('/register');
+  };
+
   return (
     <div className="upsos-app">
       {/* Header */}
@@ -26,10 +48,10 @@ const UpsosHomepage = () => {
             <h2 className="hero-title">AGH Educational Platform</h2>
             <p className="hero-subtitle">Modern tool for managing your studies</p>
             <div className="hero-buttons">
-              <button className="btn-login">
+              <button className="btn-login" onClick={handleLogin}>
                 <FaSignInAlt className="btn-icon" /> Log In
               </button>
-              <button className="btn-register">
+              <button className="btn-register" onClick={handleRegister}>
                 <FaUserPlus className="btn-icon" /> Register
               </button>
             </div>
@@ -61,7 +83,7 @@ const UpsosHomepage = () => {
             <div className="feature-icon">
               <FaBook />
             </div>
-            <h3>One Uniwersity platform</h3>
+            <h3>One University platform</h3>
             <p>Combined USOS and UPEL together as one platform</p>
           </div>
           <div className="feature-card">
