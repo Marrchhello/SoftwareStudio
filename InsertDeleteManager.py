@@ -109,7 +109,7 @@ class DatabaseManager:
             session.commit()
             
     def add_class_time(self, cdt_id: int, course_id: int, date_and_start_time: dt.datetime = None, end_time: dt.time = None):
-        # Add a grade for a student in a course
+        # schedule a time for a class
         with self.Session() as session:
             class_time = ClassDateTime(
                 classDateTimeId=cdt_id,
@@ -123,7 +123,7 @@ class DatabaseManager:
     def add_assignment(self, assignment_id: int, course_id: int, assignment_name: str, 
                        due_date_time: dt.datetime = None, needs_submission: bool = None,
                        desc: str = None, file_types: str = None, group: int = None):
-        # Add a grade for a student in a course
+        # Add an assignment to a course
         with self.Session() as session:
             asgnmnt = Assignment(
                 assignmentId=assignment_id,
@@ -137,6 +137,27 @@ class DatabaseManager:
             )
             session.add(asgnmnt)
             session.commit()
+            
+            
+    def add_university_event(self, eventId: int, eventName: str, dateStartTime: dt.datetime, dateEndTime: dt.datetime, isHoliday: bool = False):
+        # Add a university wide event
+        event = UniversityEvents(eventId=eventId, 
+                                 eventName=eventName, 
+                                 dateStartTime=dateStartTime,
+                                 dateEndTime=dateEndTime,
+                                 isHoliday=isHoliday)
+        session.add(event)
+        session.commit()
+        
+    
+    def add_staff(self, staffId: int, name: str, email: str = None, administrator: bool = False):
+        # Add a staff member
+        staff = Staff(staffId=staffId, 
+                      name=name, 
+                      email=email, 
+                      administrator=administrator)
+        session.add(staff)
+        session.commit()
 
     # ----------- Deleting Records -----------
 
