@@ -1,0 +1,185 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap');
+
+body, .map-page-outer {
+  font-family: 'Roboto', Arial, sans-serif;
+}
+
+.map-page-outer {
+  width: 100%;
+  background: #fff;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.map-title-bg {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 0;
+    padding-top: 2.5rem;   
+    padding-bottom: 0.5rem;
+    margin-bottom: 0;
+    z-index: 1;
+}
+
+.map-title {
+    font-size: 6rem;
+    color: #888;
+    margin-left: 2.5rem;
+    letter-spacing: -2px;
+    font-weight: normal;
+    background: none; 
+    position: relative;
+    z-index: 2;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.map-breadcrumb {
+  font-size: 1.1rem;
+  color: #555;
+  margin-left: 2.7rem;
+  margin-bottom: 2rem;
+}
+
+.map-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-left: 2.5rem;
+}
+
+.map-content-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  margin-left: 2.5rem;
+}
+
+.image-and-download {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.image-preview-wrapper {
+  max-width: 500px;
+  width: 100%;
+  margin-bottom: 2.5rem;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.map-image {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  display: block;
+  transition: none;
+  cursor: pointer;
+}
+
+.download-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.download-link {
+  color: #0E81B2;
+  font-size: 0.8rem;
+  text-decoration: none;
+  font-weight: bold;
+  background: #eaf6fb; /* Can be kept for download links or removed if not needed */
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s;
+  box-shadow: 0 2px 8px rgba(14, 129, 178, 0.08);
+}
+
+.download-link:hover {
+  background: #d0eaf7;
+  color: #085a7a;
+}
+
+.file-info {
+  font-size: 0.95rem;
+  color: #555;
+  font-weight: normal;
+}
+
+.home-link {
+  color: #085a7a;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.3s;
+  position: relative;
+}
+
+.home-link:hover {
+  color: #085a7a;
+  position: relative;
+}
+
+.home-link:hover::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #085a7a;
+}
+
+.lightbox-toolbar-btn {
+  color: #fff;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  margin: 0 0.5rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+.lightbox-toolbar-btn:hover {
+  color: #0E81B2;
+}
+
+.building-list {
+  margin-left: 2.5rem;
+  min-width: 250px;
+}
+
+.building-list li {
+    font-size: 0.7rem;
+    color: #444;
+    margin-bottom: 0.8rem; 
+    line-height: 0.8rem;       
+}
+
+.building-list h3 {
+  margin-top: 0;
+  color: #0E81B2;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 900px) {
+  .map-content-row {
+    flex-direction: column;
+    margin-left: 0;
+  }
+  .building-list {
+    margin-left: 0;
+    margin-top: 2rem;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+.no-underline {
+  text-decoration: none !important;
+}
+
