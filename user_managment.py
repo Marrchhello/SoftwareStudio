@@ -102,18 +102,18 @@ def create_user(engine, uuid: int, roleId: int, username: str, password: str, ro
     return True
 
 
-# Insert data
-async def insert_data(session: AsyncSession, table, data: dict):
-    stmt = insert(table).values(**data)
-    await session.execute(stmt)
-    await session.commit()
+# # Insert data
+# async def insert_data(session: AsyncSession, table, data: dict):
+#     stmt = insert(table).values(**data)
+#     await session.execute(stmt)
+#     await session.commit()
 
 
-# Select/read data
-async def select_data(session: AsyncSession, table, filters=None):
-    stmt = select(table)
-    if filters:
-        stmt = stmt.filter_by(**filters)
-    result = await session.execute(stmt)
-    return result.scalars().all()
+# # Select/read data
+# async def select_data(session: AsyncSession, table, filters=None):
+#     stmt = select(table)
+#     if filters:
+#         stmt = stmt.filter_by(**filters)
+#     result = await session.execute(stmt)
+#     return result.scalars().all()
 

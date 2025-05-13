@@ -14,6 +14,14 @@ Base.metadata.create_all(engine)
 # Create user
 print(create_user(engine, 1, 1, 'ben', 'banana', Roles.STUDENT))
 
+with Session(engine) as session:
+# Query User
+    u1 = session.query(User).filter_by(username='ben').first()
+
+# Test password
+print('Incorrect password: ',u1.verify_password(pass_bytes='Banana'.encode()))
+print('Correct password: ', u1.verify_password(pass_bytes='banana'.encode()))
+
 # test can create user:
 
 # Error: account for student exists
