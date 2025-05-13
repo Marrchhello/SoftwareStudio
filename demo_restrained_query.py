@@ -16,8 +16,8 @@ print("All student courses, st_id 1: ", getStudentCourses(engine, 1), "\n\n")
 print("All student courses this semester, st_id 0: ", getStudentCoursesSemester(engine, 0), "\n")
 print("All student courses this semester, st_id 1: ", getStudentCoursesSemester(engine, 1), "\n\n")
 
-print("All courses, t_id 0: ", getTeacherCourses(engine, 0), "\n")
-print("All courses, t_id 1: ", getTeacherCourses(engine, 1), "\n\n")
+print("All teacher courses, t_id 0: ", getTeacherCourses(engine, 0), "\n")
+print("All teacher courses, t_id 1: ", getTeacherCourses(engine, 1), "\n\n")
 
 print("List of all Uni Events: ", getUniversityEvents(engine), "\n\n")
 
