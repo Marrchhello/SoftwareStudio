@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from database_I import Base
+from database import Base
 
 # Replace with your actual database URL
-DATABASE_URL = ""  
+DATABASE_URL = "postgresql+psycopg://postgres:password@localhost/postgres"  
 
 # Create the database engine
 engine = create_async_engine(DATABASE_URL, echo=True)

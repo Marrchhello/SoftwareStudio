@@ -3,7 +3,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import insert, select, update, delete, engine
 from sqlalchemy.orm import sessionmaker
-from database_I import *
+from database import *
 import bcrypt
 
 

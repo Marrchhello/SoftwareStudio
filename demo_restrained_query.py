@@ -1,4 +1,4 @@
-from restrained_query import *
+from backend.restrained_query import *
 from sqlalchemy import *
 
 # Examples for restrained query functions
