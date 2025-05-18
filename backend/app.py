@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Request, Form, Depends, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from database import DatabaseManager
-from database_I import *
+from InsertDeleteManager import DatabaseManager
+from database import *
 from sqlalchemy import create_engine
 
 # Initialize FastAPI
@@ -14,7 +14,7 @@ templates = Jinja2Templates(directory="templates")
 
 
 # Database connection
-engine = create_engine("sqlite:///university.db", echo=True)
+engine = create_engine("postgresql+psycopg://postgres:password@localhost/postgres", echo=True)
 db = DatabaseManager(engine)
 
 
@@ -42,9 +42,9 @@ def register_post(
     semester: int = Form(1),
     year: int = Form(1),
 ):
-    if role == 'student':
+    if role == Roles.STUDENT:
         db.register_user(role, user_id, email=email, semester=semester, year=year)
-    elif role == 'teacher':
+    elif role == Roles.TEACHER:
         db.register_user(role, user_id, name=name, title=title, email=email)
     return RedirectResponse("/", status_code=303)
 
