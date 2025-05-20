@@ -313,3 +313,22 @@ class User(Base):
 
     def __repr__(self):
         return f"User ID: {self.userId}, Username: {self.username}, Hashed Password: {self.password}, Role: {self.role}, Role ID: {self.roleId}"
+    
+    
+# V1: FAQ Data
+class FAQ(Base):
+    """FAQ table for postgres.
+    
+    Args:
+        faqId: int primary
+        question: str
+        answer: str
+    """
+    
+    __tablename__ = 'FAQ'
+    faqId: Mapped[int] = mapped_column(primary_key=True)
+    question: Mapped[str]
+    answer: Mapped[str]
+    
+    def __repr__(self):
+        return f"Staff ID: {self.faqId}, Name: {self.question}, Email: {self.answer}"

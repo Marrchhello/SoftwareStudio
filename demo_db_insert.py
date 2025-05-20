@@ -177,6 +177,24 @@ try:
         session.close()
         addlist.clear()
         
+        # FAQ
+        addlist.append(FAQ(question="What did the tomato say to the other tomato during a race?", answer="Ketchup."))
+        addlist.append(FAQ(question="What do you call a priest that becomes a lawyer?", answer="A father-in-law."))
+        addlist.append(FAQ(question="What runs but never goes anywhere?", answer="A fridge."))
+        addlist.append(FAQ(question="Why do seagulls fly over the sea?", answer="If they flew over the bay, they would be bagels."))
+        addlist.append(FAQ(question="Why are snails slow?", answer="Because they're carrying a house on their back."))
+        addlist.append(FAQ(question="How does the ocean say hi?", answer="It waves!"))
+        
+        session = Session()
+        
+        for i in addlist:
+            session.add(i)
+        
+        session.commit()
+        session.close()
+        addlist.clear()
+        
+        
 except sqlalchemy.exc.OperationalError:
     print("Login failed. Invalid username or password.")
     print()

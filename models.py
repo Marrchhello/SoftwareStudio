@@ -51,6 +51,7 @@ class StudentCourseModel(BaseModel):
     
     Course: str
     ID: int
+    Group: int
 
 
 # Student Course List Model
@@ -71,12 +72,10 @@ class TeacherCourseModel(BaseModel):
     Args:
         Course: str
         ID: int
-        Group: int
     """
     
     Course: str
     ID: int
-    Group: int
 
 
 # Teacher Course List Model
@@ -88,3 +87,27 @@ class TeacherCourseListModel(BaseModel):
     """
     
     CourseList: List[TeacherCourseModel]
+    
+    
+# FAQ Model
+class FAQModel(BaseModel):
+    """Model for storing a FAQ question and answer.
+
+    Args:
+        Question: str
+        Answer: str
+    """
+    
+    Question: str
+    Answer: str
+    
+    
+# FAQ List Model
+class FAQListModel(BaseModel):
+    """Model for storing a list of FAQ questions and answers.
+
+    Args:
+        FAQList: List[FAQModel]
+    """
+    
+    FAQList: List[FAQModel]

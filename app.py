@@ -7,7 +7,7 @@ from database import *
 from sqlalchemy import create_engine
 import uvicorn
 from models import *
-from restrained_query import *
+from Query import *
 
 # Initialize FastAPI
 app = FastAPI()
@@ -180,9 +180,9 @@ def staff_get(request: Request):
 
 
 # Get FAQ Questions 
-@app.get("/faq", response_class=HTMLResponse)
+@app.get("/faq", response_model=FAQListModel)
 def faq_get(request: Request):
-    return None
+    return getFAQ(engine)
 
 
 # Map Page TBF

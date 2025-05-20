@@ -9,7 +9,7 @@ from models import *
 # def getStudentGrades(engine: Engine, student_id: int):
 #     """Gets the grades for a student id.
     
-#     Params:
+#     Args:
 #     engine: Engine connection to use
 #     student_id: student id to get all grades for.
     
@@ -33,7 +33,7 @@ from models import *
 def getStudentGrades(engine: Engine, student_id: int):
     """Gets the grades for a student id.
     
-    Params:
+    Args:
     engine: Engine connection to use
     student_id: student id to get all grades for.
     
@@ -57,7 +57,7 @@ def getStudentGrades(engine: Engine, student_id: int):
 # def getStudentGradesForCourse(engine: Engine, student_id: int, course_id):
 #     """Gets the grades for a student id and course_id.
     
-#     Params:
+#     Args:
 #     engine: Engine connection to use
 #     student_id: student id to get all grades for.
 #     course_id: course to get grades from
@@ -83,7 +83,7 @@ def getStudentGrades(engine: Engine, student_id: int):
 def getStudentGradesForCourse(engine: Engine, student_id: int, course_id: int):
     """Gets the grades for a student id and course_id.
     
-    Params:
+    Args:
     engine: Engine connection to use
     student_id: student id to get all grades for.
     course_id: course to get grades from
@@ -108,7 +108,7 @@ def getStudentGradesForCourse(engine: Engine, student_id: int, course_id: int):
 # def getStudentCourses(engine: Engine, student_id: int):
 #     """Gets the list of subjects for a student id.
     
-#     Params:
+#     Args:
 #     engine: Engine connection to use
 #     student_id: student id to get all subjects for.
     
@@ -132,7 +132,7 @@ def getStudentGradesForCourse(engine: Engine, student_id: int, course_id: int):
 def getStudentCourses(engine: Engine, student_id: int):
     """Gets the list of subjects for a student id.
     
-    Params:
+    Args:
     engine: Engine connection to use
     student_id: student id to get all subjects for.
     
@@ -156,7 +156,7 @@ def getStudentCourses(engine: Engine, student_id: int):
 # def getStudentCoursesSemester(engine: Engine, student_id: int):
 #     """Gets the list of subjects for a student id, limit by current semester.
     
-#     Params:
+#     Args:
 #     engine: Engine connection to use
 #     student_id: student id to get all subjects for.
     
@@ -181,7 +181,7 @@ def getStudentCourses(engine: Engine, student_id: int):
 def getStudentCoursesSemester(engine: Engine, student_id: int):
     """Gets the list of subjects for a student id, limit by current semester.
     
-    Params:
+    Args:
     engine: Engine connection to use
     student_id: student id to get all subjects for.
     
@@ -205,7 +205,7 @@ def getStudentCoursesSemester(engine: Engine, student_id: int):
 # def getTeacherCourses(engine: Engine, teacher_id: int):
 #     """Gets the list of subjects for a teacher id.
     
-#     Params:
+#     Args:
 #     engine: Engine connection to use
 #     teacher_id: teacher id to get all subjects for.
     
@@ -230,7 +230,7 @@ def getStudentCoursesSemester(engine: Engine, student_id: int):
 def getTeacherCourses(engine: Engine, teacher_id: int):
     """Gets the list of subjects for a teacher id.
     
-    Params:
+    Args:
     engine: Engine connection to use
     teacher_id: teacher id to get all subjects for.
     
@@ -257,7 +257,7 @@ def getUniversityEvents(engine: Engine):
     Note:
     The Date/Start and Date/End of output store a datetime.datetime object. It can be used normally.
     
-    Params:
+    Args:
     engine: Engine connection to use.
     
     Returns:
@@ -283,7 +283,7 @@ def getCustomUniversityEvents(engine: Engine, start_date: datetime.datetime = No
     Note:
     The Date/Start and Date/End of output store a datetime.datetime object. It can be used normally.
     
-    Params:
+    Args:
     engine: Engine connection to use.
     start_date: datetime.datetime (Custom start date and time)
     
@@ -313,7 +313,7 @@ def getHolidays(engine: Engine):
     Note:
     The Date/Start and Date/End of output store a datetime.datetime object. It can be used normally.
     
-    Params:
+    Args:
     engine: Engine connection to use.
     
     Returns:
@@ -339,7 +339,7 @@ def getCustomHolidays(engine: Engine, start_date: datetime.datetime = None):
     Note:
     The Date/Start and Date/End of output store a datetime.datetime object. It can be used normally.
     
-    Params:
+    Args:
     engine: Engine connection to use.
     start_date: datetime.datetime (Custom start date and time)
     
@@ -360,3 +360,26 @@ def getCustomHolidays(engine: Engine, start_date: datetime.datetime = None):
             output.append({"Event ID":row[0], "Event Name":row[1], "Date and Start Time":row[2], "Date and End Time":row[3], "Holiday":row[4]})
             
     return output
+
+
+# Get FAQ questions and answers
+def getFAQ(engine: Engine):
+    """Get all FAQ from db.
+
+    Args:
+        engine: Engine connection to use.
+        
+    Returns:
+        output: FAQListModel
+    """
+    
+    output = []
+    
+    with engine.connect() as conn:
+        
+        faq_select = select(FAQ.question, FAQ.answer)
+        
+        for row in conn.execute(faq_select):
+            output.append(FAQModel(Question=row[0], Answer=row[1]))
+            
+    return FAQListModel(FAQList=output)
