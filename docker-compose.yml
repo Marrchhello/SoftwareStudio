@@ -1,28 +1,22 @@
-version: '3.8'
-
 services:
-  web:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    volumes:
-      - ../src:/app
+  SS_Database:
+    image: "postgres:latest"
+
     ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/mydatabase
-    depends_on:
-      - db
+      - 5432:5432
 
-  db:
-    image: postgres:latest
-    restart: always
+    networks:
+      - postgres-network
+
     environment:
-      POSTGRES_USER: user
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: mydatabase
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      POSTGRES_DB: postgres
 
-volumes:
-  postgres_data:
+    volumes:
+      - ${PWD}/ss_database/:/var/lib/postgresql/data/
+      - ${PWD}/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+networks:
+  postgres-network:
+    driver: bridge

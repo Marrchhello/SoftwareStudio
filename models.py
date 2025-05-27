@@ -21,11 +21,13 @@ class GradeModel(BaseModel):
         Course: str
         Assignment: str
         Grade: float
+        AGH_Grade: float
     """
     
     Course: str
     Assignment: str
     Grade: float
+    AGH_Grade: float
 
 
 # Grade List Model

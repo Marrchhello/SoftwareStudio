@@ -127,7 +127,7 @@ try:
         
         # Grade
         addlist.append(Grade(gradeId=0, studentId=0, assignmentId=0))
-        addlist.append(Grade(gradeId=1, studentId=1, grade=5.0, assignmentId=1))
+        addlist.append(Grade(gradeId=1, studentId=1, grade=87.5, assignmentId=1))
         
         session = Session()
         

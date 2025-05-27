@@ -4,6 +4,29 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from models import *
 
+def __convert_grade_to_AGH__(grade: float) -> float:
+    """Converts grade (0.0-100.0) to AGH Grade (2.0,3.0,etc)
+
+    Args:
+        grade (float): 0.0 - 100.0 grade
+
+    Returns:
+        float: 2.0, 3.0, 3.5, 4.0, 4.5, 5.0
+    """
+    
+    if grade < 50.0:
+        return 2.0
+    elif grade < 60.0:
+        return 3.0
+    elif grade < 70.0:
+        return 3.5
+    elif grade < 80.0:
+        return 4.0
+    elif grade < 90.0:
+        return 4.5
+    else:
+        return 5.0
+    
 
 # Get all grades for a student.
 # def getStudentGrades(engine: Engine, student_id: int):
@@ -48,7 +71,7 @@ def getStudentGrades(engine: Engine, student_id: int):
         mega_select = select(CourseCatalog.courseName, Assignment.name, Grade.grade).where(and_(Grade.studentId == student_id, Assignment.courseId == CourseCatalog.courseId, Grade.assignmentId == Assignment.assignmentId))
         
         for row in conn.execute(mega_select):
-            output.append(GradeModel(Course=row[0], Assignment=row[1], Grade=row[2]))
+            output.append(GradeModel(Course=row[0], Assignment=row[1], Grade=row[2], AGH_Grade=__convert_grade_to_AGH__(row[2])))
     
     return GradeListModel(GradeList=output)
 
@@ -99,7 +122,7 @@ def getStudentGradesForCourse(engine: Engine, student_id: int, course_id: int):
         grade_select = select(CourseCatalog.courseName, Assignment.name, Grade.grade).where(and_(Grade.studentId == student_id, Assignment.courseId == CourseCatalog.courseId, Assignment.courseId == course_id, Grade.assignmentId == Assignment.assignmentId))
         
         for row in conn.execute(grade_select):
-            output.append(GradeModel(Course=row[0], Assignment=row[1], Grade=row[2]))
+            output.append(GradeModel(Course=row[0], Assignment=row[1], Grade=row[2], AGH_Grade=__convert_grade_to_AGH__(row[2])))
     
     return GradeListModel(GradeList=output)
 
