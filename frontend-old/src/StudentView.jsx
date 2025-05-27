@@ -4,7 +4,7 @@ import {
   FaSearch, FaSignOutAlt, FaHome, FaChartBar, FaComments,
   FaSun, FaMoon, FaClock, FaCalendarDay, FaCalendarWeek, FaCalendar,
   FaEnvelope, FaPaperPlane, FaUserTie, FaBuilding, FaUsers, FaCreditCard,
-  FaMapMarkerAlt
+  FaMapMarkerAlt, FaChevronLeft, FaChevronRight
 } from 'react-icons/fa';
 import './StudentView.css';
 
@@ -14,64 +14,171 @@ const StudentDashboard = ({ studentData }) => {
   const [darkMode, setDarkMode] = useState(false);
   const [activeConversation, setActiveConversation] = useState(0);
   const [messageText, setMessageText] = useState('');
+  const [currentWeekStart, setCurrentWeekStart] = useState(getStartOfWeek(new Date()));
+  const [allClasses, setAllClasses] = useState([]);
+  const [showTodayButton, setShowTodayButton] = useState(false);
 
-  // Default data structure if no provided
+  function getStartOfWeek(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.setDate(diff));
+  }
+
+  function formatDate(date) {
+    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  }
+
+  function addDays(date, days) {
+    const result = new Date(date);
+    result.setDate(result.getDate() + days);
+    return result;
+  }
+
+  function shouldShowClass(cls, weekStart) {
+  const classDate = new Date(cls.startDate);
+  const weekEnd = addDays(weekStart, 6);
+  
+  if (new Date(cls.endDate) < weekStart) return false;
+  if (classDate > weekEnd) return false;
+  
+  const classDay = classDate.toLocaleDateString('en-US', { weekday: 'long' });
+  const currentDate = new Date(weekStart);
+
+  for (let i = 0; i < 7; i++) {
+    const dateToCheck = addDays(currentDate, i);
+    const dateDay = dateToCheck.toLocaleDateString('en-US', { weekday: 'long' });
+    
+    if (classDay === dateDay) {
+      if (cls.frequency === 'weekly') return true;
+      if (cls.frequency === 'biweekly') {
+        const weeksBetween = Math.floor((dateToCheck - classDate) / (7 * 24 * 60 * 60 * 1000));
+        return weeksBetween % 2 === 0;
+      }
+    }
+  }
+  
+  return false;
+}
+
+  function getWeekDates(startDate) {
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      dates.push(addDays(startDate, i));
+    }
+    return dates;
+  }
+
+  function getClassesForDay(dayDate) {
+    const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'long' });
+    return allClasses.filter(cls => {
+      const classDay = new Date(cls.startDate).toLocaleDateString('en-US', { weekday: 'long' });
+      return classDay === dayName && shouldShowClass(cls, currentWeekStart);
+    });
+  }
+
+  function getClassesForSemesterDay(dayName) {
+    return allClasses.filter(cls => {
+      const classDay = new Date(cls.startDate).toLocaleDateString('en-US', { weekday: 'long' });
+      return classDay === dayName;
+    });
+  }
+
+  const goToToday = () => {
+    setCurrentWeekStart(getStartOfWeek(new Date()));
+    setShowTodayButton(false);
+  };
+
+  useEffect(() => {
+    const today = new Date();
+    const currentWeek = getStartOfWeek(today);
+    setShowTodayButton(currentWeekStart.getTime() !== currentWeek.getTime());
+  }, [currentWeekStart]);
+
   const defaultData = {
     userInfo: {
-      name: "John Doe",
+      name: "Jack Smith",
       indexNumber: "123456",
       faculty: "Computer Science",
-      semester: "Winter 2023/2024"
+      semester: "Summer 2025"
     },
     quickStats: {
-      courses: 5,
-      classesToday: 2,
+      courses: 6,
       newGrades: 3,
       unreadMessages: 2
     },
-    todaysClasses: [
+    allClasses: [
       {
+        id: 1,
         course: "Advanced Programming",
         type: "Lecture",
-        time: "10:00-12:00",
+        time: "08:00-10:00",
         room: "A1-205",
         lecturer: "Dr. Smith",
-        roomLink: "/campus-map?room=A1-205"
-      }
-    ],
-    weeklySchedule: {
-      Monday: [
-        { 
-          time: "08:00-10:00", 
-          course: "Advanced Programming", 
-          type: "Lecture", 
-          room: "A1-205", 
-          lecturer: "Dr. Smith",
-          roomLink: "/campus-map?room=A1-205"
-        }
-      ],
-      Tuesday: [],
-      Wednesday: [],
-      Thursday: [],
-      Friday: [],
-      Saturday: [],
-      Sunday: []
-    },
-    semesterPlan: [
+        roomLink: "/campus-map?room=A1-205",
+        frequency: "weekly",
+        startDate: "2025-05-19",
+        endDate: "2025-08-18"
+      },
       {
-        week: "Week 1 (Oct 2-8)",
-        classes: [
-          { 
-            day: "Monday", 
-            time: "08:00-10:00", 
-            course: "Advanced Programming", 
-            type: "Lecture", 
-            room: "A1-205", 
-            lecturer: "Dr. Smith",
-            frequency: "Every week",
-            roomLink: "/campus-map?room=A1-205"
-          }
-        ]
+        id: 2,
+        course: "Database Systems",
+        type: "Lab",
+        time: "14:00-16:00",
+        room: "B2-101",
+        lecturer: "Dr. Johnson",
+        roomLink: "/campus-map?room=B2-101",
+        frequency: "biweekly",
+        startDate: "2025-05-19",
+        endDate: "2025-08-18"
+      },
+      {
+        id: 3,
+        course: "Software Engineering",
+        type: "Seminar",
+        time: "09:00-11:00",
+        room: "C3-301",
+        lecturer: "Dr. Williams",
+        roomLink: "/campus-map?room=C3-301",
+        frequency: "weekly",
+        startDate: "2025-05-20",
+        endDate: "2025-08-19"
+      },
+      {
+        id: 4,
+        course: "Network Security",
+        type: "Lecture",
+        time: "10:00-12:00",
+        room: "D4-402",
+        lecturer: "Dr. Davis",
+        roomLink: "/campus-map?room=D4-402",
+        frequency: "biweekly",
+        startDate: "2025-05-21",
+        endDate: "2025-08-17"
+      },
+      {
+        id: 5,
+        course: "Cloud Computing",
+        type: "Lab",
+        time: "13:00-15:00",
+        room: "E5-105",
+        lecturer: "Dr. Wilson",
+        roomLink: "/campus-map?room=E5-105",
+        frequency: "weekly",
+        startDate: "2025-05-22",
+        endDate: "2025-08-18"
+      },
+      {
+        id: 6,
+        course: "AI Fundamentals",
+        type: "Seminar",
+        time: "11:00-13:00",
+        room: "F6-201",
+        lecturer: "Dr. Taylor",
+        roomLink: "/campus-map?room=F6-201",
+        frequency: "biweekly",
+        startDate: "2025-05-23",
+        endDate: "2025-08-16"
       }
     ],
     courses: [
@@ -93,7 +200,7 @@ const StudentDashboard = ({ studentData }) => {
         course: "Advanced Programming",
         average: 5,
         grades: [
-          { assignment: "Project 1", date: "Oct 5, 2023", grade: 5.0, weight: "20%"}
+          { assignment: "Project 1", date: "May 5, 2025", grade: 5.0, weight: "20%"}
         ]
       }
     ],
@@ -104,16 +211,18 @@ const StudentDashboard = ({ studentData }) => {
         course: "Advanced Programming",
         lastMessage: "About the project deadline...",
         messages: [
-          { text: "Hello, I have a question about the project deadline.", sent: false, time: "10:30 AM" }
+          { text: "Hello, I have a question about your assignment.", sent: false, time: "10:30 AM" }
         ]
       }
     ]
   };
 
-  // Use provided data or default data
   const data = studentData || defaultData;
 
-  // Helper functions
+  useEffect(() => {
+    setAllClasses(data.allClasses || []);
+  }, [data]);
+
   const getGradeClass = (grade) => {
     if (grade >= 4.5) return 'grade-excellent';
     if (grade >= 3.5) return 'grade-good';
@@ -139,84 +248,151 @@ const StudentDashboard = ({ studentData }) => {
     setMessageText('');
   };
 
-  const countNewGrades = () => {
-    return data.grades.reduce((count, course) => {
-      return count + course.grades.filter(grade => grade.isNew).length;
-    }, 0);
+  const navigateWeek = (direction) => {
+    const newDate = new Date(currentWeekStart);
+    newDate.setDate(newDate.getDate() + (direction === 'prev' ? -7 : 7));
+    setCurrentWeekStart(newDate);
   };
 
-  // Render views
-  const renderView = () => {
-    switch(activeView) {
-      case 'schedule':
-        return (
-          <div className="view-content schedule-view">
-            <h2>Your Schedule</h2>
-            
-            <div className="schedule-tabs">
-              <button 
-                className={`schedule-tab ${activeScheduleTab === 'weekly' ? 'active' : ''}`}
-                onClick={() => setActiveScheduleTab('weekly')}
-              >
-                <FaCalendarWeek /> Weekly
+  const getCurrentWeekClasses = () => {
+    const weekDates = getWeekDates(currentWeekStart);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return weekDates.flatMap(date => {
+      const classes = getClassesForDay(date);
+      return classes.map(cls => ({
+        ...cls,
+        date: date,
+        isToday: date.toDateString() === today.toDateString()
+      }));
+    });
+  };
+
+  const renderScheduleView = () => {
+    const weekDates = getWeekDates(currentWeekStart);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return (
+      <div className="view-content schedule-view">
+        <h2>Your Schedule</h2>
+        
+        <div className="schedule-tabs">
+          <button 
+            className={`schedule-tab ${activeScheduleTab === 'weekly' ? 'active' : ''}`}
+            onClick={() => setActiveScheduleTab('weekly')}
+          >
+            <FaCalendarWeek /> Weekly
+          </button>
+          <button 
+            className={`schedule-tab ${activeScheduleTab === 'semester' ? 'active' : ''}`}
+            onClick={() => setActiveScheduleTab('semester')}
+          >
+            <FaCalendar /> Semester Plan
+          </button>
+        </div>
+        
+        {activeScheduleTab === 'weekly' ? (
+          <>
+            <div className="week-navigation">
+              <button className="nav-button" onClick={() => navigateWeek('prev')}>
+                <FaChevronLeft /> Previous Week
               </button>
-              <button 
-                className={`schedule-tab ${activeScheduleTab === 'semester' ? 'active' : ''}`}
-                onClick={() => setActiveScheduleTab('semester')}
-              >
-                <FaCalendar /> Semester Plan
+              
+              {showTodayButton && (
+                <button className="today-button" onClick={goToToday}>
+                  Today
+                </button>
+              )}
+              
+              <h3>
+                {currentWeekStart.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - 
+                {addDays(currentWeekStart, 6).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </h3>
+              
+              <button className="nav-button" onClick={() => navigateWeek('next')}>
+                Next Week <FaChevronRight />
               </button>
             </div>
             
-            {activeScheduleTab === 'weekly' ? (
-              <div className="weekly-schedule">
-                <div className="week-days">
-                  {Object.keys(data.weeklySchedule).map(day => (
-                    <div 
-                      key={day} 
-                      className={`week-day ${day === new Date().toLocaleString('en-us', { weekday: 'long'}) ? 'current-day' : ''}`}
-                    >
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="day-classes">
-                  {Object.entries(data.weeklySchedule).map(([day, classes]) => (
-                    <div key={day} className="day-column">
+            <div className="weekly-schedule">
+              <div className="week-days">
+                {weekDates.map(date => (
+                  <div 
+                    key={date.toString()}
+                    className={`week-day ${date.toDateString() === today.toDateString() ? 'current-day' : ''}`}
+                  >
+                    {formatDate(date)}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="day-classes">
+                {weekDates.map(date => {
+                  const classes = getClassesForDay(date);
+                  return (
+                    <div key={date.toString()} className="day-column">
                       {classes.map((cls, idx) => (
                         <div key={idx} className="class-card">
                           <h4>{cls.course}</h4>
-                          <p><FaClock /> {cls.time}</p>
+                          <div className="time-frequency">
+                            <FaClock  /> { cls.time}
+                            
+                          </div>
                           <p>{cls.type} | <a href={cls.roomLink} className="room-link"><FaMapMarkerAlt /> {cls.room}</a></p>
                           <p><FaUserTie /> {cls.lecturer}</p>
                         </div>
                       ))}
                     </div>
-                  ))}
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="semester-plan-grid">
+            <div className="week-days">
+              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                <div key={day} className="week-day">
+                  {day}
                 </div>
-              </div>
-            ) : (
-              <div className="semester-plan">
-                {data.semesterPlan.map((week, index) => (
-                  <div key={index} className="semester-week">
-                    <h3>{week.week}</h3>
-                    {week.classes.length > 0 ? (
-                      week.classes.map((cls, idx) => (
-                        <div key={idx} className="class-card">
-                          <h4>{cls.course}</h4>
-                          <p><FaCalendarDay /> {cls.day} {cls.time} {cls.frequency && `(${cls.frequency})`}</p>
-                          <p>{cls.type} | <a href={cls.roomLink} className="room-link"><FaMapMarkerAlt /> {cls.room}</a></p>
-                          <p><FaUserTie /> {cls.lecturer}</p>
+              ))}
+            </div>
+            
+            <div className="day-classes">
+              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                const classes = getClassesForSemesterDay(day);
+                return (
+                  <div key={day} className="day-column">
+                    {classes.map((cls, idx) => (
+                      <div key={`${cls.id}-${idx}`} className="class-card">
+                        <h4>{cls.course}</h4>
+                        <div className="time-frequency">
+                          <FaClock /> {cls.time}
+                          <span className="frequency-tag">{cls.frequency}</span>
                         </div>
-                      ))
-                    ) : null}
+                        <p>{cls.type} | <a href={cls.roomLink} className="room-link"><FaMapMarkerAlt /> {cls.room}</a></p>
+                        <p><FaUserTie /> {cls.lecturer}</p>
+                        <p className="date-range">
+                          {new Date(cls.startDate).toLocaleDateString()} - {new Date(cls.endDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
-        );
+        )}
+      </div>
+    );
+  };
+
+  const renderView = () => {
+    switch(activeView) {
+      case 'schedule':
+        return renderScheduleView();
       case 'courses':
         return (
           <div className="view-content">
@@ -228,7 +404,6 @@ const StudentDashboard = ({ studentData }) => {
                   <div className="course-details">
                     <p><FaUserTie /> {course.lecturer}</p>
                     <p><FaBuilding /> {course.building},{course.room}</p>
-
                     <p><FaUsers /> {course.group}</p>
                     <p><FaCreditCard /> {course.credits} ECTS</p>
                     <p><FaCalendarAlt /> {course.schedule}</p>
@@ -247,47 +422,44 @@ const StudentDashboard = ({ studentData }) => {
             </div>
           </div>
         );
-        case 'grades':
-            return (
-              <div className="view-content">
-                <h2>Your Grades</h2>
-                
-                <div className="grades-container">
-                  {data.grades.map((course, index) => (
-                    <div key={index} className="course-grades">
-                      <div className="course-grades-header">
-                        <h3>{course.course}</h3>
-                        <div className="average-grade">
-                          Average: <span className={getGradeClass(course.average)}>{course.average.toFixed(1)}</span>
-                        </div>
-                      </div>
-                      
-                      <table className="grades-table">
-                        <thead>
-                          <tr>
-                            <th>Assignment</th>
-                            <th>Date</th>
-                            <th>Grade</th>
-                            <th>Weight</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {course.grades.map((grade, idx) => (
-                            <tr key={idx}>
-                              <td>{grade.assignment}</td>
-                              <td>{grade.date}</td>
-                              <td className={getGradeClass(grade.grade)}>{grade.grade.toFixed(1)}</td>
-                              <td>{grade.weight}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+      case 'grades':
+        return (
+          <div className="view-content">
+            <h2>Your Grades</h2>
+            <div className="grades-container">
+              {data.grades.map((course, index) => (
+                <div key={index} className="course-grades">
+                  <div className="course-grades-header">
+                    <h3>{course.course}</h3>
+                    <div className="average-grade">
+                      Average: <span className={getGradeClass(course.average)}>{course.average.toFixed(1)}</span>
                     </div>
-                  ))}
+                  </div>
+                  <table className="grades-table">
+                    <thead>
+                      <tr>
+                        <th>Assignment</th>
+                        <th>Date</th>
+                        <th>Grade</th>
+                        <th>Weight</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {course.grades.map((grade, idx) => (
+                        <tr key={idx}>
+                          <td>{grade.assignment}</td>
+                          <td>{grade.date}</td>
+                          <td className={getGradeClass(grade.grade)}>{grade.grade.toFixed(1)}</td>
+                          <td>{grade.weight}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            );
-          
+              ))}
+            </div>
+          </div>
+        );
       case 'messages':
         return (
           <div className="view-content">
@@ -306,7 +478,6 @@ const StudentDashboard = ({ studentData }) => {
                   </div>
                 ))}
               </div>
-              
               <div className="message-area">
                 <div className="messages-list">
                   {data.messages[activeConversation]?.messages.map((msg, idx) => (
@@ -316,7 +487,6 @@ const StudentDashboard = ({ studentData }) => {
                     </div>
                   ))}
                 </div>
-                
                 <div className="message-input">
                   <textarea 
                     value={messageText}
@@ -329,14 +499,14 @@ const StudentDashboard = ({ studentData }) => {
             </div>
           </div>
         );
-      default: // Dashboard
+      default:
+        const todayClasses = getCurrentWeekClasses().filter(cls => cls.isToday);
         return (
           <div className="view-content">
             <section className="welcome-section">
               <h1>Welcome back, {data.userInfo.name}!</h1>
               <p>Faculty: {data.userInfo.faculty} | Semester: {data.userInfo.semester}</p>
             </section>
-
             <section className="quick-stats">
               <div className="stat-card" onClick={() => setActiveView('courses')}>
                 <div className="stat-icon">
@@ -347,19 +517,24 @@ const StudentDashboard = ({ studentData }) => {
                   <p>{data.quickStats.courses} courses</p>
                 </div>
               </div>
-              
               <div className="stat-card" onClick={() => setActiveView('schedule')}>
                 <div className="stat-icon">
                   <FaCalendarAlt />
                 </div>
                 <div className="stat-info">
                   <h3>Today's Classes</h3>
-                  <p>{data.quickStats.classesToday} classes</p>
+                  <p>{todayClasses.length} classes</p>
                 </div>
               </div>
-              
-            
-
+              <div className="stat-card" onClick={() => setActiveView('grades')}>
+                <div className="stat-icon">
+                  <FaGraduationCap />
+                </div>
+                <div className="stat-info">
+                  <h3>New Grades</h3>
+                  <p>{data.quickStats.newGrades} updates</p>
+                </div>
+              </div>
               <div className="stat-card" onClick={() => setActiveView('messages')}>
                 <div className="stat-icon">
                   <FaEnvelope />
@@ -370,12 +545,11 @@ const StudentDashboard = ({ studentData }) => {
                 </div>
               </div>
             </section>
-
             <section className="upcoming-classes">
               <h2>Today's Classes</h2>
-              {data.todaysClasses.length > 0 ? (
+              {todayClasses.length > 0 ? (
                 <div className="upcoming-classes-list">
-                  {data.todaysClasses.map((cls, index) => (
+                  {todayClasses.map((cls, index) => (
                     <div key={index} className="upcoming-class-card">
                       <h3>{cls.course}</h3>
                       <p><FaClock /> {cls.time}</p>
@@ -395,7 +569,6 @@ const StudentDashboard = ({ studentData }) => {
 
   return (
     <div className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`}>
-      {/* Sidebar Navigation */}
       <nav className="sidebar">
         <div className="sidebar-header">
           <FaUserCircle className="user-icon" />
@@ -404,7 +577,6 @@ const StudentDashboard = ({ studentData }) => {
             <span className="user-id">{data.userInfo.indexNumber}</span>
           </div>
         </div>
-        
         <ul className="nav-menu">
           <li 
             className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`}
@@ -452,17 +624,13 @@ const StudentDashboard = ({ studentData }) => {
             </div>
           </li>
         </ul>
-        
         <div className="sidebar-footer">
           <button className="logout-btn">
             <FaSignOutAlt /> Logout
           </button>
         </div>
       </nav>
-
-      {/* Main Content Area */}
       <main className="main-content">
-        {/* Top Navigation Bar */}
         <header className="top-nav">
           <div className="search-bar">
             <input 
@@ -471,7 +639,6 @@ const StudentDashboard = ({ studentData }) => {
             />
             <button><FaSearch /></button>
           </div>
-          
           <div className="nav-right">
             <button className="theme-toggle" onClick={toggleDarkMode}>
               {darkMode ? <FaSun /> : <FaMoon />}
@@ -486,8 +653,6 @@ const StudentDashboard = ({ studentData }) => {
             </div>
           </div>
         </header>
-
-        {/* Content */}
         <div className="content-wrapper">
           {renderView()}
         </div>
