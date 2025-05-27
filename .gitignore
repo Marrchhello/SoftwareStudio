@@ -1,2 +1,4 @@
 test*
-ss_database/
+/ss_database
+/ss_database/*
+ss_data*
