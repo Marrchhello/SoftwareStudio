@@ -1,10 +1,10 @@
 # Change log V1 -> V2: add imports for engine, bcrypt. Change import from models to database_I
 
+import bcrypt
+from backend.Database import *
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import insert, select, update, delete, engine
 from sqlalchemy.orm import sessionmaker
-from database import *
-import bcrypt
 
 
 # Check if student/teacher/staff account can be created.

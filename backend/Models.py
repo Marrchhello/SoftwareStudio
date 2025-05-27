@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 # Create Models for info that should be converted to json upon get/post request
 
@@ -20,14 +20,14 @@ class GradeModel(BaseModel):
     Args:
         Course: str
         Assignment: str
-        Grade: float
-        AGH_Grade: float
+        Grade: opt float
+        AGH_Grade: opt float
     """
     
     Course: str
     Assignment: str
-    Grade: float
-    AGH_Grade: float
+    Grade: Optional[float]
+    AGH_Grade: Optional[float]
 
 
 # Grade List Model
@@ -38,7 +38,7 @@ class GradeListModel(BaseModel):
         GradeList: List[GradeModel]
     """
     
-    GradeList: List[GradeModel]
+    GradeList: List[GradeModel] = []
  
     
 # Student Course Model
@@ -48,12 +48,12 @@ class StudentCourseModel(BaseModel):
     Args:
         Course: str
         ID: int
-        Group: int
+        Group: opt int
     """
     
     Course: str
     ID: int
-    Group: int
+    Group: Optional[int]
 
 
 # Student Course List Model
@@ -64,7 +64,7 @@ class StudentCourseListModel(BaseModel):
         CourseList: List[StudentCourseModel]
     """
     
-    CourseList: List[StudentCourseModel]
+    CourseList: List[StudentCourseModel] = []
     
     
 # Teacher Course Model
@@ -88,7 +88,7 @@ class TeacherCourseListModel(BaseModel):
         CourseList: List[TeacherCourseModel]
     """
     
-    CourseList: List[TeacherCourseModel]
+    CourseList: List[TeacherCourseModel] = []
     
     
 # FAQ Model
@@ -112,4 +112,4 @@ class FAQListModel(BaseModel):
         FAQList: List[FAQModel]
     """
     
-    FAQList: List[FAQModel]
+    FAQList: List[FAQModel] = []

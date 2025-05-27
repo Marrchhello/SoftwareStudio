@@ -1,7 +1,7 @@
 import datetime, pytz, sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from database import *
+from backend.Database import *
 
 # Demo for inserting data into the database. First insert is minimum required fields. Second insert is maximum fields.
 # Warning. When inserting, be aware of foreign key restraints. The key (field in another table) must exists before insert.

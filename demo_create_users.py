@@ -2,11 +2,11 @@
 # can_create_user is used in create_user, so you can just pass in the args directly
 # instead of calling can_create_user. 
 
+from backend.Database import *
+from backend.user_managment import create_user, can_create_user
 import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from database import *
-from user_managment import create_user, can_create_user
 
 engine = create_engine('postgresql+psycopg://postgres:password@localhost/postgres')
 Base.metadata.create_all(engine)

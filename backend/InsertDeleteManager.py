@@ -1,7 +1,7 @@
+from backend.Database import *
 from sqlalchemy import create_engine, ForeignKey, select, engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.exc import IntegrityError
-from database import *
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column   
 import datetime as dt
 

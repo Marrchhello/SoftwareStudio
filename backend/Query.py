@@ -1,8 +1,8 @@
-from database import *
+from backend.Database import *
+from backend.Models import *
 import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from models import *
 
 def __convert_grade_to_AGH__(grade: float) -> float:
     """Converts grade (0.0-100.0) to AGH Grade (2.0,3.0,etc)
@@ -14,7 +14,9 @@ def __convert_grade_to_AGH__(grade: float) -> float:
         float: 2.0, 3.0, 3.5, 4.0, 4.5, 5.0
     """
     
-    if grade < 50.0:
+    if grade is None:
+        return None
+    elif grade < 50.0:
         return 2.0
     elif grade < 60.0:
         return 3.0
@@ -270,7 +272,7 @@ def getTeacherCourses(engine: Engine, teacher_id: int):
         for row in conn.execute(course_select):
                 output.append(TeacherCourseModel(Course=row[0], ID=row[1]))
 
-    return CourseListModel(TeacherCourseList=output)
+    return TeacherCourseListModel(TeacherCourseList=output)
 
 
 # Get All University Events

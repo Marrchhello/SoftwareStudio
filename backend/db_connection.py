@@ -1,6 +1,6 @@
+from backend.Database import Base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from database import Base
 
 # Replace with your actual database URL
 DATABASE_URL = "postgresql+psycopg://postgres:password@localhost/postgres"  

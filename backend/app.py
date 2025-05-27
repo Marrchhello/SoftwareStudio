@@ -1,13 +1,13 @@
+from backend.Database import *
+from backend.InsertDeleteManager import DatabaseManager
+from backend.Models import *
+from backend.Query import *
 from fastapi import FastAPI, Request, Form, Depends, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-from InsertDeleteManager import DatabaseManager
-from database import *
 from sqlalchemy import create_engine
 import uvicorn
-from models import *
-from Query import *
 
 # Initialize FastAPI
 app = FastAPI()
