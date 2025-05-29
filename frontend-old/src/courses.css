@@ -1,0 +1,773 @@
+/* courses.css */
+.teacher-courses-container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 2rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-color);
+}
+
+.course-header {
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--primary-color);
+  text-decoration: none;
+  margin-bottom: 1rem;
+}
+
+.back-button:hover {
+  text-decoration: underline;
+}
+
+.course-header h1 {
+  margin: 0 0 1rem;
+  color: var(--dark-color);
+  font-size: 2rem;
+}
+
+.course-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.course-tabs button {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  background: #eee;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.course-tabs button.active {
+  background: var(--primary-color);
+  color: white;
+}
+
+.course-tabs button:hover:not(.active) {
+  background: #ddd;
+}
+
+/* Students Section */
+.students-list {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.student-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.3s;
+}
+
+.student-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--hover-shadow);
+}
+
+.student-info h3 {
+  margin: 0 0 0.5rem;
+  color: var(--primary-color);
+}
+
+.student-info p {
+  margin: 0.3rem 0;
+  font-size: 0.9rem;
+}
+
+.student-actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.student-actions button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.view-grades-btn {
+  background: var(--primary-color);
+  color: white;
+}
+
+.send-message-btn {
+  background: var(--secondary-color);
+  color: white;
+}
+
+/* Schedule Section */
+.schedule-info {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 2rem;
+}
+
+.schedule-info p {
+  margin: 0.5rem 0;
+}
+
+.assignments-list {
+  margin-top: 2rem;
+}
+
+.assignment-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 1rem;
+}
+
+.assignment-card h4 {
+  margin: 0 0 0.5rem;
+  color: var(--primary-color);
+}
+
+.assignment-actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.assignment-actions button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.view-submissions-btn {
+  background: var(--primary-color);
+  color: white;
+}
+
+.download-btn {
+  background: var(--secondary-color);
+  color: white;
+}
+
+.add-assignment-form {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: var(--card-shadow);
+  margin-top: 2rem;
+}
+
+/* Grades Section */
+.grades-table {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 2rem;
+  overflow-x: auto;
+}
+
+.grades-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.grades-table th, .grades-table td {
+  padding: 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.grades-table th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+}
+
+.edit-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.add-grade-form {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: var(--card-shadow);
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+.form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.file-upload {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.file-input-label {
+  display: inline-block;
+  padding: 0.6rem 1rem;
+  background: #f0f0f0;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.file-input {
+  display: none;
+}
+
+.submit-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* Dark Mode */
+.dark-mode .teacher-courses-container h1,
+.dark-mode .student-card,
+.dark-mode .schedule-info,
+.dark-mode .assignment-card,
+.dark-mode .add-assignment-form,
+.dark-mode .grades-table,
+.dark-mode .add-grade-form {
+  color: var(--text-light);
+  background: #2d2d2d;
+}
+
+.dark-mode .course-tabs button:not(.active) {
+  background: #333;
+  color: var(--text-light);
+}
+
+.dark-mode .grades-table th,
+.dark-mode .grades-table td {
+  border-bottom-color: #444;
+}
+
+.dark-mode .grades-table th {
+  background-color: #333;
+}
+
+.dark-mode .form-group input,
+.dark-mode .form-group select,
+.dark-mode .form-group textarea {
+  background-color: #3d3d3d;
+  border-color: #444;
+  color: var(--text-light);
+}
+
+.dark-mode .file-input-label {
+  background: #3d3d3d;
+  color: var(--text-light);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .teacher-courses-container {
+    padding: 0 1rem;
+  }
+  
+  .course-tabs {
+    flex-wrap: wrap;
+  }
+  
+  .course-tabs button {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+  }/* courses.css */
+.teacher-courses-container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 2rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-color);
+}
+
+.course-header {
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--primary-color);
+  text-decoration: none;
+  margin-bottom: 1rem;
+}
+
+.back-button:hover {
+  text-decoration: underline;
+}
+
+.course-header h1 {
+  margin: 0 0 1rem;
+  color: var(--dark-color);
+  font-size: 2rem;
+}
+
+.course-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.course-tabs button {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  background: #eee;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.course-tabs button.active {
+  background: var(--primary-color);
+  color: white;
+}
+
+.course-tabs button:hover:not(.active) {
+  background: #ddd;
+}
+
+/* Students Section */
+.students-section {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: var(--card-shadow);
+}
+
+.students-list table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 2rem;
+}
+
+.students-list th, 
+.students-list td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.students-list th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+}
+
+.students-list tr:hover {
+  background-color: #f9f9f9;
+}
+
+.students-list tr.selected {
+  background-color: #e6f2ff;
+}
+
+.student-actions {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.student-actions button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.view-grades-btn {
+  background: var(--primary-color);
+  color: white;
+}
+
+.send-message-btn {
+  background: var(--secondary-color);
+  color: white;
+}
+
+.student-grades {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #eee;
+}
+
+.grades-list table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.grades-list th, 
+.grades-list td {
+  padding: 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.grades-list th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+}
+
+.grades-list input {
+  width: 60px;
+  padding: 0.3rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* Schedule Section */
+.schedule-section {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: var(--card-shadow);
+}
+
+.schedule-group {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.schedule-group:last-child {
+  border-bottom: none;
+}
+
+.schedule-group h3 {
+  margin: 0 0 1rem;
+  color: var(--primary-color);
+}
+
+.schedule-group p {
+  margin: 0.3rem 0;
+}
+
+/* Assignments Section */
+.assignments-section {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: var(--card-shadow);
+}
+
+.assignments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.new-assignment-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.assignments-list table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.assignments-list th, 
+.assignments-list td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.assignments-list th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+}
+
+.assignments-list tr:hover {
+  background-color: #f9f9f9;
+}
+
+.view-submissions-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Form Styles */
+.add-grade-form,
+.add-assignment-form {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+.form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.file-upload {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.file-input-label {
+  display: inline-block;
+  padding: 0.6rem 1rem;
+  background: #f0f0f0;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.file-input {
+  display: none;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.submit-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cancel-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.edit-btn {
+  background: #ffc107;
+  color: black;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.download-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Dark Mode */
+.dark-mode .teacher-courses-container h1,
+.dark-mode .students-section,
+.dark-mode .schedule-section,
+.dark-mode .assignments-section,
+.dark-mode .add-grade-form,
+.dark-mode .add-assignment-form {
+  color: var(--text-light);
+  background: #2d2d2d;
+}
+
+.dark-mode .course-tabs button:not(.active) {
+  background: #333;
+  color: var(--text-light);
+}
+
+.dark-mode .students-list th,
+.dark-mode .grades-list th,
+.dark-mode .assignments-list th {
+  background-color: #333;
+}
+
+.dark-mode .students-list tr:hover,
+.dark-mode .assignments-list tr:hover {
+  background-color: #3d3d3d;
+}
+
+.dark-mode .students-list tr.selected {
+  background-color: #1a3a5a;
+}
+
+.dark-mode .form-group input,
+.dark-mode .form-group select,
+.dark-mode .form-group textarea {
+  background-color: #3d3d3d;
+  border-color: #444;
+  color: var(--text-light);
+}
+
+.dark-mode .file-input-label {
+  background: #3d3d3d;
+  color: var(--text-light);
+}
+
+.dark-mode .add-grade-form,
+.dark-mode .add-assignment-form {
+  background: #3d3d3d;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .teacher-courses-container {
+    padding: 0 1rem;
+  }
+  
+  .course-tabs {
+    flex-wrap: wrap;
+  }
+  
+  .course-tabs button {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+  }
+  
+  .student-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .assignments-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+  
+  .student-actions,
+  .assignment-actions {
+    flex-direction: column;
+  }
+}
