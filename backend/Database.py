@@ -30,9 +30,10 @@ class CourseCatalog(Base):
     courseName: Mapped[str]
     semester: Mapped[int] = mapped_column(insert_default=1)
     ects: Mapped[int] = mapped_column(insert_default=1)
+    isBiWeekly: Mapped[bool] = mapped_column(default=False)
 
     def __repr__(self):
-        return f"Course ID: {self.courseId}, Course Name: {self.courseName}, Semester: {self.semester}, ECTS: {self.ects}"
+        return f"Course ID: {self.courseId}, Course Name: {self.courseName}, Semester: {self.semester}, ECTS: {self.ects}, Is BiWeekly: {self.isBiWeekly}"
 
 
 # Change log V1 -> V2: add table ClassDateTime to handle the dates and times for each course.
@@ -202,11 +203,13 @@ class CourseStudent(Base):
 
 # Change log V1 -> V2: create assignment table, fields, and __repr__ 
 # Change log V2 -> V3: add foreign keys
+# Change log V3 -> V4: make name not optional, add opt description
 class Assignment(Base):
     """Assignment table for postgres.
         
     assignmentId: int primary
     name: str
+    desc: opt str
     dueDateTime: opt datetime.datetime (create object datetime.datetime, set year/month/day/hour/minute/second/timezone)
     needsSubmission: def(False) bool
     assignmentIntro: opt str (describes the assignment)
@@ -217,7 +220,8 @@ class Assignment(Base):
     
     __tablename__ = "Assignment"
     assignmentId: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[Optional[str]]
+    name: Mapped[str]
+    desc: Mapped[Optional[str]]
     dueDateTime: Mapped[Optional[datetime.datetime]]
     needsSubmission: Mapped[bool] = mapped_column(default=False)
     assignmentIntro: Mapped[Optional[str]]
@@ -226,7 +230,30 @@ class Assignment(Base):
     courseId: Mapped[int] = mapped_column(ForeignKey('CourseCatalog.courseId'))
     
     def __repr__(self):
-        return f"Assignment ID: {self.assignmentId}, Name: {self.name}, Due Date and Time: {self.dueDateTime}, Needs Submission: {self.needsSubmission}, Assignment Intro: {self.assignmentIntro}, Valid File Types: {self.validFileTypes}, Group Number: {self.group}, Course ID: {self.courseId}"
+        return f"Assignment ID: {self.assignmentId}, Name: {self.name}, Description: {self.desc}, Due Date and Time: {self.dueDateTime}, Needs Submission: {self.needsSubmission}, Assignment Intro: {self.assignmentIntro}, Valid File Types: {self.validFileTypes}, Group Number: {self.group}, Course ID: {self.courseId}"
+
+# Change log V1: create assignment submission table, fields, and __repr__
+class AssignmentSubmission(Base):
+    """AssignmentSubmission table for postgres.
+    
+    assignmentSubmissionId: int primary
+    assignmentId: int (assignment the submission belongs to)
+    studentId: int (student who submitted the assignment)
+    submissionDateTime: datetime.datetime (date and time the submission was made)
+    submission: opt str (Submission in str format, or link to location.)
+    """
+
+    __tablename__ = 'AssignmentSubmission'
+    assignmentSubmissionId: Mapped[int] = mapped_column(primary_key=True)
+    assignmentId: Mapped[int] = mapped_column(ForeignKey('Assignment.assignmentId'))
+    studentId: Mapped[int] = mapped_column(ForeignKey('Student.studentId'))
+    submissionDateTime: Mapped[datetime.datetime]
+    submission: Mapped[Optional[str]]
+    
+
+    def __repr__(self):
+        return f"Assignment Submission ID: {self.assignmentSubmissionId}, Assignment ID: {self.assignmentId}, Student ID: {self.studentId}, Submission Date and Time: {self.submissionDateTime}, Submission: {self.submission}"
+
 
 # Change log V1 -> V2: Create grades table, fields, and __repr__
 # Change log V2 -> V3: add foreign keys

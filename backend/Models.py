@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
+import datetime
 
 # Create Models for info that should be converted to json upon get/post request
 
@@ -11,7 +12,9 @@ from typing import List, Optional
 
 # This, upon being returned in get request, automatically converts stored info to json.
 
-# Models:
+# ----------------------------------------------------------------------------
+# Grades
+# ----------------------------------------------------------------------------
 
 # Grades Model
 class GradeModel(BaseModel):
@@ -19,13 +22,13 @@ class GradeModel(BaseModel):
 
     Args:
         Course: str
-        Assignment: str
+        Assignment: opt str
         Grade: opt float
         AGH_Grade: opt float
     """
     
     Course: str
-    Assignment: str
+    Assignment: Optional[str]
     Grade: Optional[float]
     AGH_Grade: Optional[float]
 
@@ -40,6 +43,9 @@ class GradeListModel(BaseModel):
     
     GradeList: List[GradeModel] = []
  
+# ----------------------------------------------------------------------------
+# Courses
+# ----------------------------------------------------------------------------
     
 # Student Course Model
 class StudentCourseModel(BaseModel):
@@ -90,6 +96,9 @@ class TeacherCourseListModel(BaseModel):
     
     CourseList: List[TeacherCourseModel] = []
     
+# ----------------------------------------------------------------------------
+# FAQ
+# ----------------------------------------------------------------------------
     
 # FAQ Model
 class FAQModel(BaseModel):
@@ -113,3 +122,80 @@ class FAQListModel(BaseModel):
     """
     
     FAQList: List[FAQModel] = []
+    
+    
+# ----------------------------------------------------------------------------
+# Schedule
+# ----------------------------------------------------------------------------
+    
+# Start End Time Model
+class StartEndTimeModel(BaseModel):
+    """A model for storing a start datetime and an end datetime.
+    
+    Args:
+        StartDateTime: datetime
+        EndDateDtime: datetime
+    """
+    
+    StartDateTime: datetime.datetime
+    EndDateTime: datetime.datetime
+    
+
+# Class Schedule Model
+class ClassScheduleModel(BaseModel):
+    """Model for Classes part of Schedule.
+    
+    Args:
+        ClassTime: StartEndTimeModel
+        CourseName: str
+        isBiWeekly: bool
+    """
+    
+    ClassTime: StartEndTimeModel
+    CourseName: str
+    isBiWeekly: bool = False
+    
+
+# Event Schedule Model
+class EventScheduleModel(BaseModel):
+    """Model for Events part of Schedule
+
+    Args:
+        EventTime: StartEndTimeModel
+        EventName: str
+        IsHoliday: bool
+    """
+    
+    EventTime: StartEndTimeModel
+    EventName: str
+    IsHoliday: bool = False
+    
+    
+# Assignment Schedule Model
+class AssignmentScheduleModel(BaseModel):
+    """Model for Assignments part of Schedule
+
+    Args:
+        CourseName: str
+        AssignmentDueDateTime: datetime.datetime
+        AssignmentName: str
+    """
+    
+    CourseName: str
+    AssignmentDueDateTime: datetime.datetime
+    AssignmentName: str
+    
+    
+# Schedule Model
+class ScheduleModel(BaseModel):
+    """Stores the entire schedule in one model.
+
+    Args:
+        Classes (List[ClassScheduleModel]): List of class schedules.
+        Events (List[EventScheduleModel]): List of event schedules.
+        Assignments (List[AssignmentScheduleModel]): List of assignment schedules.
+    """
+    
+    Classes: List[ClassScheduleModel] = []
+    Events: List[EventScheduleModel] = []
+    Assignments: List[AssignmentScheduleModel] = []

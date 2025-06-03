@@ -1,7 +1,8 @@
-from backend.Database import *
-from backend.InsertDeleteManager import DatabaseManager
-from backend.Models import *
-from backend.Query import *
+from Database import *
+from InsertDeleteManager import DatabaseManager
+from Models import *
+from Query import *
+from Util import convert_str_to_datetime
 from fastapi import FastAPI, Request, Form, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -131,10 +132,40 @@ def student_grades_get(request: Request, student_id: int):
     return getStudentGrades(engine=engine, student_id=student_id)
 
 
-# Student schedule page TBF
-@app.get("/student/{student_id}/schedule", response_class=HTMLResponse)
-def student_schedule_get(request: Request, student_id: int):
-    return None
+# Student Schedule for today
+@app.get("/student/{student_id}/schedule/day/", response_model=ScheduleModel)
+def student_schedule_day_get(request: Request, student_id: int):
+    return getDayStudentSchedule(engine=engine, student_id=student_id)
+
+
+# Student Schedule for a specific day
+@app.get("/student/{student_id}/schedule/day/{date}", response_model=ScheduleModel)
+def student_schedule_day_get(request: Request, student_id: int, date: str):
+    return getDayStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
+
+
+# Student Schedule for this week
+@app.get("/student/{student_id}/schedule/week/", response_model=ScheduleModel)
+def student_schedule_week_get(request: Request, student_id: int):
+    return getWeekStudentSchedule(engine=engine, student_id=student_id)
+
+
+# Student Schedule for a specific week
+@app.get("/student/{student_id}/schedule/week/{date}", response_model=ScheduleModel)
+def student_schedule_week_get(request: Request, student_id: int, date: str):
+    return getWeekStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
+
+
+# Student Schedule for this month
+@app.get("/student/{student_id}/schedule/month/", response_model=ScheduleModel)
+def student_schedule_month_get(request: Request, student_id: int):
+    return getMonthStudentSchedule(engine=engine, student_id=student_id)
+
+
+# Student Schedule for a specific month
+@app.get("/student/{student_id}/schedule/month/{date}", response_model=ScheduleModel)
+def student_schedule_month_get(request: Request, student_id: int, date: str):
+    return getMonthStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
 
 
 # Teacher page (redirects to /login)

@@ -1,4 +1,4 @@
-from backend.Database import *
+from Database import *
 from sqlalchemy import create_engine, ForeignKey, select, engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.exc import IntegrityError
