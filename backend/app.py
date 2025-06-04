@@ -3,22 +3,34 @@ from InsertDeleteManager import DatabaseManager
 from Models import *
 from Query import *
 from Util import convert_str_to_datetime
-from fastapi import FastAPI, Request, Form, Depends, status
+from fastapi import FastAPI, Depends, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 import uvicorn
+from auth import (
+    Token, 
+    authenticate_user, 
+    create_access_token, 
+    get_current_active_user, 
+    get_user_with_role,
+    UserAuth,
+    ACCESS_TOKEN_EXPIRE_MINUTES
+)
+from datetime import timedelta
+from typing import Annotated, Dict
+import os
+from user_managment import create_user
 
 # Initialize FastAPI
 app = FastAPI()
-
 
 origins = [
     "http://localhost:5173",
     "localhost:5173"
 ]
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,199 +40,232 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-
-# Setup templates directory
-templates = Jinja2Templates(directory="templates")
-
-
 # Database connection
-engine = create_engine("postgresql+psycopg://postgres:password@localhost/postgres", echo=True)
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@db:5432/postgres")
+engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
+
+# Create all tables on startup
+Base.metadata.create_all(bind=engine)
+
 db = DatabaseManager(engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Dependency to get DB session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-# Home Page redirect from empty
-@app.get("", response_class=HTMLResponse)
-def student_get(request: Request):
-    return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-
-
-# Home page
-@app.get("/", tags=["root"], response_class=HTMLResponse)
-def home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
-
-
-# Registration page
-@app.get("/register", response_class=HTMLResponse)
-def register_get(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request})
-
-
-# Handle registration
-@app.post("/register")
-def register_post(
-    request: Request,
-    role: str = Form(...),
-    user_id: int = Form(...),
-    name: str = Form(None),
-    title: str = Form(None),
-    email: str = Form(None),
-    semester: int = Form(1),
-    year: int = Form(1),
+# Authentication endpoint
+@app.post("/token", response_model=Token)
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
 ):
-    if role == Roles.STUDENT:
-        db.register_user(role, user_id, email=email, semester=semester, year=year)
-    elif role == Roles.TEACHER:
-        db.register_user(role, user_id, name=name, title=title, email=email)
-    return RedirectResponse("/", status_code=303)
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={
+            "sub": user["user_id"], 
+            "role": user["role"],
+            "role_id": user["role_id"]
+        }, 
+        expires_delta=access_token_expires
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}
 
+# Home endpoint
+@app.get("/", tags=["root"])
+def home():
+    return {"message": "Welcome to the Software Studio API"}
 
-# Login page
-@app.get("/login", response_class=HTMLResponse)
-def login_get(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+# Get registration info
+@app.get("/register")
+async def register_info():
+    return {
+        "message": "Registration endpoint information",
+        "method": "POST",
+        "required_fields": {
+            "role": "string (STUDENT or TEACHER)",
+            "user_id": "integer",
+            "email": "string"
+        },
+        "optional_fields": {
+            "name": "string (required for TEACHER)",
+            "title": "string (required for TEACHER)",
+            "semester": "integer (1-8, default: 1, for STUDENT only)",
+            "year": "integer (1-4, default: 1, for STUDENT only)"
+        }
+    }
 
+# Registration endpoint
+@app.post("/register")
+async def register(
+    role: str,
+    user_id: int,
+    email: str,
+    username: str,
+    password: str,
+    name: str = None,
+    title: str = None,
+    semester: int = 1,
+    year: int = 1,
+):
+    try:
+        # First register the role-specific record
+        if role == Roles.STUDENT:
+            db.register_user(role, user_id, email=email, semester=semester, year=year)
+        elif role == Roles.TEACHER:
+            db.register_user(role, user_id, name=name, title=title, email=email)
+        else:
+            raise ValueError("Role must be either 'student' or 'teacher'")
+        
+        # Then create the user account
+        if not create_user(engine, user_id, user_id, username, password, Roles(role)):
+            raise HTTPException(status_code=400, detail="Failed to create user account")
+            
+        return {"message": "Registration successful", "user_id": user_id, "role": role}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-# Handle login
+# Get login info
+@app.get("/login")
+async def login_info():
+    return {
+        "message": "Login endpoint information",
+        "method": "POST",
+        "required_fields": {
+            "user_id": "integer"
+        },
+        "note": "For token-based authentication, use /token endpoint with username and password"
+    }
+
+# Login endpoint
 @app.post("/login")
-def login_post(request: Request, user_id: int = Form(...)):
+async def login(user_id: int):
     role, user = db.login_user(user_id)
     if role:
-        return templates.TemplateResponse("home.html", {"request": request, "role": role, "user": user})
-    return templates.TemplateResponse("login.html", {"request": request, "error": "User not found."})
+        return {"role": role, "user": user}
+    raise HTTPException(status_code=404, detail="User not found")
 
-
-# Student page (redirects to /login)
-@app.get("/student", response_class=HTMLResponse)
-def student_get(request: Request):
-    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
-
-
-# Student page after login TBF
-# @app.get("/student/{student_id}", response_class=HTMLResponse)
-# def student_main_get(request: Request, student_id: int):
-#     return None
-
+# User profile endpoint
+@app.get("/me", response_model=UserAuth)
+async def read_users_me(current_user: Annotated[UserAuth, Depends(get_current_active_user)]):
+    return current_user
 
 # GET All Student Courses
 @app.get("/student/{student_id}/courses", response_model=StudentCourseListModel)
-def student_courses_get(request: Request, student_id: int):
+def student_courses_get(
+    student_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getStudentCourses(engine=engine, student_id=student_id)
-
-
-# Student specific course main page TBF
-# @app.get("/student/{student_id}/courses/{course_id}", response_class=HTMLResponse)
-# def student_course_main_get(request: Request, student_id: int, course_id: int):
-#     return None
-
-
-# Student specific course schedule TBF
-@app.get("/student/{student_id}/courses/{course_id}/schedule", response_class=HTMLResponse)
-def student_course_schedule_get(request: Request, student_id: int, course_id: int):
-    return None
-
 
 # GET Student Grades for Specific Course
 @app.get("/student/{student_id}/courses/{course_id}/grades", response_model=GradeListModel)
-def student_course_grades_get(request: Request, student_id: int, course_id: int):
+def student_course_grades_get(
+    student_id: int, 
+    course_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getStudentGradesForCourse(engine=engine, student_id=student_id, course_id=course_id)
-
 
 # GET All Student Grades
 @app.get("/student/{student_id}/grades", response_model=GradeListModel)
-def student_grades_get(request: Request, student_id: int):
+def student_grades_get(
+    student_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getStudentGrades(engine=engine, student_id=student_id)
 
+# GET Teacher Courses
+@app.get("/teacher/{teacher_id}/courses", response_model=TeacherCourseListModel)
+def teacher_courses_get(
+    teacher_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role != "TEACHER" or current_user.role_id != teacher_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this teacher's data")
+    return getTeacherCourses(engine=engine, teacher_id=teacher_id)
 
 # Student Schedule for today
 @app.get("/student/{student_id}/schedule/day/", response_model=ScheduleModel)
-def student_schedule_day_get(request: Request, student_id: int):
+def student_schedule_day_get(
+    student_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getDayStudentSchedule(engine=engine, student_id=student_id)
-
 
 # Student Schedule for a specific day
 @app.get("/student/{student_id}/schedule/day/{date}", response_model=ScheduleModel)
-def student_schedule_day_get(request: Request, student_id: int, date: str):
+def student_schedule_day_get(
+    student_id: int, 
+    date: str,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getDayStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
-
 
 # Student Schedule for this week
 @app.get("/student/{student_id}/schedule/week/", response_model=ScheduleModel)
-def student_schedule_week_get(request: Request, student_id: int):
+def student_schedule_week_get(
+    student_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getWeekStudentSchedule(engine=engine, student_id=student_id)
-
 
 # Student Schedule for a specific week
 @app.get("/student/{student_id}/schedule/week/{date}", response_model=ScheduleModel)
-def student_schedule_week_get(request: Request, student_id: int, date: str):
+def student_schedule_week_get(
+    student_id: int, 
+    date: str,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getWeekStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
-
 
 # Student Schedule for this month
 @app.get("/student/{student_id}/schedule/month/", response_model=ScheduleModel)
-def student_schedule_month_get(request: Request, student_id: int):
+def student_schedule_month_get(
+    student_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getMonthStudentSchedule(engine=engine, student_id=student_id)
-
 
 # Student Schedule for a specific month
 @app.get("/student/{student_id}/schedule/month/{date}", response_model=ScheduleModel)
-def student_schedule_month_get(request: Request, student_id: int, date: str):
+def student_schedule_month_get(
+    student_id: int, 
+    date: str,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getMonthStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
-
-
-# Teacher page (redirects to /login)
-@app.get("/teacher", response_class=HTMLResponse)
-def teacher_get(request: Request):
-    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
-
-
-# Teacher page after login TBF
-# @app.get("/teacher/{teacher_id}", response_class=HTMLResponse)
-# def teacher_main_get(request: Request, teacher_id: int):
-#     return None
-
-
-# GET All Teacher Courses 
-@app.get("/teacher/{teacher_id}/courses", response_model=TeacherCourseListModel)
-def teacher_courses_get(request: Request, teacher_id: int):
-    return getTeacherCourses
-
-
-# Teacher specific course main page TBF
-# @app.get("/teacher/{teacher_id}/courses/{course_id}", response_class=HTMLResponse)
-# def student_course_main_get(request: Request, teacher_id: int, course_id: int):
-#     return None
-
-
-# Teacher specific course schedule TBF
-@app.get("/teacher/{teacher_id}/courses/{course_id}/schedule", response_class=HTMLResponse)
-def student_course_schedule_get(request: Request, teacher_id: int, course_id: int):
-    return None
-
-
-# Staff page (redirects to /login)
-@app.get("/staff", response_class=HTMLResponse)
-def staff_get(request: Request):
-    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
-
-
-# Staff page after login TBF
-# @app.get("/staff/{staff_id}", response_class=HTMLResponse)
-# def staff_main_get(request: Request, staff_id: int):
-#     return None
-
-
-# Get FAQ Questions 
-@app.get("/faq", response_model=FAQListModel)
-def faq_get(request: Request):
-    return getFAQ(engine)
-
-
-# Map Page TBF
-# @app.get("/map", response_class=HTMLResponse)
-# def map_get(request: Request):
-#     return None
-
 
 # Run the backend
 if __name__ == "__main__":

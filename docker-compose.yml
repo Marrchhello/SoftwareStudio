@@ -1,22 +1,43 @@
+version: '3.8'
+
 services:
-  SS_Database:
-    image: "postgres:latest"
-
+  backend:
+    build: .
     ports:
-      - 5432:5432
-
-    networks:
-      - postgres-network
-
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: postgres
-
+      - "8000:8000"
     volumes:
-      - ${PWD}/ss_database/:/var/lib/postgresql/data/
-      - ${PWD}/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend:/app/backend
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/postgres
+      - SECRET_KEY=0141bc81b542426afb1d83ba137c3b2f4ce24af700d82f4fdcd3a178ef59073c
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  db:
+    image: "postgres:15"
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
 
 networks:
-  postgres-network:
+  app-network:
     driver: bridge
