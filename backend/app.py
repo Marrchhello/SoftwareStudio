@@ -23,6 +23,7 @@ from datetime import timedelta
 from typing import Annotated, Dict
 import os
 from user_managment import create_user
+from sqlalchemy.orm import Session
 
 # Initialize FastAPI
 app = FastAPI()
@@ -108,7 +109,6 @@ async def register_info():
         }
     }
 
-# Registration endpoint
 @app.post("/register")
 async def register(
     role: str,
@@ -119,24 +119,82 @@ async def register(
     name: str = None,
     title: str = None,
     semester: int = 1,
-    year: int = 1,
+    degreeId: int = 1,      # Default to Computer Science
+    age: int = None,        
 ):
     try:
-        # First register the role-specific record
-        if role == Roles.STUDENT:
-            db.register_user(role, user_id, email=email, semester=semester, year=year)
-        elif role == Roles.TEACHER:
-            db.register_user(role, user_id, name=name, title=title, email=email)
-        else:
+        role = role.lower()
+        if role not in ['student', 'teacher']:
             raise ValueError("Role must be either 'student' or 'teacher'")
-        
+
+        # Check if user already exists
+        with Session(engine) as session:
+            existing_user = session.query(User).filter(User.userId == user_id).first()
+            if existing_user:
+                raise ValueError(f"User with ID {user_id} already exists")
+
+            if role == 'student':
+                existing_student = session.query(Student).filter(Student.studentId == user_id).first()
+                if existing_student:
+                    raise ValueError(f"Student with ID {user_id} already exists")
+            elif role == 'teacher':
+                existing_teacher = session.query(Teacher).filter(Teacher.teacherId == user_id).first()
+                if existing_teacher:
+                    raise ValueError(f"Teacher with ID {user_id} already exists")
+
+        # First create the role-specific record
+        if role == 'student':
+            # Check if degree exists, if not create default degrees
+            with Session(engine) as session:
+                degree = session.query(Degree).filter(Degree.degreeId == degreeId).first()
+                if not degree:
+                    # Create default degrees
+                    degrees = [
+                        Degree(degreeId=1, name='Computer Science', numSemesters=8),
+                        Degree(degreeId=2, name='Software Engineering', numSemesters=7),
+                        Degree(degreeId=3, name='Data Science', numSemesters=8)
+                    ]
+                    session.add_all(degrees)
+                    session.commit()
+
+            try:
+                # Add student record
+                db.add_student(
+                    student_id=user_id,
+                    semester=semester,
+                    degree_id=degreeId,
+                    age=age,
+                    email=email
+                )
+            except Exception as e:
+                raise ValueError(f"Failed to create student record: {str(e)}")
+
+        elif role == 'teacher':
+            try:
+                # Add teacher record
+                db.add_teacher(
+                    teacher_id=user_id,
+                    name=name,
+                    title=title,
+                    email=email
+                )
+            except Exception as e:
+                raise ValueError(f"Failed to create teacher record: {str(e)}")
+
         # Then create the user account
         if not create_user(engine, user_id, user_id, username, password, Roles(role)):
-            raise HTTPException(status_code=400, detail="Failed to create user account")
+            # If user creation fails, we should clean up the role-specific record
+            if role == 'student':
+                db.delete_student(user_id)
+            elif role == 'teacher':
+                db.delete_teacher(user_id)
+            raise ValueError("Failed to create user account")
             
         return {"message": "Registration successful", "user_id": user_id, "role": role}
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # Get login info
 @app.get("/login")
@@ -169,7 +227,7 @@ def student_courses_get(
     student_id: int,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+    if current_user.role.upper() != "STUDENT" or current_user.role_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getStudentCourses(engine=engine, student_id=student_id)
 
@@ -180,7 +238,7 @@ def student_course_grades_get(
     course_id: int,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+    if current_user.role.upper() != "STUDENT" or current_user.role_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getStudentGradesForCourse(engine=engine, student_id=student_id, course_id=course_id)
 
@@ -190,7 +248,7 @@ def student_grades_get(
     student_id: int,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+    if current_user.role.upper() != "STUDENT" or current_user.role_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getStudentGrades(engine=engine, student_id=student_id)
 
@@ -200,7 +258,7 @@ def teacher_courses_get(
     teacher_id: int,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    if current_user.role != "TEACHER" or current_user.role_id != teacher_id:
+    if current_user.role.upper() != "TEACHER" or current_user.role_id != teacher_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this teacher's data")
     return getTeacherCourses(engine=engine, teacher_id=teacher_id)
 
@@ -210,7 +268,7 @@ def student_schedule_day_get(
     student_id: int,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+    if current_user.role.upper() != "STUDENT" or current_user.role_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getDayStudentSchedule(engine=engine, student_id=student_id)
 
@@ -221,7 +279,7 @@ def student_schedule_day_get(
     date: str,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+    if current_user.role.upper() != "STUDENT" or current_user.role_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getDayStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
 
@@ -231,7 +289,7 @@ def student_schedule_week_get(
     student_id: int,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+    if current_user.role.upper() != "STUDENT" or current_user.role_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getWeekStudentSchedule(engine=engine, student_id=student_id)
 
@@ -242,7 +300,7 @@ def student_schedule_week_get(
     date: str,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+    if current_user.role.upper() != "STUDENT" or current_user.role_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getWeekStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
 
@@ -252,7 +310,7 @@ def student_schedule_month_get(
     student_id: int,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+    if current_user.role.upper() != "STUDENT" or current_user.role_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getMonthStudentSchedule(engine=engine, student_id=student_id)
 
@@ -263,7 +321,7 @@ def student_schedule_month_get(
     date: str,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    if current_user.role != "STUDENT" or current_user.role_id != student_id:
+    if current_user.role.upper() != "STUDENT" or current_user.role_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getMonthStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
 
