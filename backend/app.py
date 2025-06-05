@@ -42,7 +42,7 @@ app.add_middleware(
 )
 
 # Database connection
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@db:5432/postgres")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/postgres")
 engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
 
 # Create all tables on startup
@@ -219,7 +219,13 @@ async def login(user_id: int):
 # User profile endpoint
 @app.get("/me", response_model=UserAuth)
 async def read_users_me(current_user: Annotated[UserAuth, Depends(get_current_active_user)]):
-    return current_user
+    print(f"DEBUG: /me endpoint accessed")
+    print(f"DEBUG: Current user data: {current_user}")
+    try:
+        return current_user
+    except Exception as e:
+        print(f"DEBUG: Error in /me endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # GET All Student Courses
 @app.get("/student/{student_id}/courses", response_model=StudentCourseListModel)

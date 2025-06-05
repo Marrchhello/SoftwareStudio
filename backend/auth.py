@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from pydantic import BaseModel
 from passlib.context import CryptContext
@@ -18,7 +18,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme for token authentication
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", scheme_name="JWT")
 
 # Token models
 class Token(BaseModel):
@@ -44,40 +44,58 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 # Authenticate user
+# Authenticate user
 def authenticate_user(db_session: Session, username: str, password: str) -> Optional[Dict[str, Any]]:
-    # Query the database for the user
-    query = select(User).where(User.username == username)
-    result = db_session.execute(query).first()
-    
-    if not result:
+    try:
+        # Query the database for the user
+        query = select(User).where(User.username == username)
+        result = db_session.execute(query).first()
+        
+        if not result:
+            print(f"DEBUG: User not found: {username}")
+            return None
+        
+        user = result[0]
+        print(f"DEBUG: Found user: {user.userId}, role: {user.role.value}")
+        
+        # Handle password decoding properly
+        stored_password = user.password
+        if isinstance(stored_password, bytes):
+            stored_password_str = stored_password.decode('utf-8')
+        else:
+            stored_password_str = stored_password
+        
+        # Verify the password
+        if not verify_password(password, stored_password_str):
+            print(f"DEBUG: Password verification failed for user: {username}")
+            return None
+        
+        print(f"DEBUG: Authentication successful for user: {username}")
+        
+        # Return user information
+        return {
+            "user_id": user.userId,
+            "role": user.role.value,
+            "role_id": user.roleId
+        }
+    except Exception as e:
+        print(f"DEBUG: Authentication error: {e}")
         return None
-    
-    user = result[0]
-    
-    # Verify the password
-    if not verify_password(password, user.password.decode('utf-8') if isinstance(user.password, bytes) else user.password):
-        return None
-    
-    # Return user information
-    return {
-        "user_id": user.userId,
-        "role": user.role.value,
-        "role_id": user.roleId
-    }
 
 # Create access token
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+# Get current user from token
 # Get current user from token
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserAuth:
     credentials_exception = HTTPException(
@@ -87,22 +105,56 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserAuth:
     )
     
     try:
-        # Decode JWT token
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # Debug the incoming token
+        print("\nDEBUG: Token validation started")
+        print(f"DEBUG: Received token type: {type(token)}")
+        print(f"DEBUG: Token prefix: {token[:20]}...")
+
+        # Decode JWT token with explicit verification
+        try:
+            payload = jwt.decode(
+                token, 
+                SECRET_KEY, 
+                algorithms=[ALGORITHM],
+                options={"verify_signature": True, "verify_exp": True}
+            )
+            print(f"DEBUG: Successfully decoded payload: {payload}")
+        except jwt.ExpiredSignatureError:
+            print("DEBUG: Token has expired")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        except jwt.JWTError as jwt_error:
+            print(f"DEBUG: JWT decode error: {jwt_error}")
+            raise credentials_exception
+
+        # Extract and validate required fields
         user_id: int = payload.get("sub")
         role: str = payload.get("role")
         role_id: int = payload.get("role_id")
         
-        if user_id is None or role is None:
-            raise credentials_exception
-            
+        print(f"DEBUG: Extracted fields from payload:")
+        print(f"- user_id: {user_id} (type: {type(user_id)})")
+        print(f"- role: {role} (type: {type(role)})")
+        print(f"- role_id: {role_id} (type: {type(role_id)})")
+
+        if any(field is None for field in [user_id, role, role_id]):
+            print("DEBUG: Missing required fields in token payload")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token content",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
         token_data = TokenData(user_id=user_id, role=role)
-        
-    except JWTError:
+        return UserAuth(user_id=token_data.user_id, role=token_data.role, role_id=role_id)
+
+    except Exception as e:
+        print(f"DEBUG: Unexpected error during token validation: {str(e)}")
+        print(f"DEBUG: Error type: {type(e)}")
         raise credentials_exception
-    
-    # Return user authentication data
-    return UserAuth(user_id=token_data.user_id, role=token_data.role, role_id=role_id)
 
 # Verify user is active
 async def get_current_active_user(current_user: UserAuth = Depends(get_current_user)) -> UserAuth:

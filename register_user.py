@@ -5,10 +5,10 @@ def test_registration():
     
     user_data = {
         "role": "student",
-        "user_id": 1,
+        "user_id": 33,
         "email": "john.doe@university.com", 
-        "username": "john.doe",
-        "password": "password123",
+        "username": "1",
+        "password": "1",
         "semester": 1,
         "degreeId": 1  # Required for student registration
     }

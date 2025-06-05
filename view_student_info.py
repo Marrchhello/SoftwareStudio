@@ -43,13 +43,17 @@ def print_schedule(schedule):
             print(f"Due: {due.strftime('%Y-%m-%d %H:%M')}")
 
 def main():
+    
     # Get the access token from the user
     access_token = input("Please enter your access token: ").strip()
     
     # Set up the headers with the token
+    # Update the headers setup
     headers = {
-        "Authorization": f"Bearer {access_token}"
+    "Authorization": f"Bearer {access_token.strip()}",
+    "Accept": "application/json"
     }
+    print(f"DEBUG: Request headers: {headers}")
     
     # The base URL for the API
     base_url = "http://localhost:8000"
