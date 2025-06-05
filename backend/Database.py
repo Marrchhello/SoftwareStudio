@@ -232,6 +232,7 @@ class Assignment(Base):
     def __repr__(self):
         return f"Assignment ID: {self.assignmentId}, Name: {self.name}, Description: {self.desc}, Due Date and Time: {self.dueDateTime}, Needs Submission: {self.needsSubmission}, Assignment Intro: {self.assignmentIntro}, Valid File Types: {self.validFileTypes}, Group Number: {self.group}, Course ID: {self.courseId}"
 
+
 # Change log V1: create assignment submission table, fields, and __repr__
 class AssignmentSubmission(Base):
     """AssignmentSubmission table for postgres.

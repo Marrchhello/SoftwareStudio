@@ -38,6 +38,10 @@ engine = create_engine("postgresql+psycopg://postgres:password@localhost/postgre
 db = DatabaseManager(engine)
 
 
+# ----------------------------------------------------------------------------
+# Root Pages
+# ----------------------------------------------------------------------------
+
 # Home Page redirect from empty
 @app.get("", response_class=HTMLResponse)
 def student_get(request: Request):
@@ -49,6 +53,10 @@ def student_get(request: Request):
 def home(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
 
+
+# ----------------------------------------------------------------------------
+# Login and Registration
+# ----------------------------------------------------------------------------
 
 # Registration page
 @app.get("/register", response_class=HTMLResponse)
@@ -90,16 +98,14 @@ def login_post(request: Request, user_id: int = Form(...)):
     return templates.TemplateResponse("login.html", {"request": request, "error": "User not found."})
 
 
+# ----------------------------------------------------------------------------
+# Student Redirect and Courses
+# ----------------------------------------------------------------------------
+
 # Student page (redirects to /login)
 @app.get("/student", response_class=HTMLResponse)
 def student_get(request: Request):
     return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
-
-
-# Student page after login TBF
-# @app.get("/student/{student_id}", response_class=HTMLResponse)
-# def student_main_get(request: Request, student_id: int):
-#     return None
 
 
 # GET All Student Courses
@@ -108,17 +114,26 @@ def student_courses_get(request: Request, student_id: int):
     return getStudentCourses(engine=engine, student_id=student_id)
 
 
-# Student specific course main page TBF
-# @app.get("/student/{student_id}/courses/{course_id}", response_class=HTMLResponse)
-# def student_course_main_get(request: Request, student_id: int, course_id: int):
-#     return None
+# ----------------------------------------------------------------------------
+# Course Schedule
+# ----------------------------------------------------------------------------
 
 
-# Student specific course schedule TBF
-@app.get("/student/{student_id}/courses/{course_id}/schedule", response_class=HTMLResponse)
+# Student specific course schedule
+@app.get("/student/{student_id}/courses/{course_id}/schedule", response_model=ClassScheduleModel)
 def student_course_schedule_get(request: Request, student_id: int, course_id: int):
-    return None
+    return getCourseSchedule(engine=engine, course_id=course_id)
 
+
+# Teacher specific course schedule
+@app.get("/teacher/{teacher_id}/courses/{course_id}/schedule", response_model=ClassScheduleModel)
+def teacher_course_schedule_get(request: Request, teacher_id: int, course_id: int):
+    return getCourseSchedule(engine=engine, course_id=course_id)
+
+
+# ----------------------------------------------------------------------------
+# Student Grades
+# ----------------------------------------------------------------------------
 
 # GET Student Grades for Specific Course
 @app.get("/student/{student_id}/courses/{course_id}/grades", response_model=GradeListModel)
@@ -131,6 +146,10 @@ def student_course_grades_get(request: Request, student_id: int, course_id: int)
 def student_grades_get(request: Request, student_id: int):
     return getStudentGrades(engine=engine, student_id=student_id)
 
+
+# ----------------------------------------------------------------------------
+# Student Schedule
+# ----------------------------------------------------------------------------
 
 # Student Schedule for today
 @app.get("/student/{student_id}/schedule/day/", response_model=ScheduleModel)
@@ -168,35 +187,71 @@ def student_schedule_month_get(request: Request, student_id: int, date: str):
     return getMonthStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
 
 
+# Student Schedule for semester
+@app.get("/student/{student_id}/schedule/semester", response_model=ScheduleModel)
+def student_schedule_month_get(request: Request, student_id: int):
+    return getSemesterStudentSchedule(engine=engine, student_id=student_id)
+
+
+# ----------------------------------------------------------------------------
+# Teacher Redirect and Courses
+# ----------------------------------------------------------------------------
+
 # Teacher page (redirects to /login)
 @app.get("/teacher", response_class=HTMLResponse)
 def teacher_get(request: Request):
     return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
 
-# Teacher page after login TBF
-# @app.get("/teacher/{teacher_id}", response_class=HTMLResponse)
-# def teacher_main_get(request: Request, teacher_id: int):
-#     return None
-
-
 # GET All Teacher Courses 
 @app.get("/teacher/{teacher_id}/courses", response_model=TeacherCourseListModel)
 def teacher_courses_get(request: Request, teacher_id: int):
-    return getTeacherCourses
+    return getTeacherCourses(engine=engine, teacher_id=teacher_id)
 
 
-# Teacher specific course main page TBF
-# @app.get("/teacher/{teacher_id}/courses/{course_id}", response_class=HTMLResponse)
-# def student_course_main_get(request: Request, teacher_id: int, course_id: int):
-#     return None
+# ----------------------------------------------------------------------------
+# Teacher Schedule
+# ----------------------------------------------------------------------------
+
+# Teacher Schedule for today
+@app.get("/teacher/{teacher_id}/schedule/day/", response_model=ScheduleModel)
+def teacher_schedule_day_get(request: Request, teacher_id: int):
+    return getDayTeacherSchedule(engine=engine, teacher_id=teacher_id)
 
 
-# Teacher specific course schedule TBF
-@app.get("/teacher/{teacher_id}/courses/{course_id}/schedule", response_class=HTMLResponse)
-def student_course_schedule_get(request: Request, teacher_id: int, course_id: int):
-    return None
+# Teacher Schedule for a specific day
+@app.get("/teacher/{teacher_id}/schedule/day/{date}", response_model=ScheduleModel)
+def teacher_schedule_day_get(request: Request, teacher_id: int, date: str):
+    return getDayTeacherSchedule(engine=engine, teacher_id=teacher_id, date=convert_str_to_datetime(date))
 
+
+# Teacher Schedule for this week
+@app.get("/teacher/{teacher_id}/schedule/week/", response_model=ScheduleModel)
+def teacher_schedule_week_get(request: Request, teacher_id: int):
+    return getWeekTeacherSchedule(engine=engine, teacher_id=teacher_id)
+
+
+# Teacher Schedule for a specific week
+@app.get("/teacher/{teacher_id}/schedule/week/{date}", response_model=ScheduleModel)
+def teacher_schedule_week_get(request: Request, teacher_id: int, date: str):
+    return getWeekTeacherSchedule(engine=engine, teacher_id=teacher_id, date=convert_str_to_datetime(date))
+
+
+# Teacher Schedule for this month
+@app.get("/teacher/{teacher_id}/schedule/month/", response_model=ScheduleModel)
+def teacher_schedule_month_get(request: Request, teacher_id: int):
+    return getMonthTeacherSchedule(engine=engine, teacher_id=teacher_id)
+
+
+# Teacher Schedule for a specific month
+@app.get("/teacher/{teacher_id}/schedule/month/{date}", response_model=ScheduleModel)
+def teacher_schedule_month_get(request: Request, teacher_id: int, date: str):
+    return getMonthTeacherSchedule(engine=engine, teacher_id=teacher_id, date=convert_str_to_datetime(date))
+
+
+# ----------------------------------------------------------------------------
+# Staff
+# ----------------------------------------------------------------------------
 
 # Staff page (redirects to /login)
 @app.get("/staff", response_class=HTMLResponse)
@@ -204,11 +259,9 @@ def staff_get(request: Request):
     return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
 
-# Staff page after login TBF
-# @app.get("/staff/{staff_id}", response_class=HTMLResponse)
-# def staff_main_get(request: Request, staff_id: int):
-#     return None
-
+# ----------------------------------------------------------------------------
+# Other Pages
+# ----------------------------------------------------------------------------
 
 # Get FAQ Questions 
 @app.get("/faq", response_model=FAQListModel)
@@ -216,11 +269,9 @@ def faq_get(request: Request):
     return getFAQ(engine)
 
 
-# Map Page TBF
-# @app.get("/map", response_class=HTMLResponse)
-# def map_get(request: Request):
-#     return None
-
+# ----------------------------------------------------------------------------
+# Main Method
+# ----------------------------------------------------------------------------
 
 # Run the backend
 if __name__ == "__main__":

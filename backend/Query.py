@@ -193,8 +193,70 @@ def getTeacherCourses(engine: Engine, teacher_id: int):
     return TeacherCourseListModel(TeacherCourseList=output)
 
 
+def getCourseSchedule(engine: Engine, course_id: int, date: datetime.date = None):
+    """Gets the schedule for a specific course starting from a specific date.
+    
+    Args:
+        engine (Engine): Engine connection to use.
+        course_id (int): Course ID to get schedule for.
+        date (datetime.date): Date to start the schedule from.
+
+    Returns:
+        ClassScheduleModel: Class Schedule.
+    """
+
+    if date is None:
+        date = datetime.date.today()
+
+    day_start = datetime.datetime.combine(date, datetime.time.min)
+
+    with engine.connect() as conn:
+        course_info_sel = select(
+            CourseCatalog.courseName,
+            Room.building,
+            Room.roomNumber
+        ).where(
+            and_(
+                CourseCatalog.courseId == course_id,
+                Room.courseId == CourseCatalog.courseId
+            )
+        )
+
+        course_info = conn.execute(course_info_sel).fetchone()
+
+        if course_info is None:
+            return ClassScheduleModel(ClassTime=[], CourseName="", Building=None, RoomNumber=None)
+
+        course_name, building, room_number = course_info
+
+        class_times = select(
+            ClassDateTime.dateStartTime,
+            ClassDateTime.endTime
+        ).where(
+            and_(
+                ClassDateTime.dateStartTime >= day_start,
+                ClassDateTime.courseId == course_id
+            )
+        )
+
+        class_times = conn.execute(class_times).fetchall()
+        
+        class_times = [StartEndTimeModel(
+            StartDateTime=date_start_time,
+            EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
+        ) for date_start_time, end_time in class_times]
+
+        class_model = ClassScheduleModel(
+            ClassTime=class_times,
+            CourseName=course_name,
+            Building=building,
+            RoomNumber=room_number
+        )
+        return class_model
+
+
 # ----------------------------------------------------------------------------
-# Schedule
+# Student Schedule
 # ----------------------------------------------------------------------------
 
 # Gets the day schedule for a student
@@ -210,7 +272,7 @@ def getDayStudentSchedule(engine: Engine, student_id: int, date: datetime.date =
         ScheduleModel: Schedule Model containing classes, events, and assignments.
     """
     
-    classes = []
+    courses = []
     events = []
     assignments = []
 
@@ -221,11 +283,14 @@ def getDayStudentSchedule(engine: Engine, student_id: int, date: datetime.date =
     day_end = datetime.datetime.combine(date, datetime.time.max)
 
     with engine.connect() as conn:
-        todays_classes = select(CourseCatalog.courseName, ClassDateTime.dateStartTime, ClassDateTime.endTime, CourseCatalog.isBiWeekly).where(
+        todays_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
             and_(
                 ClassDateTime.dateStartTime >= day_start,
                 ClassDateTime.dateStartTime < day_end,
-                CourseCatalog.courseId == ClassDateTime.courseId
+                CourseCatalog.courseId == ClassDateTime.courseId,
+                Room.courseId == CourseCatalog.courseId,
+                CourseStudent.studentId == student_id,
+                CourseStudent.courseId == CourseCatalog.courseId
             )
         )
         
@@ -289,19 +354,38 @@ def getDayStudentSchedule(engine: Engine, student_id: int, date: datetime.date =
         )
 
         # Process today's classes
-        for row in conn.execute(todays_classes):
-            course_name, date_start_time, end_time, isBiWeekly = row
-            # Build StartEndTimeModel for class
-            class_times = StartEndTimeModel(
+        for row in conn.execute(todays_courses):
+            course_name, isBiWeekly, building, room_number = row
+            
+            class_times_sel = select(
+                ClassDateTime.dateStartTime,
+                ClassDateTime.endTime
+            ).where(
+                and_(
+                    ClassDateTime.courseId == CourseCatalog.courseId,
+                    ClassDateTime.dateStartTime >= day_start,
+                    ClassDateTime.dateStartTime < day_end
+                )
+            )
+            
+            class_times = conn.execute(class_times_sel).fetchall()
+            class_times = [StartEndTimeModel(
                 StartDateTime=date_start_time,
                 EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
-            )
+            ) for date_start_time, end_time in class_times]
+
             class_model = ClassScheduleModel(
                 ClassTime=class_times,
                 CourseName=course_name,
+                Building=building,
+                RoomNumber=room_number
+            )
+
+            course_model = CourseScheduleModel(
+                ClassSchedule=class_model,
                 isBiWeekly=isBiWeekly
             )
-            classes.append(class_model)
+            courses.append(course_model)
 
         # Process today's events
         for row in conn.execute(todays_events):
@@ -328,7 +412,7 @@ def getDayStudentSchedule(engine: Engine, student_id: int, date: datetime.date =
             assignments.append(assignment_model)
 
     output = ScheduleModel(
-        Classes=classes,
+        Courses=courses,
         Events=events,
         Assignments=assignments
     )
@@ -349,7 +433,7 @@ def getWeekStudentSchedule(engine: Engine, student_id: int, date: datetime.date 
         ScheduleModel: Schedule Model containing classes, events, and assignments.
     """
     
-    classes = []
+    courses = []
     events = []
     assignments = []
 
@@ -365,11 +449,14 @@ def getWeekStudentSchedule(engine: Engine, student_id: int, date: datetime.date 
     week_end = datetime.datetime.combine(week_end, datetime.time.max)
 
     with engine.connect() as conn:
-        weeks_classes = select(CourseCatalog.courseName, ClassDateTime.dateStartTime, ClassDateTime.endTime, CourseCatalog.isBiWeekly).where(
+        weeks_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
             and_(
                 ClassDateTime.dateStartTime >= week_start,
                 ClassDateTime.dateStartTime < week_end,
-                CourseCatalog.courseId == ClassDateTime.courseId
+                CourseCatalog.courseId == ClassDateTime.courseId,
+                Room.courseId == CourseCatalog.courseId,
+                CourseStudent.studentId == student_id,
+                CourseStudent.courseId == CourseCatalog.courseId
             )
         )
         
@@ -425,18 +512,38 @@ def getWeekStudentSchedule(engine: Engine, student_id: int, date: datetime.date 
         )
 
         # Process week's classes
-        for row in conn.execute(weeks_classes):
-            course_name, date_start_time, end_time, isBiWeekly = row
-            class_times = StartEndTimeModel(
+        for row in conn.execute(weeks_courses):
+            course_name, isBiWeekly, building, room_number = row
+            
+            class_times_sel = select(
+                ClassDateTime.dateStartTime,
+                ClassDateTime.endTime
+            ).where(
+                and_(
+                    ClassDateTime.courseId == CourseCatalog.courseId,
+                    ClassDateTime.dateStartTime >= week_start,
+                    ClassDateTime.dateStartTime < week_end
+                )
+            )
+            
+            class_times = conn.execute(class_times_sel).fetchall()
+            class_times = [StartEndTimeModel(
                 StartDateTime=date_start_time,
                 EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
-            )
+            ) for date_start_time, end_time in class_times]
+
             class_model = ClassScheduleModel(
                 ClassTime=class_times,
                 CourseName=course_name,
+                Building=building,
+                RoomNumber=room_number
+            )
+
+            course_model = CourseScheduleModel(
+                ClassSchedule=class_model,
                 isBiWeekly=isBiWeekly
             )
-            classes.append(class_model)
+            courses.append(course_model)
 
         # Process week's events
         for row in conn.execute(weeks_events):
@@ -463,7 +570,7 @@ def getWeekStudentSchedule(engine: Engine, student_id: int, date: datetime.date 
             assignments.append(assignment_model)
 
     output = ScheduleModel(
-        Classes=classes,
+        Courses=courses,
         Events=events,
         Assignments=assignments
     )
@@ -483,7 +590,7 @@ def getMonthStudentSchedule(engine: Engine, student_id: int, date: datetime.date
         ScheduleModel: Schedule Model containing classes, events, and assignments.
     """
     
-    classes = []
+    courses = []
     events = []
     assignments = []
 
@@ -504,11 +611,14 @@ def getMonthStudentSchedule(engine: Engine, student_id: int, date: datetime.date
     month_end = datetime.datetime.combine(month_end, datetime.time.max)
 
     with engine.connect() as conn:
-        months_classes = select(CourseCatalog.courseName, ClassDateTime.dateStartTime, ClassDateTime.endTime, CourseCatalog.isBiWeekly).where(
+        months_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
             and_(
                 ClassDateTime.dateStartTime >= month_start,
                 ClassDateTime.dateStartTime < month_end,
-                CourseCatalog.courseId == ClassDateTime.courseId
+                CourseCatalog.courseId == ClassDateTime.courseId,
+                Room.courseId == CourseCatalog.courseId,
+                CourseStudent.studentId == student_id,
+                CourseStudent.courseId == CourseCatalog.courseId
             )
         )
         
@@ -564,18 +674,38 @@ def getMonthStudentSchedule(engine: Engine, student_id: int, date: datetime.date
         )
 
         # Process month's classes
-        for row in conn.execute(months_classes):
-            course_name, date_start_time, end_time, isBiWeekly = row
-            class_times = StartEndTimeModel(
+        for row in conn.execute(months_courses):
+            course_name, isBiWeekly, building, room_number = row
+            
+            class_times_sel = select(
+                ClassDateTime.dateStartTime,
+                ClassDateTime.endTime
+            ).where(
+                and_(
+                    ClassDateTime.courseId == CourseCatalog.courseId,
+                    ClassDateTime.dateStartTime >= month_start,
+                    ClassDateTime.dateStartTime < month_end
+                )
+            )
+            
+            class_times = conn.execute(class_times_sel).fetchall()
+            class_times = [StartEndTimeModel(
                 StartDateTime=date_start_time,
                 EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
-            )
+            ) for date_start_time, end_time in class_times]
+
             class_model = ClassScheduleModel(
                 ClassTime=class_times,
                 CourseName=course_name,
+                Building=building,
+                RoomNumber=room_number
+            )
+
+            course_model = CourseScheduleModel(
+                ClassSchedule=class_model,
                 isBiWeekly=isBiWeekly
             )
-            classes.append(class_model)
+            courses.append(course_model)
 
         # Process month's events
         for row in conn.execute(months_events):
@@ -602,7 +732,7 @@ def getMonthStudentSchedule(engine: Engine, student_id: int, date: datetime.date
             assignments.append(assignment_model)
 
     output = ScheduleModel(
-        Classes=classes,
+        Courses=courses,
         Events=events,
         Assignments=assignments
     )
@@ -622,7 +752,7 @@ def getSemesterStudentSchedule(engine: Engine, student_id: int):
         ScheduleModel: Schedule Model containing one class time per course (events and assignments empty).
     """
     
-    classes = []
+    courses = []
 
     with engine.connect() as conn:
         # First get the student's current semester
@@ -630,11 +760,10 @@ def getSemesterStudentSchedule(engine: Engine, student_id: int):
         semester = conn.execute(student_semester).scalar()
         
         if semester is None:
-            return ScheduleModel(Classes=[], Events=[], Assignments=[])
+            return ScheduleModel(Courses=[], Events=[], Assignments=[])
 
         # Get all courses for this student in their current semester
         semester_courses = select(
-            CourseCatalog.courseName,
             CourseCatalog.courseId,
             CourseCatalog.isBiWeekly
         ).select_from(CourseStudent).join(
@@ -649,19 +778,11 @@ def getSemesterStudentSchedule(engine: Engine, student_id: int):
 
         # For each course, get a representative class time
         for course_row in conn.execute(semester_courses):
-            course_name, course_id, is_biweekly = course_row
+            course_id, is_biweekly = course_row
             
-            # Get all class times for this course ordered by date
-            class_times = select(
-                ClassDateTime.dateStartTime,
-                ClassDateTime.endTime
-            ).where(
-                ClassDateTime.courseId == course_id
-            ).order_by(
-                ClassDateTime.dateStartTime
-            )
-            
-            times = conn.execute(class_times).fetchall()
+            # Get schedule for course
+            course_schedule = getCourseSchedule(engine=engine, course_id=course_id)
+            times = course_schedule.ClassTime
             
             # Skip if no class times found
             if not times:
@@ -674,29 +795,356 @@ def getSemesterStudentSchedule(engine: Engine, student_id: int):
             else:
                 # Pick a time from the middle third of the semester
                 start_idx = len(times) // 3
-                end_idx = (2 * len(times)) // 3
                 representative_time = times[start_idx]
             
             # Create the class model
-            date_start_time, end_time = representative_time
-            class_times = StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
-            )
-            class_model = ClassScheduleModel(
-                ClassTime=class_times,
-                CourseName=course_name,
+
+            course_schedule.ClassTime = [representative_time]
+
+            course_model = CourseScheduleModel(
+                ClassSchedule=course_schedule,
                 isBiWeekly=is_biweekly
             )
-            classes.append(class_model)
+            courses.append(course_model)
 
     # Return schedule model with empty events and assignments
     output = ScheduleModel(
-        Classes=classes,
+        Courses=courses,
         Events=[],
         Assignments=[]
     )
     return output
+
+
+# ----------------------------------------------------------------------------
+# Teacher Schedule
+# ----------------------------------------------------------------------------
+
+def getDayTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date = None):
+    """
+    Gets the teacher's schedule for a given day (default current day).
+
+    Args:
+        engine (Engine): Engine connection to use.
+        teacher_id (int): Teacher ID to get schedule for.
+        date (datetime.date): Any date to get the schedule for.
+
+    Returns:
+        ScheduleModel: Schedule Model containing courses and events
+    """
+
+    courses = []
+    events = []
+
+    if date is None:
+        date = datetime.date.today()
+
+    day_start = datetime.datetime.combine(date, datetime.time.min)
+    day_end = datetime.datetime.combine(date, datetime.time.max)
+
+    with engine.connect() as conn:
+        todays_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
+            and_(
+                ClassDateTime.dateStartTime >= day_start,
+                ClassDateTime.dateStartTime < day_end,
+                CourseCatalog.courseId == ClassDateTime.courseId,
+                Room.courseId == CourseCatalog.courseId,
+                CourseTeacher.teacherId == teacher_id,
+                CourseTeacher.courseId == CourseCatalog.courseId
+            )
+        )
+
+        todays_events = select(
+            UniversityEvents.eventName,
+            UniversityEvents.dateStartTime,
+            UniversityEvents.dateEndTime,
+            UniversityEvents.isHoliday
+        ).where(
+            and_(
+                UniversityEvents.dateStartTime <= day_end,
+                UniversityEvents.dateEndTime >= day_start
+            )
+        )
+
+        # Process month's classes
+        for row in conn.execute(todays_courses):
+            course_name, isBiWeekly, building, room_number = row
+            
+            class_times_sel = select(
+                ClassDateTime.dateStartTime,
+                ClassDateTime.endTime
+            ).where(
+                and_(
+                    ClassDateTime.courseId == CourseCatalog.courseId,
+                    ClassDateTime.dateStartTime >= day_start,
+                    ClassDateTime.dateStartTime < day_end
+                )
+            )
+            
+            class_times = conn.execute(class_times_sel).fetchall()
+            class_times = [StartEndTimeModel(
+                StartDateTime=date_start_time,
+                EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
+            ) for date_start_time, end_time in class_times]
+
+            class_model = ClassScheduleModel(
+                ClassTime=class_times,
+                CourseName=course_name,
+                Building=building,
+                RoomNumber=room_number
+            )
+
+            course_model = CourseScheduleModel(
+                ClassSchedule=class_model,
+                isBiWeekly=isBiWeekly
+            )
+            courses.append(course_model)
+
+        # Process month's events
+        for row in conn.execute(todays_events):
+            event_name, date_start_time, date_end_time, is_holiday = row
+            event_times = StartEndTimeModel(
+                StartDateTime=date_start_time,
+                EndDateTime=date_end_time
+            )
+            event_model = EventScheduleModel(
+                EventTime=event_times,
+                EventName=event_name,
+                IsHoliday=is_holiday
+            )
+            events.append(event_model)
+
+    output = ScheduleModel(
+        Courses=courses,
+        Events=events,
+        Assignments=[]
+    )
+    return output
+
+
+def getWeekTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date = None):
+    """
+    Gets the teacher's schedule for a given week (default current week).
+    Week is considered Monday through Sunday.
+
+    Args:
+        engine (Engine): Engine connection to use.
+        teacher_id (int): Teacher ID to get schedule for.
+        date (datetime.date): Any date within the week to get the schedule for.
+
+    Returns:
+        ScheduleModel: Schedule Model containing courses and events
+    """
+
+    courses = []
+    events = []
+
+    if date is None:
+        date = datetime.date.today()
+
+    # Calculate start of week (Monday) and end of week (Sunday)
+    week_start = date - datetime.timedelta(days=date.weekday())  # Monday
+    week_end = week_start + datetime.timedelta(days=6)  # Sunday
+    
+    # Convert to datetime for full day range
+    week_start = datetime.datetime.combine(week_start, datetime.time.min)
+    week_end = datetime.datetime.combine(week_end, datetime.time.max)
+
+    with engine.connect() as conn:
+        weeks_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
+            and_(
+                ClassDateTime.dateStartTime >= week_start,
+                ClassDateTime.dateStartTime < week_end,
+                CourseCatalog.courseId == ClassDateTime.courseId,
+                Room.courseId == CourseCatalog.courseId,
+                CourseTeacher.teacherId == teacher_id,
+                CourseTeacher.courseId == CourseCatalog.courseId
+            )
+        )
+
+        weeks_events = select(
+            UniversityEvents.eventName,
+            UniversityEvents.dateStartTime,
+            UniversityEvents.dateEndTime,
+            UniversityEvents.isHoliday
+        ).where(
+            and_(
+                UniversityEvents.dateStartTime <= week_end,
+                UniversityEvents.dateEndTime >= week_start
+            )
+        )
+
+        # Process week's classes
+        for row in conn.execute(weeks_courses):
+            course_name, isBiWeekly, building, room_number = row
+            
+            class_times_sel = select(
+                ClassDateTime.dateStartTime,
+                ClassDateTime.endTime
+            ).where(
+                and_(
+                    ClassDateTime.courseId == CourseCatalog.courseId,
+                    ClassDateTime.dateStartTime >= week_start,
+                    ClassDateTime.dateStartTime < week_end
+                )
+            )
+            
+            class_times = conn.execute(class_times_sel).fetchall()
+            class_times = [StartEndTimeModel(
+                StartDateTime=date_start_time,
+                EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
+            ) for date_start_time, end_time in class_times]
+
+            class_model = ClassScheduleModel(
+                ClassTime=class_times,
+                CourseName=course_name,
+                Building=building,
+                RoomNumber=room_number
+            )
+
+            course_model = CourseScheduleModel(
+                ClassSchedule=class_model,
+                isBiWeekly=isBiWeekly
+            )
+            courses.append(course_model)
+
+        # Process week's events
+        for row in conn.execute(weeks_events):
+            event_name, date_start_time, date_end_time, is_holiday = row
+            event_times = StartEndTimeModel(
+                StartDateTime=date_start_time,
+                EndDateTime=date_end_time
+            )
+            event_model = EventScheduleModel(
+                EventTime=event_times,
+                EventName=event_name,
+                IsHoliday=is_holiday
+            )
+            events.append(event_model)
+
+    output = ScheduleModel(
+        Courses=courses,
+        Events=events,
+        Assignments=[]
+    )
+    return output
+
+
+def getMonthTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date = None):
+    """
+    Gets the teacher's schedule for a given month (default current month).
+
+    Args:
+        engine (Engine): Engine connection to use.
+        teacher_id (int): Teacher ID to get schedule for.
+        date (datetime.date): Any date within the month to get the schedule for.
+
+    Returns:
+        ScheduleModel: Schedule Model containing courses and events
+    """
+
+    courses = []
+    events = []
+
+    if date is None:
+        date = datetime.date.today()
+
+    # Calculate start and end of month
+    month_start = date.replace(day=1)
+    # Get last day by getting first day of next month and subtracting one day
+    if date.month == 12:
+        next_month = date.replace(year=date.year + 1, month=1, day=1)
+    else:
+        next_month = date.replace(month=date.month + 1, day=1)
+    month_end = next_month - datetime.timedelta(days=1)
+    
+    # Convert to datetime for full day range
+    month_start = datetime.datetime.combine(month_start, datetime.time.min)
+    month_end = datetime.datetime.combine(month_end, datetime.time.max)
+
+    with engine.connect() as conn:
+        months_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
+            and_(
+                ClassDateTime.dateStartTime >= month_start,
+                ClassDateTime.dateStartTime < month_end,
+                CourseCatalog.courseId == ClassDateTime.courseId,
+                Room.courseId == CourseCatalog.courseId,
+                CourseTeacher.teacherId == teacher_id,
+                CourseTeacher.courseId == CourseCatalog.courseId
+            )
+        )
+
+        months_events = select(
+            UniversityEvents.eventName,
+            UniversityEvents.dateStartTime,
+            UniversityEvents.dateEndTime,
+            UniversityEvents.isHoliday
+        ).where(
+            and_(
+                UniversityEvents.dateStartTime <= month_end,
+                UniversityEvents.dateEndTime >= month_start
+            )
+        )
+
+        # Process month's classes
+        for row in conn.execute(months_courses):
+            course_name, isBiWeekly, building, room_number = row
+            
+            class_times_sel = select(
+                ClassDateTime.dateStartTime,
+                ClassDateTime.endTime
+            ).where(
+                and_(
+                    ClassDateTime.courseId == CourseCatalog.courseId,
+                    ClassDateTime.dateStartTime >= month_start,
+                    ClassDateTime.dateStartTime < month_end
+                )
+            )
+            
+            class_times = conn.execute(class_times_sel).fetchall()
+            class_times = [StartEndTimeModel(
+                StartDateTime=date_start_time,
+                EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
+            ) for date_start_time, end_time in class_times]
+
+            class_model = ClassScheduleModel(
+                ClassTime=class_times,
+                CourseName=course_name,
+                Building=building,
+                RoomNumber=room_number
+            )
+
+            course_model = CourseScheduleModel(
+                ClassSchedule=class_model,
+                isBiWeekly=isBiWeekly
+            )
+            courses.append(course_model)
+
+        # Process month's events
+        for row in conn.execute(months_events):
+            event_name, date_start_time, date_end_time, is_holiday = row
+            event_times = StartEndTimeModel(
+                StartDateTime=date_start_time,
+                EndDateTime=date_end_time
+            )
+            event_model = EventScheduleModel(
+                EventTime=event_times,
+                EventName=event_name,
+                IsHoliday=is_holiday
+            )
+            events.append(event_model)
+
+    output = ScheduleModel(
+        Courses=courses,
+        Events=events,
+        Assignments=[]
+    )
+    return output
+
+
+# ----------------------------------------------------------------------------
+# University Events
+# ----------------------------------------------------------------------------
 
 
 # Get University Events From Today On or From Custom Start Date/Time
@@ -729,34 +1177,8 @@ def getUniversityEvents(engine: Engine, start_date: datetime.datetime = None):
     return output
 
 
-# Get All Holidays From University Events
-def getHolidays(engine: Engine):
-    """Gets all the holidays stored in UniversityEvents.
-    
-    Note:
-    The Date/Start and Date/End of output store a datetime.datetime object. It can be used normally.
-    
-    Args:
-    engine: Engine connection to use.
-    
-    Returns:
-    output: []  list of dictionaries. Dict format: {"Event ID", "Event Name", "Date and Start Time", "Date and End Time", "Holiday"}
-    """
-    
-    output = []
-    
-    with engine.connect() as conn:
-        
-        event_select = select(UniversityEvents).where(UniversityEvents.isHoliday == True)
-        
-        for row in conn.execute(event_select):
-            output.append({"Event ID":row[0], "Event Name":row[1], "Date and Start Time":row[2], "Date and End Time":row[3], "Holiday":row[4]})
-            
-    return output
-
-
 # Get All Holidays From University Events From Today or Custom Start
-def getCustomHolidays(engine: Engine, start_date: datetime.datetime = None):
+def getHolidays(engine: Engine, start_date: datetime.datetime = None):
     """Gets all the holidays stored in UniversityEvents, from today or from custom start.
     
     Note:
