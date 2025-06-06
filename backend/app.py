@@ -59,6 +59,10 @@ def get_db():
     finally:
         db.close()
 
+# ----------------------------------------------------------------------------
+# Login, Registration, and Authentication
+# ----------------------------------------------------------------------------
+
 # Authentication endpoint
 @app.post("/token", response_model=Token)
 async def login_for_access_token(
@@ -245,6 +249,10 @@ async def read_users_me(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(e)}"
         )
+    
+# ----------------------------------------------------------------------------
+# Courses
+# ----------------------------------------------------------------------------
 
 # GET All Student Courses
 @app.get("/student/{student_id}/courses", response_model=StudentCourseListModel)
@@ -255,6 +263,22 @@ def student_courses_get(
     if current_user.role.upper() != "STUDENT" or current_user.user_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getStudentCourses(engine=engine, student_id=student_id)
+
+
+# GET Teacher Courses
+@app.get("/teacher/{teacher_id}/courses", response_model=TeacherCourseListModel)
+def teacher_courses_get(
+    teacher_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER" or current_user.user_id != teacher_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this teacher's data")
+    return getTeacherCourses(engine=engine, teacher_id=teacher_id)
+
+
+# ----------------------------------------------------------------------------
+# Student Grades
+# ----------------------------------------------------------------------------
 
 # GET Student Grades for Specific Course
 @app.get("/student/{student_id}/courses/{course_id}/grades", response_model=GradeListModel)
@@ -267,6 +291,7 @@ def student_course_grades_get(
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getStudentGradesForCourse(engine=engine, student_id=student_id, course_id=course_id)
 
+
 # GET All Student Grades
 @app.get("/student/{student_id}/grades", response_model=GradeListModel)
 def student_grades_get(
@@ -277,15 +302,10 @@ def student_grades_get(
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getStudentGrades(engine=engine, student_id=student_id)
 
-# GET Teacher Courses
-@app.get("/teacher/{teacher_id}/courses", response_model=TeacherCourseListModel)
-def teacher_courses_get(
-    teacher_id: int,
-    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
-):
-    if current_user.role.upper() != "TEACHER" or current_user.user_id != teacher_id:
-        raise HTTPException(status_code=403, detail="Not authorized to access this teacher's data")
-    return getTeacherCourses(engine=engine, teacher_id=teacher_id)
+
+# ----------------------------------------------------------------------------
+# Student Schedule
+# ----------------------------------------------------------------------------
 
 # Student Schedule for today
 @app.get("/student/{student_id}/schedule/day/", response_model=ScheduleModel)
@@ -296,6 +316,7 @@ def student_schedule_day_get(
     if current_user.role.upper() != "STUDENT" or current_user.user_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getDayStudentSchedule(engine=engine, student_id=student_id)
+
 
 # Student Schedule for a specific day
 @app.get("/student/{student_id}/schedule/day/{date}", response_model=ScheduleModel)
@@ -308,6 +329,7 @@ def student_schedule_day_get(
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getDayStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
 
+
 # Student Schedule for this week
 @app.get("/student/{student_id}/schedule/week/", response_model=ScheduleModel)
 def student_schedule_week_get(
@@ -317,6 +339,7 @@ def student_schedule_week_get(
     if current_user.role.upper() != "STUDENT" or current_user.user_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getWeekStudentSchedule(engine=engine, student_id=student_id)
+
 
 # Student Schedule for a specific week
 @app.get("/student/{student_id}/schedule/week/{date}", response_model=ScheduleModel)
@@ -329,6 +352,7 @@ def student_schedule_week_get(
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getWeekStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
 
+
 # Student Schedule for this month
 @app.get("/student/{student_id}/schedule/month/", response_model=ScheduleModel)
 def student_schedule_month_get(
@@ -338,6 +362,7 @@ def student_schedule_month_get(
     if current_user.role.upper() != "STUDENT" or current_user.user_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getMonthStudentSchedule(engine=engine, student_id=student_id)
+
 
 # Student Schedule for a specific month
 @app.get("/student/{student_id}/schedule/month/{date}", response_model=ScheduleModel)
@@ -349,6 +374,95 @@ def student_schedule_month_get(
     if current_user.role.upper() != "STUDENT" or current_user.user_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getMonthStudentSchedule(engine=engine, student_id=student_id, date=convert_str_to_datetime(date))
+
+
+# Student Semester Schedule
+@app.get("/student/{student_id}/schedule/semester", response_model=ScheduleModel)
+def student_schedule_semsester_get(
+    student_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "STUDENT" or current_user.user_id != student_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
+    return getSemesterStudentSchedule(engine=engine, student_id=student_id)
+
+
+# ----------------------------------------------------------------------------
+# Teacher Schedule
+# ----------------------------------------------------------------------------
+
+# Teacher Schedule for today
+@app.get("/teacher/{teacher_id}/schedule/day/", response_model=ScheduleModel)
+def teacher_schedule_day_get(
+    teacher_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER" or current_user.user_id != teacher_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this teacher's data")
+    return getDayTeacherSchedule(engine=engine, teacher_id=teacher_id)
+
+
+# Teacher Schedule for a specific day
+@app.get("/teacher/{teacher_id}/schedule/day/{date}", response_model=ScheduleModel)
+def teacher_schedule_day_get(
+    teacher_id: int, 
+    date: str,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER" or current_user.user_id != teacher_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this teacher's data")
+    return getDayTeacherSchedule(engine=engine, teacher_id=teacher_id, date=convert_str_to_datetime(date))
+
+
+# Teacher Schedule for this week
+@app.get("/teacher/{teacher_id}/schedule/week/", response_model=ScheduleModel)
+def teacher_schedule_week_get(
+    teacher_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER" or current_user.user_id != teacher_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this teacher's data")
+    return getWeekTeacherSchedule(engine=engine, teacher_id=teacher_id)
+
+
+# Teacher Schedule for a specific week
+@app.get("/teacher/{teacher_id}/schedule/week/{date}", response_model=ScheduleModel)
+def teacher_schedule_week_get(
+    teacher_id: int, 
+    date: str,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER" or current_user.user_id != teacher_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this teacher's data")
+    return getWeekTeacherSchedule(engine=engine, teacher_id=teacher_id, date=convert_str_to_datetime(date))
+
+
+# Teacher Schedule for this month
+@app.get("/teacher/{teacher_id}/schedule/month/", response_model=ScheduleModel)
+def teacher_schedule_month_get(
+    teacher_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER" or current_user.user_id != teacher_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this teacher's data")
+    return getMonthTeacherSchedule(engine=engine, teacher_id=teacher_id)
+
+
+# Teacher Schedule for a specific month
+@app.get("/teacher/{teacher_id}/schedule/month/{date}", response_model=ScheduleModel)
+def teacher_schedule_month_get(
+    teacher_id: int, 
+    date: str,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER" or current_user.user_id != teacher_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this teacher's data")
+    return getMonthTeacherSchedule(engine=engine, teacher_id=teacher_id, date=convert_str_to_datetime(date))
+
+
+# ----------------------------------------------------------------------------
+# Main Method
+# ----------------------------------------------------------------------------
 
 # Run the backend
 if __name__ == "__main__":
