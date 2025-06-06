@@ -139,22 +139,7 @@ class StartEndTimeModel(BaseModel):
     
     StartDateTime: datetime.datetime
     EndDateTime: datetime.datetime
-    
 
-# Class Schedule Model
-class ClassScheduleModel(BaseModel):
-    """Model for Classes part of Schedule.
-    
-    Args:
-        ClassTime: StartEndTimeModel
-        CourseName: str
-        isBiWeekly: bool
-    """
-    
-    ClassTime: StartEndTimeModel
-    CourseName: str
-    isBiWeekly: bool = False
-    
 
 # Event Schedule Model
 class EventScheduleModel(BaseModel):
@@ -184,6 +169,36 @@ class AssignmentScheduleModel(BaseModel):
     CourseName: str
     AssignmentDueDateTime: datetime.datetime
     AssignmentName: str
+
+
+# Class Schedule Model
+class ClassScheduleModel(BaseModel):
+    """Model for a single Class.
+    
+    Args:
+        ClassTime: StartEndTimeModel
+        CourseName: str
+        Building: opt str
+        RoomNumber: opt int
+    """
+    
+    ClassTime: List[StartEndTimeModel] = []
+    CourseName: str
+    Building: Optional[str]
+    RoomNumber: Optional[int]
+
+
+# Course Schedule Model
+class CourseScheduleModel(BaseModel):
+    """Model for Courses part of Schedule.
+    
+    Args:
+        ClassSchedule: ClassScheduleModel
+        isBiWeekly: bool
+    """
+    
+    ClassSchedule: ClassScheduleModel
+    isBiWeekly: bool = False
     
     
 # Schedule Model
@@ -191,11 +206,14 @@ class ScheduleModel(BaseModel):
     """Stores the entire schedule in one model.
 
     Args:
-        Classes (List[ClassScheduleModel]): List of class schedules.
+        Courses (List[CourseScheduleModel]): List of course schedules.
         Events (List[EventScheduleModel]): List of event schedules.
         Assignments (List[AssignmentScheduleModel]): List of assignment schedules.
     """
     
-    Classes: List[ClassScheduleModel] = []
+    Courses: List[CourseScheduleModel] = []
     Events: List[EventScheduleModel] = []
     Assignments: List[AssignmentScheduleModel] = []
+
+    
+    
