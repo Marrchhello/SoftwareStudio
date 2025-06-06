@@ -1,4 +1,25 @@
 services:
+  backend:
+    build: .
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - ${PWD}/backend:/app/backend
+
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:password@SS_Database:5432/postgres
+      - SECRET_KEY=0141bc81b542426afb1d83ba137c3b2f4ce24af700d82f4fdcd3a178ef59073c
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+    depends_on:
+      SS_Database:
+        condition: service_healthy
+
+    networks:
+      - app-network
+
   SS_Database:
     image: "postgres:latest"
 
@@ -6,17 +27,26 @@ services:
       - 5432:5432
 
     networks:
-      - postgres-network
+      - app-network
 
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: postgres
 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
     volumes:
       - ${PWD}/ss_database/:/var/lib/postgresql/data/
       - ${PWD}/init.sql:/docker-entrypoint-initdb.d/init.sql
 
+volumes:
+  postgres_data:
+
 networks:
-  postgres-network:
+  app-network:
     driver: bridge

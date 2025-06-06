@@ -16,15 +16,22 @@ class DatabaseManager:
     def add_student(self, student_id: int, semester: int = None, degree_id: int = None, age: int = None, email: str = None):
         # Add a new student to the database
         with self.Session() as session:
-            student = Student(
-                studentId=student_id,
-                semester=semester,
-                degreeId=degree_id,
-                age=age,
-                email=email
-            )
-            session.add(student)
-            session.commit()
+            try:
+                student = Student(
+                    studentId=student_id,
+                    semester=semester,
+                    degreeId=degree_id,
+                    age=age,
+                    email=email
+                )
+                session.add(student)
+                session.commit()
+            except IntegrityError as e:
+                session.rollback()
+                raise ValueError(f"Database integrity error: {str(e.orig)}")
+            except Exception as e:
+                session.rollback()
+                raise ValueError(f"Error adding student: {str(e)}")
 
     def add_course(self, course_id: int, course_name: str, semester: int = None, ects: int = None):
         # Add a new course to the catalog
@@ -302,7 +309,7 @@ class DatabaseManager:
     def register_user(self, role, user_id, **kwargs):
         """
         Register a user as a 'student' or 'teacher'.
-        kwargs can include name, title, email, semester, year, etc.
+        kwargs can include name, title, email, semester, degreeId, age, etc.
         """
         with self.Session() as session:
             try:
@@ -310,7 +317,6 @@ class DatabaseManager:
                     student = Student(
                         studentId=user_id,
                         semester=kwargs.get('semester', 1),
-                        year=kwargs.get('year', 1),
                         degreeId=kwargs.get('degreeId', 0),
                         age=kwargs.get('age'),
                         email=kwargs.get('email')
