@@ -1,4 +1,4 @@
 test*
-/ss_database
-/ss_database/*
-ss_data*
+backend/__pycache__/
+backend/__pycache__/*
+backend/__pycache_*
