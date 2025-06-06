@@ -1,6 +1,5 @@
 from Database import *
 from Models import *
-import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.orm import *
 

@@ -9,7 +9,7 @@ services:
       - ${PWD}/backend:/app/backend
 
     environment:
-      - DATABASE_URL=postgresql://postgres:password@db:5432/postgres
+      - DATABASE_URL=postgresql+psycopg://postgres:password@SS_Database:5432/postgres
       - SECRET_KEY=0141bc81b542426afb1d83ba137c3b2f4ce24af700d82f4fdcd3a178ef59073c
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
 

@@ -10,7 +10,7 @@ from auth import get_password_hash, verify_password
 
 # Check if student/teacher/staff account can be created.
 # Change log V1: created function to test combinations of uuid, roleId, and role for validity.
-def can_create_user(engine: Engine, uuid: int, roleId: int, role: Roles) -> (bool, str):
+def can_create_user(engine: Engine, uuid: int, roleId: int, role: Roles) -> tuple[bool, str]:
     """Checks if student/teacher/staff account can be created.
     
     Params:
@@ -91,7 +91,7 @@ def create_user(engine, uuid: int, roleId: int, username: str, password: str, ro
 
 
 # Verify user credentials
-def verify_user_credentials(engine, username: str, password: str) -> (bool, dict):
+def verify_user_credentials(engine, username: str, password: str) -> tuple[bool, dict]:
     """Verify user credentials.
     
     Params:

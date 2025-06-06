@@ -17,7 +17,7 @@ def login_user(username: str, password: str) -> Optional[Dict[str, Any]]:
     try:
         # Attempt to get token
         token_response = requests.post(
-            'http://localhost:8000/token',
+            'http://127.0.0.1:8000/token',
             data={
                 'username': username,
                 'password': password
