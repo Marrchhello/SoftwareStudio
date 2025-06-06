@@ -328,19 +328,34 @@ class User(Base):
     roleId: Mapped[int] = mapped_column(nullable=False)
 
     def verify_password(self, pass_bytes):
-        """Verify user password.
+        """Verify the password.
         
-        Param:
-        pass_bytes
-        Requires password passed in as bytes. {password}.encode()
-        
-        Returns: 
-        boolean True / False
+        Args:
+            pass_bytes: The password to verify (string or bytes)
+            
+        Returns:
+            bool: True if password matches, False otherwise
         """
-        return bcrypt.checkpw(pass_bytes, self.password)
+        try:
+            # Convert input to string if it's bytes
+            if isinstance(pass_bytes, bytes):
+                pass_bytes = pass_bytes.decode('utf-8')
+                
+            # Convert stored password to string if it's bytes
+            stored_pass = self.password
+            if isinstance(stored_pass, bytes):
+                stored_pass = stored_pass.decode('utf-8')
+                
+            return bcrypt.checkpw(
+                pass_bytes.encode('utf-8'),
+                stored_pass.encode('utf-8')
+            )
+        except Exception as e:
+            print(f"DEBUG: Password verification error in User model: {e}")
+            return False
 
     def __repr__(self):
-        return f"User ID: {self.userId}, Username: {self.username}, Hashed Password: {self.password}, Role: {self.role}, Role ID: {self.roleId}"
+        return f"User(userId={self.userId}, username={self.username}, role={self.role}, roleId={self.roleId})"
     
     
 # V1: FAQ Data

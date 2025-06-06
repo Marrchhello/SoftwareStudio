@@ -65,24 +65,33 @@ async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
+    print(f"\nDEBUG: Token request received for username: {form_data.username}")
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
+        print("DEBUG: Authentication failed")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    print(f"DEBUG: User authenticated successfully: {user}")
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+    # Ensure consistent types in token data
+    token_data = {
+        "sub": str(user["user_id"]),  # Store as string in token
+        "role": str(user["role"]),
+        "role_id": int(user["role_id"])
+    }
+    
+    print(f"DEBUG: Creating token with data: {token_data}")
     access_token = create_access_token(
-        data={
-            "sub": user["user_id"], 
-            "role": user["role"],
-            "role_id": user["role_id"]
-        }, 
+        data=token_data, 
         expires_delta=access_token_expires
     )
     
+    print(f"DEBUG: Token created successfully")
     return {"access_token": access_token, "token_type": "bearer"}
 
 # Home endpoint
@@ -218,14 +227,24 @@ async def login(user_id: int):
 
 # User profile endpoint
 @app.get("/me", response_model=UserAuth)
-async def read_users_me(current_user: Annotated[UserAuth, Depends(get_current_active_user)]):
-    print(f"DEBUG: /me endpoint accessed")
+async def read_users_me(
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    print(f"\nDEBUG: /me endpoint accessed")
     print(f"DEBUG: Current user data: {current_user}")
     try:
-        return current_user
+        # Ensure types are correct
+        return UserAuth(
+            user_id=int(current_user.user_id),
+            role=str(current_user.role),
+            role_id=int(current_user.role_id)
+        )
     except Exception as e:
         print(f"DEBUG: Error in /me endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
 
 # GET All Student Courses
 @app.get("/student/{student_id}/courses", response_model=StudentCourseListModel)

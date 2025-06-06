@@ -28,6 +28,7 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     user_id: Optional[int] = None
     role: Optional[str] = None
+    role_id: Optional[int] = None
 
 # User authentication models
 class UserAuth(BaseModel):
@@ -37,16 +38,23 @@ class UserAuth(BaseModel):
 
 # Password verification
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        # Handle bytes to string conversion if needed
+        if isinstance(hashed_password, bytes):
+            hashed_password = hashed_password.decode('utf-8')
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception as e:
+        print(f"DEBUG: Password verification error: {e}")
+        return False
 
 # Password hashing
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 # Authenticate user
-# Authenticate user
 def authenticate_user(db_session: Session, username: str, password: str) -> Optional[Dict[str, Any]]:
     try:
+        print(f"DEBUG: Attempting authentication for username: {username}")
         # Query the database for the user
         query = select(User).where(User.username == username)
         result = db_session.execute(query).first()
@@ -58,25 +66,18 @@ def authenticate_user(db_session: Session, username: str, password: str) -> Opti
         user = result[0]
         print(f"DEBUG: Found user: {user.userId}, role: {user.role.value}")
         
-        # Handle password decoding properly
-        stored_password = user.password
-        if isinstance(stored_password, bytes):
-            stored_password_str = stored_password.decode('utf-8')
-        else:
-            stored_password_str = stored_password
-        
-        # Verify the password
-        if not verify_password(password, stored_password_str):
+        # Handle password verification
+        if not verify_password(password, user.password):
             print(f"DEBUG: Password verification failed for user: {username}")
             return None
         
         print(f"DEBUG: Authentication successful for user: {username}")
         
-        # Return user information
+        # Return user information with consistent types
         return {
-            "user_id": user.userId,
-            "role": user.role.value,
-            "role_id": user.roleId
+            "user_id": int(user.userId),  # Ensure it's an int
+            "role": str(user.role.value),  # Ensure it's a string
+            "role_id": int(user.roleId)    # Ensure it's an int
         }
     except Exception as e:
         print(f"DEBUG: Authentication error: {e}")
@@ -84,18 +85,36 @@ def authenticate_user(db_session: Session, username: str, password: str) -> Opti
 
 # Create access token
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    try:
+        to_encode = data.copy()
         
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+        # Force types in token payload
+        print(f"DEBUG: Original token data: {to_encode}")
+        
+        # Convert values to required types
+        if "sub" in to_encode:
+            to_encode["sub"] = str(to_encode["sub"])  # Store as string in token
+        if "role_id" in to_encode:
+            to_encode["role_id"] = int(to_encode["role_id"])
+        if "role" in to_encode:
+            to_encode["role"] = str(to_encode["role"])
+        
+        if expires_delta:
+            expire = datetime.now(timezone.utc) + expires_delta
+        else:
+            expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            
+        to_encode.update({"exp": expire})
+        print(f"DEBUG: Creating token with payload: {to_encode}")
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        return encoded_jwt
+    except Exception as e:
+        print(f"DEBUG: Token creation error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not create access token"
+        )
 
-# Get current user from token
 # Get current user from token
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserAuth:
     credentials_exception = HTTPException(
@@ -105,10 +124,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserAuth:
     )
     
     try:
-        # Debug the incoming token
         print("\nDEBUG: Token validation started")
-        print(f"DEBUG: Received token type: {type(token)}")
-        print(f"DEBUG: Token prefix: {token[:20]}...")
+        print(f"DEBUG: Raw token: {token[:20]}...")
 
         # Decode JWT token with explicit verification
         try:
@@ -130,26 +147,43 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserAuth:
             print(f"DEBUG: JWT decode error: {jwt_error}")
             raise credentials_exception
 
-        # Extract and validate required fields
-        user_id: int = payload.get("sub")
-        role: str = payload.get("role")
-        role_id: int = payload.get("role_id")
-        
-        print(f"DEBUG: Extracted fields from payload:")
-        print(f"- user_id: {user_id} (type: {type(user_id)})")
-        print(f"- role: {role} (type: {type(role)})")
-        print(f"- role_id: {role_id} (type: {type(role_id)})")
+        # Extract and validate required fields with type conversion
+        try:
+            # Get values from payload
+            user_id_str = payload.get("sub")
+            role = payload.get("role")
+            role_id = payload.get("role_id")
+            
+            print(f"DEBUG: Raw values from payload:")
+            print(f"- user_id_str: {user_id_str} (type: {type(user_id_str)})")
+            print(f"- role: {role} (type: {type(role)})")
+            print(f"- role_id: {role_id} (type: {type(role_id)})")
+            
+            # Validate presence
+            if any(v is None for v in [user_id_str, role, role_id]):
+                print("DEBUG: Missing required fields in token payload")
+                raise credentials_exception
+            
+            # Convert types
+            try:
+                user_id = int(user_id_str)
+                role = str(role)
+                role_id = int(role_id)
+            except (ValueError, TypeError) as e:
+                print(f"DEBUG: Type conversion error: {e}")
+                raise credentials_exception
+            
+            print(f"DEBUG: Converted values:")
+            print(f"- user_id: {user_id} (type: {type(user_id)})")
+            print(f"- role: {role} (type: {type(role)})")
+            print(f"- role_id: {role_id} (type: {type(role_id)})")
+            
+        except Exception as e:
+            print(f"DEBUG: Field extraction/validation error: {e}")
+            raise credentials_exception
 
-        if any(field is None for field in [user_id, role, role_id]):
-            print("DEBUG: Missing required fields in token payload")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token content",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        token_data = TokenData(user_id=user_id, role=role)
-        return UserAuth(user_id=token_data.user_id, role=token_data.role, role_id=role_id)
+        token_data = TokenData(user_id=user_id, role=role, role_id=role_id)
+        return UserAuth(user_id=user_id, role=role, role_id=role_id)
 
     except Exception as e:
         print(f"DEBUG: Unexpected error during token validation: {str(e)}")
@@ -158,13 +192,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserAuth:
 
 # Verify user is active
 async def get_current_active_user(current_user: UserAuth = Depends(get_current_user)) -> UserAuth:
-    # Add any additional checks for active users if needed
+    print(f"DEBUG: Checking active user: {current_user}")
     return current_user
 
 # Role-based access control
 def get_user_with_role(required_role: str):
     async def role_checker(current_user: UserAuth = Depends(get_current_user)) -> UserAuth:
-        if current_user.role != required_role:
+        print(f"DEBUG: Checking role. Required: {required_role}, User has: {current_user.role}")
+        if current_user.role.lower() != required_role.lower():
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Operation requires role: {required_role}"
