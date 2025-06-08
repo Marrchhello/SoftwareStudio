@@ -1158,7 +1158,7 @@ def getUniversityEvents(engine: Engine, start_date: datetime.datetime = None):
     start_date: datetime.datetime (Custom start date and time)
     
     Returns:
-    output: []  list of dictionaries. Dict format: {"Event ID", "Event Name", "Date and Start Time", "Date and End Time", "Holiday"}
+    output: UniEventScheduleModel
     """
     
     output = []
@@ -1171,9 +1171,10 @@ def getUniversityEvents(engine: Engine, start_date: datetime.datetime = None):
         event_select = select(UniversityEvents).where(UniversityEvents.dateStartTime >= start_date)
         
         for row in conn.execute(event_select):
-            output.append({"Event ID":row[0], "Event Name":row[1], "Date and Start Time":row[2], "Date and End Time":row[3], "Holiday":row[4]})
+            event_times = StartEndTimeModel(StartDateTime=row[2], EndDateTime=row[3])
+            output.append(EventScheduleModel(EventTime=event_times, EventName=row[1], IsHoliday=row[4]))
             
-    return output
+    return UniEventScheduleModel(Events=output)
 
 
 # Get All Holidays From University Events From Today or Custom Start

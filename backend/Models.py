@@ -215,5 +215,20 @@ class ScheduleModel(BaseModel):
     Events: List[EventScheduleModel] = []
     Assignments: List[AssignmentScheduleModel] = []
 
+
+# Uni Event Schedule Model
+class UniEventScheduleModel(BaseModel):
+    """Model for University Events part of Schedule.
+    
+    Args:
+        Events: List[EventScheduleModel]
+    """
+    
+    Events: List[EventScheduleModel] = []
+
+    
+    
+    
+    
     
     
