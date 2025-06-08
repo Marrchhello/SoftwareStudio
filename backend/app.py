@@ -465,15 +465,25 @@ def teacher_schedule_month_get(
 # ----------------------------------------------------------------------------
 
 # Get University Events for today
-@app.get("/university/events/", response_model=UniEventScheduleModel)
+@app.get("/events/", response_model=UniEventScheduleModel)
 def university_events_get():
     return getUniversityEvents(engine=engine)
 
 
 # Get University Events for a specific date
-@app.get("/university/events/{date}", response_model=UniEventScheduleModel)
+@app.get("/events/{date}", response_model=UniEventScheduleModel)
 def university_events_get(date: str):
     return getUniversityEvents(engine=engine, start_date=convert_str_to_datetime(date))
+
+
+# ----------------------------------------------------------------------------
+# FAQ
+# ----------------------------------------------------------------------------
+
+# Get FAQ
+@app.get("/faq/", response_model=FAQListModel)
+def faq_get():
+    return getFAQ(engine=engine)
 
 
 # ----------------------------------------------------------------------------
