@@ -42,6 +42,21 @@ class GradeListModel(BaseModel):
     """
     
     GradeList: List[GradeModel] = []
+
+
+# Grade Post Model
+class GradePostModel(BaseModel):
+    """Model for posting a grade.
+
+    Args:
+        student_id: int
+        assignment_id: int
+        grade: opt float
+    """
+    
+    student_id: int
+    assignment_id: int
+    grade: Optional[float]
  
 # ----------------------------------------------------------------------------
 # Courses

@@ -1,13 +1,11 @@
 # Change log V1 -> V2: import enum, datetime, bcrypt, pytz
 
 import enum
-import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from typing import Optional
 import bcrypt
 import datetime
-import pytz
 
 ########################################################################################################################
 # CREATE TABLES

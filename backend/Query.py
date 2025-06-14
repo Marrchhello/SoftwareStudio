@@ -113,34 +113,62 @@ def getStudentGradesForCourse(engine: Engine, student_id: int, course_id: int):
     return GradeListModel(GradeList=output)
 
 
-# Post grade
-def postGrade(engine: Engine, student_id: int, assignment_id: int, grade: float = None):
+# Post grade with model
+def postGrade(engine: Engine, teacher_id: int, model: GradePostModel):
     """Posts a grade for a student in a course.
     
     Args:
     engine: Engine connection to use
-    student_id: student id to post grade for.
-    assignment_id: assignment id to post grade for.
-    grade: grade to post.
+    teacher_id: teacher id who is attempting to post the grade.
+    model: GradePostModel (teacher_id, student_id, assignment_id, grade (opt))
     
     Returns:
-    None
+    dictionary with status_code and detail
     """
 
     with engine.connect() as conn:
 
+        # check if teacher is teaching the course
+        teacher_teaching = select(CourseTeacher.teacherId).where(and_(Assignment.assignmentId == model.assignment_id, Assignment.courseId == CourseTeacher.courseId))
+        teacher_result = conn.execute(teacher_teaching).fetchone()
+        if teacher_result is None or teacher_result[0] != teacher_id:
+            return {"status_code": 403, "detail": "Teacher is not teaching the course"}
+
         # check if grade already exists
-        grade_exists = select(Grade).where(and_(Grade.studentId == student_id, Grade.assignmentId == assignment_id))
+        grade_exists = select(Grade).where(and_(Grade.studentId == model.student_id, Grade.assignmentId == model.assignment_id))
         if conn.execute(grade_exists).fetchone() is not None:
             # update grade
-            grade_update = update(Grade).where(and_(Grade.studentId == student_id, Grade.assignmentId == assignment_id)).values(grade=grade)
+            grade_update = update(Grade).where(and_(Grade.studentId == model.student_id, Grade.assignmentId == model.assignment_id)).values(grade=model.grade)
             conn.execute(grade_update)
             conn.commit()
         else:
             # insert grade
-            grade_insert = insert(Grade).values(studentId=student_id, assignmentId=assignment_id, grade=grade)
+            grade_insert = insert(Grade).values(studentId=model.student_id, assignmentId=model.assignment_id, grade=model.grade)
             conn.execute(grade_insert)
             conn.commit()
+        
+        return {"status_code": 200, "detail": "Grade posted successfully"}
+
+
+# ----------------------------------------------------------------------------
+# Assignments
+# ----------------------------------------------------------------------------
+
+# Post Assignment
+def postAssignment(engine: Engine, course_id: int, assignment_name: str, due_date_time: datetime.datetime, needs_submission: bool, group: int = None):
+    """Posts an assignment for a course.
+    
+    Args:
+    engine: Engine connection to use
+    course_id: course id to post assignment for.
+    assignment_name: name of assignment.
+    due_date_time: due date and time of assignment.
+    needs_submission: whether assignment needs submission.
+    group: group of assignment.
+    
+    Returns:
+    None
+    """
 
 
 # ----------------------------------------------------------------------------

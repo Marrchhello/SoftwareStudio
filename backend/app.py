@@ -303,31 +303,15 @@ def student_grades_get(
     return getStudentGrades(engine=engine, student_id=student_id)
 
 
-# POST Grade
-@app.post("/grade/{student_id}/{assignment_id}/{grade}")
-def student_course_grades_post(
-    student_id: int,
-    assignment_id: int,
-    grade: float,
+# POST Grade (with model)
+@app.post("/grade/")
+def assignment_grade_model_post(
+    model: GradePostModel,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
     if current_user.role.upper() != "TEACHER":
         raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
-    postGrade(engine=engine, student_id=student_id, assignment_id=assignment_id, grade=grade)
-    return {"status_code": 200, "detail": "Grade posted successfully"}
-
-
-# POST Empty Grade
-@app.post("/grade/{student_id}/{assignment_id}/")
-def student_course_grades_post(
-    student_id: int,
-    assignment_id: int,
-    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
-):
-    if current_user.role.upper() != "TEACHER":
-        raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
-    postGrade(engine=engine, student_id=student_id, assignment_id=assignment_id)
-    return {"status_code": 200, "detail": "Grade posted successfully"}
+    return postGrade(engine=engine, teacher_id=current_user.role_id, model=model)
 
 # ----------------------------------------------------------------------------
 # Student Schedule

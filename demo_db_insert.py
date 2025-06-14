@@ -116,6 +116,7 @@ try:
         # Course Teacher
         addlist.append(CourseTeacher(courseTeacherId=0, courseId=0))
         addlist.append(CourseTeacher(courseTeacherId=1, courseId=1, teacherId=1))
+        addlist.append(CourseTeacher(courseTeacherId=2, courseId=2, teacherId=1))
         
         session = Session()
         
