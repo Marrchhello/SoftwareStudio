@@ -3,3 +3,5 @@ test*
 /ss_database/*
 ss_data*
 backend/__pycache__/
+backend/__pyca*
+backend/__pycache__/*
