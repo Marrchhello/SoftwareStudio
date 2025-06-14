@@ -1,6 +1,6 @@
 import React from 'react';
 import { FaSignInAlt, FaUserPlus, FaBell, FaBook, FaCalendarAlt, FaGraduationCap, FaQuestionCircle, FaEnvelope, FaFileAlt, FaShieldAlt } from 'react-icons/fa';
-import logoUPSOS from './logoUPSOS.png';
+import logoUPSOS from '../assets/logoUPSOS.png';
 import './UpsosHomepage.css';
 import { useNavigate } from "react-router-dom";
 

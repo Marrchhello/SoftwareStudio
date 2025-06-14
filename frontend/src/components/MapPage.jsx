@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import Lightbox from 'react-image-lightbox';
 import 'react-image-lightbox/style.css';
 import { Link } from 'react-router-dom';
+import mapImage from '../assets/map_agh.jpg';
+import mapPdf from '../assets/map_agh.pdf';
+import Banner from './Banner';
 import './MapPage.css';
-
-const MAP_IMAGE = '/map_agh.jpg';
-const MAP_PDF = '/map_agh.pdf';
 
 const buildings = [
   "A0 - Rectorate",
@@ -66,83 +66,76 @@ const MapPage = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="map-page-outer">
-      <div className="map-title-bg">
-        <div className="map-title">AGH map</div>
-      </div>
-      <div className="map-breadcrumb">
-        <Link to="/home" className="home-link no-underline">Home page</Link> / AGH map
-      </div>
-      <div className="map-content-row">
-        <div className="image-and-download">
-          <div className="image-preview-wrapper">
-            <img
-              src={MAP_IMAGE}
-              alt="AGH Campus Map"
-              className="map-image"
-              onClick={() => setIsOpen(true)}
-              style={{ cursor: 'zoom-in' }}
-            />
+    <>
+      <Banner />
+      <div className="map-page-outer">
+        <div className="map-title-bg">
+          <div className="map-title">AGH map</div>
+        </div>
+        <div className="map-breadcrumb">
+          <Link to="/" className="home-link no-underline">Home page</Link> / AGH map
+        </div>
+        <div className="map-content-row">
+          <div className="map-section">
+            <div className="image-preview-wrapper">
+              <img
+                src={mapImage}
+                alt="AGH Campus Map"
+                className="map-image"
+                onClick={() => setIsOpen(true)}
+                style={{ cursor: 'zoom-in' }}
+              />
+              <div className="image-overlay">
+                <button className="expand-button" onClick={() => setIsOpen(true)}>
+                  Click to expand
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="download-section">
-            <a
-              href={MAP_PDF}
-              download="AGH_campus_map_printable.pdf"
-              className="download-link"
-            >
-              <strong>AGH campus map in printable version (PDF file, CMYK, 1.3MB)</strong>
-            </a>
-            <a
-              href={MAP_IMAGE}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="download-link"
-            >
-              <strong>AGH campus map in screen version (JPG, RGB file, 980KB)</strong>
-            </a>
+          <div className="content-section">
+            <div className="download-section">
+              <a
+                href={mapPdf}
+                download="AGH_campus_map_printable.pdf"
+                className="download-link"
+              >
+                <strong>AGH campus map in printable version (PDF file, CMYK, 1.3MB)</strong>
+              </a>
+              <a
+                href={mapImage}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="download-link"
+              >
+                <strong>AGH campus map in screen version (JPG, RGB file, 980KB)</strong>
+              </a>
+            </div>
+            <div className="building-list">
+              <h3>Buildings</h3>
+              <ol>
+                {buildings.map((b, idx) => (
+                  <li key={idx}>{b}</li>
+                ))}
+              </ol>
+            </div>
           </div>
         </div>
-        <div className="building-list">
-          <h3>Buildings</h3>
-          <ol>
-            {buildings.map((b, idx) => (
-              <li key={idx}>{b}</li>
-            ))}
-          </ol>
-        </div>
+        {isOpen && (
+          <div className="lightbox-container">
+            <div className="lightbox-content">
+              <button className="close-button" onClick={() => setIsOpen(false)}>
+                ✕
+              </button>
+              <img
+                src={mapImage}
+                alt="AGH Campus Map (Full Size)"
+                className="lightbox-image"
+              />
+            </div>
+          </div>
+        )}
       </div>
-      {isOpen && (
-        <Lightbox
-          mainSrc={MAP_IMAGE}
-          onCloseRequest={() => setIsOpen(false)}
-          imageTitle="AGH Campus Map"
-          toolbarButtons={[
-            <a
-              key="download-pdf"
-              href={MAP_PDF}
-              download="AGH_campus_map_printable.pdf"
-              className="lightbox-toolbar-btn"
-              title="Download PDF"
-            >PDF</a>,
-            <button
-              key="fullscreen"
-              className="lightbox-toolbar-btn"
-              title="Fullscreen"
-              onClick={() => {
-                const el = document.querySelector('.ril-image-current');
-                if (el && el.requestFullscreen) el.requestFullscreen();
-              }}
-            >⛶</button>
-          ]}
-          enableZoom={true}
-          animationDuration={0}
-          animationDisabled={true}
-          reactModalStyle={{
-            overlay: { backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 2000 }
-          }}
-        />
-      )}
-    </div>
+    </>
   );
 };
 

@@ -122,92 +122,105 @@ async def register_info():
         }
     }
 
+# @app.post("/register")
+# async def register(
+#     role: str,
+#     user_id: int,
+#     email: str,
+#     username: str,
+#     password: str,
+#     name: str = None,
+#     title: str = None,
+#     semester: int = 1,
+#     degreeId: int = 1,      # Default to Computer Science
+#     age: int = None,        
+# ):
+#     try:
+#         role = role.lower()
+#         if role not in ['student', 'teacher']:
+#             raise ValueError("Role must be either 'student' or 'teacher'")
+
+#         # Check if user already exists
+#         with Session(engine) as session:
+#             existing_user = session.query(User).filter(User.userId == user_id).first()
+#             if existing_user:
+#                 raise ValueError(f"User with ID {user_id} already exists")
+
+#             if role == 'student':
+#                 existing_student = session.query(Student).filter(Student.studentId == user_id).first()
+#                 if existing_student:
+#                     raise ValueError(f"Student with ID {user_id} already exists")
+#             elif role == 'teacher':
+#                 existing_teacher = session.query(Teacher).filter(Teacher.teacherId == user_id).first()
+#                 if existing_teacher:
+#                     raise ValueError(f"Teacher with ID {user_id} already exists")
+
+#         # First create the role-specific record
+#         if role == 'student':
+#             # Check if degree exists, if not create default degrees
+#             with Session(engine) as session:
+#                 degree = session.query(Degree).filter(Degree.degreeId == degreeId).first()
+#                 if not degree:
+#                     # Create default degrees
+#                     degrees = [
+#                         Degree(degreeId=1, name='Computer Science', numSemesters=8),
+#                         Degree(degreeId=2, name='Software Engineering', numSemesters=7),
+#                         Degree(degreeId=3, name='Data Science', numSemesters=8)
+#                     ]
+#                     session.add_all(degrees)
+#                     session.commit()
+
+#             try:
+#                 # Add student record
+#                 db.add_student(
+#                     student_id=user_id,
+#                     semester=semester,
+#                     degree_id=degreeId,
+#                     age=age,
+#                     email=email
+#                 )
+#             except Exception as e:
+#                 raise ValueError(f"Failed to create student record: {str(e)}")
+
+#         elif role == 'teacher':
+#             try:
+#                 # Add teacher record
+#                 db.add_teacher(
+#                     teacher_id=user_id,
+#                     name=name,
+#                     title=title,
+#                     email=email
+#                 )
+#             except Exception as e:
+#                 raise ValueError(f"Failed to create teacher record: {str(e)}")
+
+#         # Then create the user account
+#         if not create_user(engine, user_id, user_id, username, password, Roles(role)):
+#             # If user creation fails, we should clean up the role-specific record
+#             if role == 'student':
+#                 db.delete_student(user_id)
+#             elif role == 'teacher':
+#                 db.delete_teacher(user_id)
+#             raise ValueError("Failed to create user account")
+            
+#         return {"message": "Registration successful", "user_id": user_id, "role": role}
+#     except ValueError as e:
+#         raise HTTPException(status_code=400, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    
+# Register V2
 @app.post("/register")
 async def register(
     role: str,
-    user_id: int,
-    email: str,
+    role_id: int,
     username: str,
-    password: str,
-    name: str = None,
-    title: str = None,
-    semester: int = 1,
-    degreeId: int = 1,      # Default to Computer Science
-    age: int = None,        
+    password: str
 ):
-    try:
-        role = role.lower()
-        if role not in ['student', 'teacher']:
-            raise ValueError("Role must be either 'student' or 'teacher'")
-
-        # Check if user already exists
-        with Session(engine) as session:
-            existing_user = session.query(User).filter(User.userId == user_id).first()
-            if existing_user:
-                raise ValueError(f"User with ID {user_id} already exists")
-
-            if role == 'student':
-                existing_student = session.query(Student).filter(Student.studentId == user_id).first()
-                if existing_student:
-                    raise ValueError(f"Student with ID {user_id} already exists")
-            elif role == 'teacher':
-                existing_teacher = session.query(Teacher).filter(Teacher.teacherId == user_id).first()
-                if existing_teacher:
-                    raise ValueError(f"Teacher with ID {user_id} already exists")
-
-        # First create the role-specific record
-        if role == 'student':
-            # Check if degree exists, if not create default degrees
-            with Session(engine) as session:
-                degree = session.query(Degree).filter(Degree.degreeId == degreeId).first()
-                if not degree:
-                    # Create default degrees
-                    degrees = [
-                        Degree(degreeId=1, name='Computer Science', numSemesters=8),
-                        Degree(degreeId=2, name='Software Engineering', numSemesters=7),
-                        Degree(degreeId=3, name='Data Science', numSemesters=8)
-                    ]
-                    session.add_all(degrees)
-                    session.commit()
-
-            try:
-                # Add student record
-                db.add_student(
-                    student_id=user_id,
-                    semester=semester,
-                    degree_id=degreeId,
-                    age=age,
-                    email=email
-                )
-            except Exception as e:
-                raise ValueError(f"Failed to create student record: {str(e)}")
-
-        elif role == 'teacher':
-            try:
-                # Add teacher record
-                db.add_teacher(
-                    teacher_id=user_id,
-                    name=name,
-                    title=title,
-                    email=email
-                )
-            except Exception as e:
-                raise ValueError(f"Failed to create teacher record: {str(e)}")
-
-        # Then create the user account
-        if not create_user(engine, user_id, user_id, username, password, Roles(role)):
-            # If user creation fails, we should clean up the role-specific record
-            if role == 'student':
-                db.delete_student(user_id)
-            elif role == 'teacher':
-                db.delete_teacher(user_id)
-            raise ValueError("Failed to create user account")
-            
-        return {"message": "Registration successful", "user_id": user_id, "role": role}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    res, err = create_user(engine=engine, roleId=role_id, username=username, password=password, role=Roles(role.lower()))
+    if not res:
+        raise HTTPException(status_code=400, detail=err)
+    return {"message": err}
 
 # Get login info
 @app.get("/login")

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { login, getUserRole } from '../api';
+import Banner from './Banner';
 import './LoginPage.css';
 
 const LoginPage = () => {
@@ -23,30 +25,10 @@ const LoginPage = () => {
     setError('');
     
     try {
-      const response = await fetch('http://localhost:8000/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          username: formData.username,
-          password: formData.password
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Login failed');
-      }
-      
-      const data = await response.json();
+      const data = await login(formData.username, formData.password);
       localStorage.setItem('token', data.access_token);
 
-      const roleResponse = await fetch('http://localhost:8000/role', {
-        headers: {
-          'Authorization': `Bearer ${data.access_token}`
-        }
-      });
-      const roleData = await roleResponse.json();
+      const roleData = await getUserRole(data.access_token);
       localStorage.setItem('role', roleData.role.toUpperCase());
 
       if (roleData.role.toUpperCase() === 'student'.toUpperCase()) {
@@ -65,6 +47,7 @@ const LoginPage = () => {
 
   return (
     <div className="login-page">
+      <Banner />
       <div className="login-container">
         <div className="login-header">
           <h2><strong>Log in now</strong></h2>
