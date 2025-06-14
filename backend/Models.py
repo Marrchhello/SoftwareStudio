@@ -57,6 +57,34 @@ class GradePostModel(BaseModel):
     student_id: int
     assignment_id: int
     grade: Optional[float]
+
+
+# ----------------------------------------------------------------------------
+# Assignments
+# ----------------------------------------------------------------------------
+
+# Assignment Post Model
+class AssignmentPostModel(BaseModel):
+    """Model for posting an assignment.
+
+    Args:
+        assignment_name: str
+        desc: opt str
+        due_date_time: datetime.datetime
+        needs_submission: bool
+        assignment_intro: opt str
+        valid_file_types: opt str
+        group: opt int
+        course_id: int
+    """
+    
+    assignment_name: str
+    desc: Optional[str]
+    due_date_time: datetime.datetime
+    needs_submission: bool
+    valid_file_types: Optional[str]
+    group: Optional[int]
+    course_id: int
  
 # ----------------------------------------------------------------------------
 # Courses

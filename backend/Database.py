@@ -25,7 +25,6 @@ class Assignment(Base):
     desc: opt str
     dueDateTime: opt datetime.datetime (create object datetime.datetime, set year/month/day/hour/minute/second/timezone)
     needsSubmission: def(False) bool
-    assignmentIntro: opt str (describes the assignment)
     validFileTypes: opt str (format: "pdf,jpg,jpeg,png,txt")
     group: opt int (show to only specific groups)
     courseId: int (course the assignment belongs to)
@@ -37,13 +36,12 @@ class Assignment(Base):
     desc: Mapped[Optional[str]]
     dueDateTime: Mapped[Optional[datetime.datetime]]
     needsSubmission: Mapped[bool] = mapped_column(default=False)
-    assignmentIntro: Mapped[Optional[str]]
     validFileTypes: Mapped[Optional[str]]
     group: Mapped[Optional[int]]
     courseId: Mapped[int] = mapped_column(ForeignKey('CourseCatalog.courseId'))
     
     def __repr__(self):
-        return f"Assignment ID: {self.assignmentId}, Name: {self.name}, Description: {self.desc}, Due Date and Time: {self.dueDateTime}, Needs Submission: {self.needsSubmission}, Assignment Intro: {self.assignmentIntro}, Valid File Types: {self.validFileTypes}, Group Number: {self.group}, Course ID: {self.courseId}"
+        return f"Assignment ID: {self.assignmentId}, Name: {self.name}, Description: {self.desc}, Due Date and Time: {self.dueDateTime}, Needs Submission: {self.needsSubmission}, Valid File Types: {self.validFileTypes}, Group Number: {self.group}, Course ID: {self.courseId}"
 
 
 # Change log V1: create assignment submission table, fields, and __repr__

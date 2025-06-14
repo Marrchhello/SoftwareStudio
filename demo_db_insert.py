@@ -129,7 +129,7 @@ try:
         
         # Assignment
         addlist.append(Assignment(assignmentId=0, name='Hello World', courseId=0, needsSubmission=True))
-        addlist.append(Assignment(assignmentId=1, name='Goodbye World', courseId=1, dueDateTime=datetime.datetime(year=2025, month=6, day=25, hour=8, tzinfo=pytz.timezone('Europe/Warsaw')), needsSubmission=True, assignmentIntro='Make Hello World in Assembly', group=1, validFileTypes='txt'))
+        addlist.append(Assignment(assignmentId=1, name='Goodbye World', desc='Make Hello World in Assembly', courseId=1, dueDateTime=datetime.datetime(year=2025, month=6, day=25, hour=8, tzinfo=pytz.timezone('Europe/Warsaw')), needsSubmission=True, group=1, validFileTypes='txt'))
         addlist.append(Assignment(assignmentId=2, name='a', courseId=0, needsSubmission=True))
         addlist.append(Assignment(assignmentId=3, name='b', courseId=0, needsSubmission=False, dueDateTime=datetime.datetime(year=2025, month=6, day=25, hour=10, tzinfo=pytz.timezone('Europe/Warsaw') )))
         addlist.append(Assignment(assignmentId=4, name='c', courseId=1, needsSubmission=False, dueDateTime=datetime.datetime(year=2025, month=6, day=24, hour=8, tzinfo=pytz.timezone('Europe/Warsaw') )))

@@ -133,6 +133,16 @@ def postGrade(engine: Engine, teacher_id: int, model: GradePostModel):
         teacher_result = conn.execute(teacher_teaching).fetchone()
         if teacher_result is None or teacher_result[0] != teacher_id:
             return {"status_code": 403, "detail": "Teacher is not teaching the course"}
+        
+        # check if assignment exists
+        assignment_exists = select(Assignment).where(and_(Assignment.assignmentId == model.assignment_id, Assignment.courseId == CourseTeacher.courseId))
+        if conn.execute(assignment_exists).fetchone() is None:
+            return {"status_code": 404, "detail": "Assignment does not exist"}
+        
+        # check if student is in the course
+        student_in_course = select(CourseStudent).where(and_(CourseStudent.studentId == model.student_id, CourseStudent.courseId == CourseTeacher.courseId))
+        if conn.execute(student_in_course).fetchone() is None:
+            return {"status_code": 403, "detail": "Student is not in the course"}
 
         # check if grade already exists
         grade_exists = select(Grade).where(and_(Grade.studentId == model.student_id, Grade.assignmentId == model.assignment_id))
@@ -142,8 +152,9 @@ def postGrade(engine: Engine, teacher_id: int, model: GradePostModel):
             conn.execute(grade_update)
             conn.commit()
         else:
-            # insert grade
-            grade_insert = insert(Grade).values(studentId=model.student_id, assignmentId=model.assignment_id, grade=model.grade)
+            # get max grade_id from Grade table
+            max_grade_id = select(func.max(Grade.gradeId)).as_scalar()
+            grade_insert = insert(Grade).values(gradeId=max_grade_id + 1, studentId=model.student_id, assignmentId=model.assignment_id, grade=model.grade)
             conn.execute(grade_insert)
             conn.commit()
         
@@ -155,20 +166,45 @@ def postGrade(engine: Engine, teacher_id: int, model: GradePostModel):
 # ----------------------------------------------------------------------------
 
 # Post Assignment
-def postAssignment(engine: Engine, course_id: int, assignment_name: str, due_date_time: datetime.datetime, needs_submission: bool, group: int = None):
+def postAssignment(engine: Engine, teacher_id: int, model: AssignmentPostModel):
     """Posts an assignment for a course.
     
     Args:
     engine: Engine connection to use
-    course_id: course id to post assignment for.
-    assignment_name: name of assignment.
-    due_date_time: due date and time of assignment.
-    needs_submission: whether assignment needs submission.
-    group: group of assignment.
+    teacher_id: teacher id who is attempting to post the assignment.
+    model: AssignmentPostModel (teacher_id, course_id, assignment_name, desc, due_date_time, needs_submission, valid_file_types, group)
     
     Returns:
-    None
+    dictionary with status_code and detail
     """
+
+    with engine.connect() as conn:
+
+        # check if teacher is teaching the course
+        teacher_teaching = select(CourseTeacher).where(and_(CourseTeacher.courseId == model.course_id, CourseTeacher.teacherId == teacher_id))
+        teacher_result = conn.execute(teacher_teaching).fetchone()
+        if teacher_result is None:
+            return {"status_code": 403, "detail": "Teacher is not teaching the course"}
+        
+        # Check if course exists
+        course_exists = select(CourseCatalog).where(and_(CourseCatalog.courseId == model.course_id))
+        if conn.execute(course_exists).fetchone() is None:
+            return {"status_code": 404, "detail": "Course does not exist"}
+        
+        # check if assignment already exists. if so, update. else, insert.
+        assignment_exists = select(Assignment).where(and_(Assignment.name == model.assignment_name, Assignment.courseId == model.course_id, Assignment.group == model.group))
+        if conn.execute(assignment_exists).fetchone() is not None:
+            assignment_update = update(Assignment).where(and_(Assignment.name == model.assignment_name, Assignment.courseId == model.course_id, Assignment.group == model.group)).values(desc=model.desc, dueDateTime=model.due_date_time, needsSubmission=model.needs_submission, validFileTypes=model.valid_file_types)
+            conn.execute(assignment_update)
+            conn.commit()
+        else:
+            # get max value for assignment_id from Assignment table
+            max_assignment_id = select(func.max(Assignment.assignmentId)).as_scalar()
+            assignment_insert = insert(Assignment).values(assignmentId=max_assignment_id + 1, name=model.assignment_name, desc=model.desc, dueDateTime=model.due_date_time, needsSubmission=model.needs_submission, validFileTypes=model.valid_file_types, group=model.group, courseId=model.course_id)
+            conn.execute(assignment_insert)
+            conn.commit()
+
+        return {"status_code": 200, "detail": "Assignment posted successfully"}
 
 
 # ----------------------------------------------------------------------------
