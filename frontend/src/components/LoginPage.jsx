@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './LoginPage.css';
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',  
     password: '',
   });
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -16,10 +18,33 @@ const LoginPage = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log('Login attempt with:', formData);
+    setError('');
+    
+    try {
+      const response = await fetch('http://localhost:8000/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          username: formData.username,
+          password: formData.password
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Login failed');
+      }
+      
+      const data = await response.json();
+      localStorage.setItem('token', data.access_token);
+      navigate('/student');
+    } catch (err) {
+      setError('Invalid username or password');
+      console.error('Login error:', err);
+    }
   };
 
   return (
@@ -29,17 +54,19 @@ const LoginPage = () => {
           <h2><strong>Log in now</strong></h2>
         </div>
 
+        {error && <p className="error-message">{error}</p>}
+
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="username">Username</label> {/* Changed from Email */}
             <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
               onChange={handleChange}
               required
-              placeholder="Enter your email"
+              placeholder="Enter your username"
             />
           </div>
 
@@ -79,4 +106,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage; 
+export default LoginPage;
