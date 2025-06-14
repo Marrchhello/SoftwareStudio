@@ -2,8 +2,15 @@ import React from 'react';
 import { FaSignInAlt, FaUserPlus, FaBell, FaBook, FaCalendarAlt, FaGraduationCap, FaQuestionCircle, FaEnvelope, FaFileAlt, FaShieldAlt } from 'react-icons/fa';
 import logoUPSOS from './logoUPSOS.png';
 import './UpsosHomepage.css';
+import { useNavigate } from "react-router-dom";
 
 const UpsosHomepage = () => {
+  const navigate = useNavigate();
+
+  const handleLoginClick = () => {
+    navigate("/login");
+  };
+
   return (
     <div className="upsos-app">
       {/* Header */}
@@ -29,12 +36,9 @@ const UpsosHomepage = () => {
             <h2 className="hero-title">AGH Educational Platform</h2>
             <p className="hero-subtitle">Modern tool for managing your studies</p>
             <div className="hero-buttons">
-              <button className="btn-login">
+              <button className="btn-login" onClick={handleLoginClick}>
                 <FaSignInAlt className="btn-icon" /> Log In
-              </button>
-              <button className="btn-register">
-                <FaUserPlus className="btn-icon" /> Register
-              </button>
+               </button>
             </div>
           </div>
           <div className="hero-image">
