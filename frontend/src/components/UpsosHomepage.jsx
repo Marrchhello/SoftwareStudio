@@ -13,6 +13,7 @@ const UpsosHomepage = () => {
 
   return (
     <div className="upsos-app">
+      <h1 style={{ padding: '20px', textAlign: 'center' }}>UPSOS Platform</h1>
       {/* Header */}
       <header className="futuristic-header">
         <div className="header-container">

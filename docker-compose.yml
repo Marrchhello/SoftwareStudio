@@ -22,7 +22,7 @@ services:
 
   
   frontend:
-    build: .
+    build: ./frontend
 
     ports:
       - "5173:5173"
@@ -30,9 +30,14 @@ services:
     volumes:
       - ${PWD}/frontend:/app/frontend
 
+    environment:
+      - HOST=0.0.0.0
+
     depends_on:
       backend:
         condition: service_started
+      SS_Database:
+        condition: service_healthy
 
     networks:
       - app-network
