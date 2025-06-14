@@ -13,6 +13,7 @@ Base.metadata.create_all(engine)
 
 # Create user
 print(create_user(engine, 1, 1, 'ben', 'banana', Roles.STUDENT))
+print(create_user(engine, 2, 1, 'rick', 'roll', Roles.TEACHER))
 
 with Session(engine) as session:
 # Query User

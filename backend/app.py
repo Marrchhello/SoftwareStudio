@@ -277,7 +277,7 @@ def teacher_courses_get(
 
 
 # ----------------------------------------------------------------------------
-# Student Grades
+# Grades
 # ----------------------------------------------------------------------------
 
 # GET Student Grades for Specific Course
@@ -301,6 +301,32 @@ def student_grades_get(
     if current_user.role.upper() != "STUDENT" or current_user.user_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
     return getStudentGrades(engine=engine, student_id=student_id)
+
+
+# POST Grade (with model)
+@app.post("/grade/")
+def assignment_grade_model_post(
+    model: GradePostModel,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER":
+        raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
+    return postGrade(engine=engine, teacher_id=current_user.role_id, model=model)
+
+
+# ----------------------------------------------------------------------------
+# Assignments
+# ----------------------------------------------------------------------------
+
+# POST Assignment (with model)
+@app.post("/assignment/")
+def assignment_post(
+    model: AssignmentPostModel,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER":
+        raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
+    return postAssignment(engine=engine, teacher_id=current_user.role_id, model=model)
 
 
 # ----------------------------------------------------------------------------
