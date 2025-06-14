@@ -40,7 +40,23 @@ const LoginPage = () => {
       
       const data = await response.json();
       localStorage.setItem('token', data.access_token);
-      navigate('/student');
+
+      const roleResponse = await fetch('http://localhost:8000/role', {
+        headers: {
+          'Authorization': `Bearer ${data.access_token}`
+        }
+      });
+      const roleData = await roleResponse.json();
+      localStorage.setItem('role', roleData.role.toUpperCase());
+
+      if (roleData.role.toUpperCase() === 'student'.toUpperCase()) {
+        navigate('/student');
+      } else if (roleData.role.toUpperCase() === 'teacher'.toUpperCase()) {
+        navigate('/teacher');
+      } else {
+        setError('Invalid role');
+        return;
+      }
     } catch (err) {
       setError('Invalid username or password');
       console.error('Login error:', err);

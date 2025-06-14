@@ -250,6 +250,13 @@ async def read_users_me(
             detail=f"Internal server error: {str(e)}"
         )
     
+# Get authenticated user role
+@app.get("/role")
+async def get_role(
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    return {"role": current_user.role}
+    
 # ----------------------------------------------------------------------------
 # Courses
 # ----------------------------------------------------------------------------
