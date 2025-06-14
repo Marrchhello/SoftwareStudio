@@ -113,6 +113,36 @@ def getStudentGradesForCourse(engine: Engine, student_id: int, course_id: int):
     return GradeListModel(GradeList=output)
 
 
+# Post grade
+def postGrade(engine: Engine, student_id: int, assignment_id: int, grade: float = None):
+    """Posts a grade for a student in a course.
+    
+    Args:
+    engine: Engine connection to use
+    student_id: student id to post grade for.
+    assignment_id: assignment id to post grade for.
+    grade: grade to post.
+    
+    Returns:
+    None
+    """
+
+    with engine.connect() as conn:
+
+        # check if grade already exists
+        grade_exists = select(Grade).where(and_(Grade.studentId == student_id, Grade.assignmentId == assignment_id))
+        if conn.execute(grade_exists).fetchone() is not None:
+            # update grade
+            grade_update = update(Grade).where(and_(Grade.studentId == student_id, Grade.assignmentId == assignment_id)).values(grade=grade)
+            conn.execute(grade_update)
+            conn.commit()
+        else:
+            # insert grade
+            grade_insert = insert(Grade).values(studentId=student_id, assignmentId=assignment_id, grade=grade)
+            conn.execute(grade_insert)
+            conn.commit()
+
+
 # ----------------------------------------------------------------------------
 # Courses
 # ----------------------------------------------------------------------------
