@@ -20,6 +20,23 @@ services:
     networks:
       - app-network
 
+  
+  frontend:
+    build: .
+
+    ports:
+      - "5173:5173"
+
+    volumes:
+      - ${PWD}/frontend:/app/frontend
+
+    depends_on:
+      backend:
+        condition: service_started
+
+    networks:
+      - app-network
+
   SS_Database:
     image: "postgres:latest"
 
