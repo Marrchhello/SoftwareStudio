@@ -5,3 +5,6 @@ ss_data*
 backend/__pycache__/
 backend/__pyca*
 backend/__pycache__/*
+__pyca*
+/__pycache__
+/_pycache__/*
