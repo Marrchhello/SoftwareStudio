@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FaUserGraduate, FaCalendarAlt, FaFileAlt, 
   FaArrowLeft, FaEdit, FaTrash, FaDownload,
@@ -6,9 +6,9 @@ import {
   FaFilePdf, FaFileWord, FaFilePowerpoint,
   FaFileImage, FaFileArchive, FaSearch,
   FaChalkboardTeacher, FaFlask, FaBook,
-  FaClock, FaCopy
+  FaClock, FaCopy, FaUsers, FaUserTie
 } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import './courses.css';
 
 const Courses = () => {
@@ -22,378 +22,147 @@ const Courses = () => {
   const [newGrade, setNewGrade] = useState({ assignment: '', grade: '' });
   const [editingGrade, setEditingGrade] = useState(null);
   const [copiedLink, setCopiedLink] = useState(null);
-  
-  const [newAssignment, setNewAssignment] = useState({ 
-    title: '', 
-    description: '', 
-    links: [],
-    deadlineDate: '',
-    deadlineTime: ''
-  });
+  const [token, setToken] = useState(localStorage.getItem('token') || '');
+  const [courseDetails, setCourseDetails] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [lectures, setLectures] = useState([]);
+  const [additionals, setAdditionals] = useState([]);
+  const [labs, setLabs] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { courseId } = useParams();
+  const navigate = useNavigate();
 
-  const [newLecture, setNewLecture] = useState({
-    title: '',
-    comment: '',
-    links: [],
-    date: ''
-  });
-
-  const [newAdditional, setNewAdditional] = useState({
-    title: '',
-    description: '',
-    links: [],
-    date: ''
-  });
-
-  const [newLab, setNewLab] = useState({
-    title: '',
-    description: '',
-    links: [],
-    deadlineDate: '',
-    deadlineTime: ''
-  });
-
-  const [newLink, setNewLink] = useState({ url: '', title: '' });
-  const [darkMode, setDarkMode] = useState(false);
-  const [grades, setGrades] = useState({
-    '1': [
-      { id: '1', assignment: 'Project 1', grade: '4.5', file: 'project1_john.txt' },
-      { id: '2', assignment: 'Midterm Exam', grade: '3.5', file: 'midterm_john.txt' }
-    ],
-    '2': [
-      { id: '3', assignment: 'Project 1', grade: '5.0', file: 'project1_jane.txt' },
-      { id: '4', assignment: 'Midterm Exam', grade: '4.0', file: 'midterm_jane.txt' }
-    ]
-  });
-
-  const students = [
-    { id: '1', name: 'John Doe', indexNumber: '123456', email: 'john@example.com', group: 'Group 1' },
-    { id: '2', name: 'Jane Smith', indexNumber: '654321', email: 'jane@example.com', group: 'Group 2' }
-  ];
-
-  const [assignments, setAssignments] = useState([
-    { 
-      id: '1', 
-      title: 'Project 1', 
-      description: 'First programming project', 
-      deadlineDate: '2023-10-15',
-      deadlineTime: '23:59',
-      links: [
-        { url: 'https://www.agh.edu.pl/', title: 'Project Requirements' },
-        { url: 'https://www.agh.edu.pl/', title: 'Starter Code' }
-      ]
-    },
-    { 
-      id: '2', 
-      title: 'Midterm Exam', 
-      description: 'Theory and practical test', 
-      deadlineDate: '2023-11-20',
-      deadlineTime: '23:59',
-      links: [
-        { url: 'https://www.agh.edu.pl/', title: 'Exam Guidelines' },
-        { url: 'https://www.agh.edu.pl/', title: 'Sample Questions' }
-      ]
+  const fetchWithToken = async (url, options = {}) => {
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...options.headers
+    };
+    
+    const response = await fetch(url, { ...options, headers });
+    
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      navigate('/login');
+      return null;
     }
-  ]);
-
-  const [lectures, setLectures] = useState([
-    {
-      id: '1',
-      title: 'Introduction to Programming',
-      comment: 'Basic concepts and syntax',
-      date: '2023-09-01',
-      links: [
-        { url: 'https://www.agh.edu.pl/', title: 'Lecture Slides' },
-        { url: 'https://www.agh.edu.pl/', title: 'Code Examples' }
-      ]
-    },
-    {
-      id: '2',
-      title: 'Object-Oriented Programming',
-      comment: 'Classes and objects',
-      date: '2023-09-15',
-      links: [
-        { url: 'https://www.agh.edu.pl/', title: 'OOP Concepts' },
-        { url: 'https://www.agh.edu.pl/', title: 'Practice Examples' }
-      ]
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  ]);
-
-  const [additionals, setAdditionals] = useState([
-    {
-      id: '1',
-      title: 'Useful Resources',
-      description: 'Collection of helpful links and materials',
-      date: '2023-09-05',
-      links: [
-        { url: 'https://www.agh.edu.pl/', title: 'Resource List' }
-      ]
-    },
-    {
-      id: '2',
-      title: 'Coding Standards',
-      description: 'Guide for writing clean code',
-      date: '2023-09-10',
-      links: [
-        { url: 'https://www.agh.edu.pl/', title: 'Coding Standards Guide' }
-      ]
-    }
-  ]);
-
-  const [labs, setLabs] = useState([
-    {
-      id: '1',
-      title: 'Lab 1: Variables and Data Types',
-      description: 'Practice with basic data types',
-      deadlineDate: '2023-09-08',
-      deadlineTime: '23:59',
-      links: [
-        { url: 'https://www.agh.edu.pl/', title: 'Lab Instructions' }
-      ]
-    },
-    {
-      id: '2',
-      title: 'Lab 2: Control Structures',
-      description: 'If statements and loops',
-      deadlineDate: '2023-09-22',
-      deadlineTime: '23:59',
-      links: [
-        { url: 'https://www.agh.edu.pl/', title: 'Lab Instructions' },
-        { url: 'https://www.agh.edu.pl/', title: 'Sample Code' }
-      ]
-    }
-  ]);
-
-  const submissions = {
-    '1': [
-      { studentId: '1', name: 'John Doe', file: 'project1_john.txt', date: '2023-10-14' },
-      { studentId: '2', name: 'Jane Smith', file: 'project1_jane.txt', date: '2023-10-15' }
-    ],
-    '2': [
-      { studentId: '1', name: 'John Doe', file: 'midterm_john.txt', date: '2023-11-19' },
-      { studentId: '2', name: 'Jane Smith', file: 'midterm_jane.txt', date: '2023-11-20' }
-    ]
+    
+    return await response.json();
   };
 
-  // Grade handling
-  const handleAddGrade = (e) => {
+  const fetchCourseData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch course details
+      const courseData = await fetchWithToken(`/course/${courseId}`);
+      if (courseData) {
+        setCourseDetails(courseData);
+      }
+      
+      // Fetch students
+      const studentsData = await fetchWithToken(`/course/${courseId}/students`);
+      if (studentsData) {
+        setStudents(studentsData.students || []);
+      }
+      
+      // Fetch assignments
+      const assignmentsData = await fetchWithToken(`/course/${courseId}/assignments`);
+      if (assignmentsData) {
+        setAssignments(assignmentsData.assignments || []);
+      }
+      
+      // Fetch lectures
+      const lecturesData = await fetchWithToken(`/course/${courseId}/lectures`);
+      if (lecturesData) {
+        setLectures(lecturesData.lectures || []);
+      }
+      
+      // Fetch additional materials
+      const additionalsData = await fetchWithToken(`/course/${courseId}/additional-materials`);
+      if (additionalsData) {
+        setAdditionals(additionalsData.materials || []);
+      }
+      
+      // Fetch labs
+      const labsData = await fetchWithToken(`/course/${courseId}/labs`);
+      if (labsData) {
+        setLabs(labsData.labs || []);
+      }
+      
+      // Fetch groups
+      const groupsData = await fetchWithToken(`/course/${courseId}/groups`);
+      if (groupsData) {
+        setGroups(groupsData.groups || []);
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching course data:', error);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token && courseId) {
+      fetchCourseData();
+    } else if (!token) {
+      navigate('/login');
+    }
+  }, [courseId, token]);
+
+  // Grade handling functions
+  const handleAddGrade = async (e) => {
     e.preventDefault();
     if (selectedStudent && newGrade.assignment && newGrade.grade) {
-      const newGradeObj = {
-        id: Date.now().toString(),
-        assignment: newGrade.assignment,
-        grade: newGrade.grade,
-        file: `${newGrade.assignment.toLowerCase().replace(/\s+/g, '_')}_${students.find(s => s.id === selectedStudent)?.name.toLowerCase().replace(/\s+/g, '_')}.txt`
-      };
-      
-      setGrades(prevGrades => ({
-        ...prevGrades,
-        [selectedStudent]: [...(prevGrades[selectedStudent] || []), newGradeObj]
-      }));
-      
-      setNewGrade({ assignment: '', grade: '' });
-    }
-  };
-
-  const handleDeleteGrade = (studentId, gradeId) => {
-    setGrades(prevGrades => {
-      const updatedGrades = {...prevGrades};
-      if (updatedGrades[studentId]) {
-        updatedGrades[studentId] = updatedGrades[studentId].filter(
-          grade => grade.id !== gradeId
-        );
-      }
-      return updatedGrades;
-    });
-  };
-
-  // Grade editing
-  const handleStartEditGrade = (studentId, grade) => {
-    setEditingGrade({
-      studentId,
-      gradeId: grade.id,
-      assignment: grade.assignment,
-      grade: grade.grade
-    });
-  };
-
-  const handleSaveGrade = (studentId, gradeId) => {
-    if (editingGrade) {
-      setGrades(prevGrades => {
-        const updatedGrades = {...prevGrades};
-        if (updatedGrades[studentId]) {
-          updatedGrades[studentId] = updatedGrades[studentId].map(grade => 
-            grade.id === gradeId ? { ...grade, grade: editingGrade.grade } : grade
-          );
+      try {
+        const response = await fetchWithToken(`/student/${selectedStudent}/grades`, {
+          method: 'POST',
+          body: JSON.stringify({
+            assignmentId: newGrade.assignmentId,
+            grade: parseFloat(newGrade.grade)
+          })
+        });
+        
+        if (response) {
+          // Refresh grades
+          fetchCourseData();
+          setNewGrade({ assignment: '', grade: '' });
         }
-        return updatedGrades;
+      } catch (error) {
+        console.error('Error adding grade:', error);
+      }
+    }
+  };
+
+  const handleDeleteGrade = async (gradeId) => {
+    try {
+      await fetchWithToken(`/grade/${gradeId}`, {
+        method: 'DELETE'
       });
-      setEditingGrade(null);
+      fetchCourseData();
+    } catch (error) {
+      console.error('Error deleting grade:', error);
     }
   };
 
-  const handleCancelEditGrade = () => {
-    setEditingGrade(null);
-  };
-
-  // Link handling
-  const handleAddLink = (setter, currentState) => {
-    if (newLink.url && newLink.title) {
-      setter({
-        ...currentState,
-        links: [...currentState.links, { ...newLink }]
-      });
-      setNewLink({ url: '', title: '' });
-    }
-  };
-
-  const handleDeleteLink = (index, setter, currentState) => {
-    const newLinks = [...currentState.links];
-    newLinks.splice(index, 1);
-    setter({ ...currentState, links: newLinks });
-  };
-
-  const copyToClipboard = (link) => {
-    navigator.clipboard.writeText(link);
-    setCopiedLink(link);
-    setTimeout(() => setCopiedLink(null), 2000);
-  };
-
-  // Assignment handling
-  const handleAddAssignment = (e) => {
-    e.preventDefault();
-    if (newAssignment.title && newAssignment.description) {
-      const newAssignmentObj = {
-        id: Date.now().toString(),
-        title: newAssignment.title,
-        description: newAssignment.description,
-        deadlineDate: newAssignment.deadlineDate,
-        deadlineTime: newAssignment.deadlineTime,
-        links: newAssignment.links
-      };
-      
-      setAssignments([...assignments, newAssignmentObj]);
-      setNewAssignment({ 
-        title: '', 
-        description: '', 
-        links: [],
-        deadlineDate: '',
-        deadlineTime: ''
-      });
-      setSelectedAssignment(null);
-    }
-  };
-
-  // Lecture handling
-  const handleAddLecture = (e) => {
-    e.preventDefault();
-    if (newLecture.title) {
-      const newLectureObj = {
-        id: Date.now().toString(),
-        title: newLecture.title,
-        comment: newLecture.comment,
-        date: newLecture.date,
-        links: newLecture.links
-      };
-      
-      setLectures([...lectures, newLectureObj]);
-      setNewLecture({ 
-        title: '', 
-        comment: '', 
-        links: [],
-        date: ''
-      });
-      setSelectedLecture(null);
-    }
-  };
-
-  // Additional material handling
-  const handleAddAdditional = (e) => {
-    e.preventDefault();
-    if (newAdditional.title) {
-      const newAdditionalObj = {
-        id: Date.now().toString(),
-        title: newAdditional.title,
-        description: newAdditional.description,
-        date: newAdditional.date,
-        links: newAdditional.links
-      };
-      
-      setAdditionals([...additionals, newAdditionalObj]);
-      setNewAdditional({ 
-        title: '', 
-        description: '', 
-        links: [],
-        date: ''
-      });
-      setSelectedAdditional(null);
-    }
-  };
-
-  // Lab handling
-  const handleAddLab = (e) => {
-    e.preventDefault();
-    if (newLab.title) {
-      const newLabObj = {
-        id: Date.now().toString(),
-        title: newLab.title,
-        description: newLab.description,
-        deadlineDate: newLab.deadlineDate,
-        deadlineTime: newLab.deadlineTime,
-        links: newLab.links
-      };
-      
-      setLabs([...labs, newLabObj]);
-      setNewLab({ 
-        title: '', 
-        description: '', 
-        links: [],
-        deadlineDate: '',
-        deadlineTime: ''
-      });
-      setSelectedLab(null);
-    }
-  };
-
-  const handleDeleteItem = (type, id) => {
-    switch(type) {
-      case 'assignment':
-        setAssignments(assignments.filter(item => item.id !== id));
-        break;
-      case 'lecture':
-        setLectures(lectures.filter(item => item.id !== id));
-        break;
-      case 'additional':
-        setAdditionals(additionals.filter(item => item.id !== id));
-        break;
-      case 'lab':
-        setLabs(labs.filter(item => item.id !== id));
-        break;
-      default:
-        console.log(`Unknown type: ${type}`);
-    }
-  };
-
-  const handleDownloadFile = (fileName) => {
-    console.log('Downloading file:', fileName);
-  };
-
-  const resetView = () => {
-    setSelectedStudent(null);
-    setSelectedAssignment(null);
-    setSelectedLecture(null);
-    setSelectedAdditional(null);
-    setSelectedLab(null);
-    setViewSubmissions(null);
-    setEditingGrade(null);
-  };
-
+  // Link handling - only one link shown
   const renderLinkList = (links) => {
     return links.map((link, index) => (
       <div key={index} className="link-item">
-        <FaLink className="link-icon" />
-        <a href={link.url} target="_blank" rel="noopener noreferrer">
-          {link.title}
+        <a 
+          href={link.url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="single-link"
+        >
+          <FaLink className="link-icon" /> {link.title}
         </a>
         <button 
           className="copy-link-btn"
@@ -407,322 +176,82 @@ const Courses = () => {
     ));
   };
 
-  const renderItemForm = (type, state, setter, onSubmit) => {
-    const isLecture = type === 'lecture';
-    const isAdditional = type === 'additional';
-    const isAssignment = type === 'assignment';
-    const isLab = type === 'lab';
-    
+  const copyToClipboard = (link) => {
+    navigator.clipboard.writeText(link);
+    setCopiedLink(link);
+    setTimeout(() => setCopiedLink(null), 2000);
+  };
+
+  // Assignment submission handling
+  const handleDownloadSubmission = (submissionId) => {
+    // Implement download logic
+    console.log('Downloading submission:', submissionId);
+  };
+
+  // Group schedule rendering
+  const renderGroupSchedule = () => {
+    return groups.map((group, index) => (
+      <div key={index} className="schedule-group">
+        <h3>{group.name}</h3>
+        <p><strong>Building:</strong> {group.building}</p>
+        <p><strong>Room:</strong> {group.room}</p>
+        <p><strong>Time:</strong> {group.schedule}</p>
+      </div>
+    ));
+  };
+
+  if (loading) {
     return (
-      <div className="new-item-view">
-        <h2>Create New {type.charAt(0).toUpperCase() + type.slice(1)}</h2>
-        <form onSubmit={onSubmit}>
-          <div className="form-group">
-            <label>Title:</label>
-            <input 
-              type="text" 
-              value={state.title}
-              onChange={(e) => setter({...state, title: e.target.value})}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>{isLecture ? 'Comment:' : 'Description:'}</label>
-            {isLecture ? (
-              <input 
-                type="text" 
-                value={state.comment}
-                onChange={(e) => setter({...state, comment: e.target.value})}
-              />
-            ) : (
-              <textarea 
-                value={state.description}
-                onChange={(e) => setter({...state, description: e.target.value})}
-              />
-            )}
-          </div>
-
-          {(isAssignment || isLab) && (
-            <>
-              <div className="form-group">
-                <label>Deadline Date:</label>
-                <input 
-                  type="date" 
-                  value={state.deadlineDate}
-                  onChange={(e) => setter({...state, deadlineDate: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Deadline Time:</label>
-                <input 
-                  type="time" 
-                  value={state.deadlineTime}
-                  onChange={(e) => setter({...state, deadlineTime: e.target.value})}
-                  required
-                />
-              </div>
-            </>
-          )}
-
-          {(isLecture || isAdditional) && (
-            <div className="form-group">
-              <label>Date:</label>
-              <input 
-                type="date" 
-                value={state.date}
-                onChange={(e) => setter({...state, date: e.target.value})}
-                required
-              />
-            </div>
-          )}
-
-          <div className="form-group">
-            <label>Links:</label>
-            <div className="link-input-section">
-              <div className="link-inputs">
-                <input 
-                  type="url" 
-                  placeholder="URL (e.g., https://example.com)"
-                  value={newLink.url}
-                  onChange={(e) => setNewLink({...newLink, url: e.target.value})}
-                />
-                <input 
-                  type="text" 
-                  placeholder="Link title"
-                  value={newLink.title}
-                  onChange={(e) => setNewLink({...newLink, title: e.target.value})}
-                />
-                <button 
-                  type="button"
-                  className="add-link-btn"
-                  onClick={() => handleAddLink(setter, state)}
-                  disabled={!newLink.url || !newLink.title}
-                >
-                  <FaPlus /> Add Link
-                </button>
-              </div>
-            </div>
-            <div className="links-preview">
-              {state.links.map((link, index) => (
-                <div key={index} className="link-item">
-                  <FaLink className="link-icon" />
-                  <span>{link.title}</span>
-                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="test-link">
-                    Test
-                  </a>
-                  <button 
-                    type="button"
-                    className="remove-link-btn"
-                    onClick={() => handleDeleteLink(index, setter, state)}
-                  >
-                    <FaTimes />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="form-actions">
-            <button 
-              type="button" 
-              className="cancel-btn"
-              onClick={() => {
-                if (type === 'assignment') setSelectedAssignment(null);
-                else if (type === 'lecture') setSelectedLecture(null);
-                else if (type === 'additional') setSelectedAdditional(null);
-                else if (type === 'lab') setSelectedLab(null);
-              }}
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              className="submit-btn"
-              disabled={!state.title || ((isAssignment || isLab) && (!state.deadlineDate || !state.deadlineTime)) || 
-                        ((isLecture || isAdditional) && !state.date)}
-            >
-              Create {type.charAt(0).toUpperCase() + type.slice(1)}
-            </button>
-          </div>
-        </form>
+      <div className="teacher-courses-container">
+        <div className="loading-spinner">Loading course data...</div>
       </div>
     );
-  };
-
-  const renderItemList = (items, type) => {
-    return (
-      <div className="items-list">
-        <table>
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>{type === 'lecture' ? 'Comment' : 'Description'}</th>
-              {type === 'assignment' || type === 'lab' ? (
-                <>
-                  <th>Deadline Date</th>
-                  <th>Deadline Time</th>
-                </>
-              ) : (
-                <th>Date</th>
-              )}
-              <th>Links</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map(item => (
-              <tr key={item.id}>
-                <td>{item.title}</td>
-                <td>{type === 'lecture' ? item.comment : item.description}</td>
-                {type === 'assignment' || type === 'lab' ? (
-                  <>
-                    <td>{item.deadlineDate}</td>
-                    <td>{item.deadlineTime}</td>
-                  </>
-                ) : (
-                  <td>{item.date}</td>
-                )}
-                <td>
-                  {renderLinkList(item.links)}
-                </td>
-                <td>
-                  <button 
-                    className="delete-btn"
-                    onClick={() => handleDeleteItem(type, item.id)}
-                  >
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-
-  const renderGradesTable = (studentId) => {
-    return (
-      <table className="grades-table">
-        <thead>
-          <tr>
-            <th>Assignment</th>
-            <th>Grade</th>
-            <th>Submission</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {grades[studentId]?.map(grade => (
-            <tr key={grade.id}>
-              <td>{grade.assignment}</td>
-              <td>
-                {editingGrade?.gradeId === grade.id ? (
-                  <input
-                    type="text"
-                    value={editingGrade.grade}
-                    onChange={(e) => setEditingGrade({
-                      ...editingGrade,
-                      grade: e.target.value
-                    })}
-                    className="grade-input"
-                  />
-                ) : (
-                  grade.grade
-                )}
-              </td>
-              <td>
-                {grade.file && (
-                  <button 
-                    className="download-btn"
-                    onClick={() => handleDownloadFile(grade.file)}
-                  >
-                    <FaDownload /> {grade.file}
-                  </button>
-                )}
-              </td>
-              <td className="grade-actions">
-                {editingGrade?.gradeId === grade.id ? (
-                  <>
-                    <button 
-                      className="save-btn"
-                      onClick={() => handleSaveGrade(studentId, grade.id)}
-                    >
-                      <FaCheck /> Save
-                    </button>
-                    <button 
-                      className="cancel-btn"
-                      onClick={handleCancelEditGrade}
-                    >
-                      <FaTimes /> Cancel
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button 
-                      className="edit-btn"
-                      onClick={() => handleStartEditGrade(studentId, grade)}
-                    >
-                      <FaEdit /> Edit
-                    </button>
-                    <button 
-                      className="delete-btn"
-                      onClick={() => handleDeleteGrade(studentId, grade.id)}
-                    >
-                      <FaTrash />
-                    </button>
-                  </>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
-  };
+  }
 
   return (
-    <div className={`teacher-courses-container ${darkMode ? 'dark-mode' : ''}`}>
+    <div className="teacher-courses-container">
       <div className="course-header">
-        <div className="header-top">
-          
-          
-        </div>
-        <h1>Programming Course (CS101)</h1>
+        <button 
+          className="back-button"
+          onClick={() => window.history.back()}
+        >
+          <FaArrowLeft /> Back to Courses
+        </button>
+        <h1>{courseDetails?.name || 'Course'} ({courseDetails?.code || 'Code'})</h1>
         <div className="course-tabs">
           <button 
             className={`tab-btn ${activeTab === 'students' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('students'); resetView(); }}
+            onClick={() => setActiveTab('students')}
           >
             <FaUserGraduate /> Students
           </button>
           <button 
             className={`tab-btn ${activeTab === 'schedule' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('schedule'); resetView(); }}
+            onClick={() => setActiveTab('schedule')}
           >
             <FaCalendarAlt /> Schedule
           </button>
           <button 
             className={`tab-btn ${activeTab === 'assignments' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('assignments'); resetView(); }}
+            onClick={() => setActiveTab('assignments')}
           >
             <FaFileAlt /> Assignments
           </button>
           <button 
             className={`tab-btn ${activeTab === 'lectures' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('lectures'); resetView(); }}
+            onClick={() => setActiveTab('lectures')}
           >
             <FaChalkboardTeacher /> Lectures
           </button>
           <button 
             className={`tab-btn ${activeTab === 'additionals' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('additionals'); resetView(); }}
+            onClick={() => setActiveTab('additionals')}
           >
             <FaBook /> Additionals
           </button>
           <button 
             className={`tab-btn ${activeTab === 'labs' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('labs'); resetView(); }}
+            onClick={() => setActiveTab('labs')}
           >
             <FaFlask /> Labs
           </button>
@@ -731,84 +260,40 @@ const Courses = () => {
 
       {activeTab === 'students' && (
         <div className="students-section">
-          {!selectedStudent ? (
-            <>
-              <h2>Enrolled Students</h2>
-              <div className="search-bar">
-                <input type="text" placeholder="Search students..." />
-                <button><FaSearch /></button>
-              </div>
-              <div className="students-list">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Index Number</th>
-                      <th>Group</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {students.map(student => (
-                      <tr key={student.id}>
-                        <td>{student.name}</td>
-                        <td>{student.indexNumber}</td>
-                        <td>{student.group}</td>
-                        <td className="student-actions">
-                          <button 
-                            className="view-grades-btn"
-                            onClick={() => setSelectedStudent(student.id)}
-                          >
-                            View Grades
-                          </button>
-                          <button className="send-message-btn">Message</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          ) : (
-            <div className="student-grades-view">
-              <button 
-                className="back-to-list"
-                onClick={() => setSelectedStudent(null)}
-              >
-                <FaArrowLeft /> Back to Students List
-              </button>
-              <h2>Grades for {students.find(s => s.id === selectedStudent)?.name}</h2>
-              <div className="grades-management">
-                {renderGradesTable(selectedStudent)}
-                <div className="add-grade-form">
-                  <h3>Add New Grade</h3>
-                  <form onSubmit={handleAddGrade}>
-                    <div className="form-group">
-                      <label>Assignment:</label>
-                      <input 
-                        type="text" 
-                        value={newGrade.assignment}
-                        onChange={(e) => setNewGrade({...newGrade, assignment: e.target.value})}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Grade:</label>
-                      <input 
-                        type="text" 
-                        value={newGrade.grade}
-                        onChange={(e) => setNewGrade({...newGrade, grade: e.target.value})}
-                        required
-                      />
-                    </div>
-                    <button type="submit" className="submit-btn">
-                      <FaPlus /> Add Grade
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          )}
+          <h2>Enrolled Students</h2>
+          <div className="search-bar">
+            <input type="text" placeholder="Search students..." />
+            <button><FaSearch /></button>
+          </div>
+          <div className="students-list">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Index Number</th>
+                  <th>Group</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map(student => (
+                  <tr key={student.id}>
+                    <td>{student.name}</td>
+                    <td>{student.indexNumber}</td>
+                    <td>{student.group}</td>
+                    <td className="student-actions">
+                      <button 
+                        className="view-grades-btn"
+                        onClick={() => setSelectedStudent(student.id)}
+                      >
+                        View Grades
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -816,137 +301,61 @@ const Courses = () => {
         <div className="schedule-section">
           <h2>Course Schedule</h2>
           <div className="schedule-groups">
-            <div className="schedule-group">
-              <h3>Group 1</h3>
-              <p><strong>Building:</strong> C-7</p>
-              <p><strong>Room:</strong> 214</p>
-              <p><strong>Time:</strong> Mondays 08:00-09:30 (Lecture)</p>
-            </div>
-            <div className="schedule-group">
-              <h3>Group 2</h3>
-              <p><strong>Building:</strong> C-7</p>
-              <p><strong>Room:</strong> 514</p>
-              <p><strong>Time:</strong> Wednesdays 10:00-11:30 (Lab)</p>
-            </div>
+            {renderGroupSchedule()}
           </div>
         </div>
       )}
 
       {activeTab === 'assignments' && (
         <div className="assignments-section">
-          {!viewSubmissions && !selectedAssignment ? (
-            <>
-              <div className="assignments-header">
-                <h2>Course Assignments</h2>
-                <button 
-                  className="new-assignment-btn"
-                  onClick={() => {
-                    setSelectedAssignment('new');
-                    setNewAssignment({ 
-                      title: '', 
-                      description: '', 
-                      links: [],
-                      deadlineDate: '',
-                      deadlineTime: ''
-                    });
-                  }}
-                >
-                  <FaPlus /> New Assignment
-                </button>
-              </div>
-              {renderItemList(assignments, 'assignment')}
-            </>
-          ) : viewSubmissions ? (
-            <div className="submissions-view">
-              <button 
-                className="back-to-assignments"
-                onClick={() => setViewSubmissions(null)}
-              >
-                <FaArrowLeft /> Back to Assignments
-              </button>
-              <h2>Submissions for {assignments.find(a => a.id === viewSubmissions)?.title}</h2>
-              <div className="submissions-list">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Student</th>
-                      <th>Index Number</th>
-                      <th>Submission Date</th>
-                      <th>File</th>
-                      <th>Grade</th>
-                      <th>Actions</th>
- 			</tr>
-                  </thead>
-                  <tbody>
-                    {submissions[viewSubmissions]?.map((submission, index) => {
-                      const student = students.find(s => s.id === submission.studentId);
-                      const studentGrades = grades[submission.studentId] || [];
-                      const assignmentGrade = studentGrades.find(g => 
-                        g.assignment === assignments.find(a => a.id === viewSubmissions)?.title
-                      );
-                      
-                      return (
-                        <tr key={index}>
-                          <td>{submission.name}</td>
-                          <td>{student?.indexNumber}</td>
-                          <td>{submission.date}</td>
-                          <td>
-                            <button 
-                              className="download-btn"
-                              onClick={() => handleDownloadFile(submission.file)}
-                            >
-                              <FaDownload /> {submission.file}
-                            </button>
-                          </td>
-                          <td>
-                            {assignmentGrade ? (
-                              <input 
-                                type="text" 
-                                value={assignmentGrade.grade}
-                                onChange={(e) => console.log('Grade updated:', e.target.value)}
-                              />
-                            ) : (
-                              <span>Not graded</span>
-                            )}
-                          </td>
-                          <td>
-                            {assignmentGrade ? (
-                              <>
-                                <button className="save-grade-btn">
-                                  <FaEdit /> Save
-                                </button>
-                                <button 
-                                  className="delete-grade-btn"
-                                  onClick={() => handleDeleteGrade(submission.studentId, assignmentGrade.id)}
-                                >
-                                  <FaTrash />
-                                </button>
-                              </>
-                            ) : (
-                              <button 
-                                className="add-grade-btn"
-                                onClick={() => {
-                                  setSelectedStudent(submission.studentId);
-                                  setNewGrade({
-                                    assignment: assignments.find(a => a.id === viewSubmissions)?.title || '',
-                                    grade: ''
-                                  });
-                                }}
-                              >
-                                <FaPlus /> Add Grade
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            renderItemForm('assignment', newAssignment, setNewAssignment, handleAddAssignment)
-          )}
+          <div className="assignments-header">
+            <h2>Course Assignments</h2>
+            <button 
+              className="new-assignment-btn"
+              onClick={() => setSelectedAssignment('new')}
+            >
+              <FaPlus /> New Assignment
+            </button>
+          </div>
+          <div className="assignments-list">
+            <table>
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Description</th>
+                  <th>Deadline</th>
+                  <th>Links</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assignments.map(assignment => (
+                  <tr key={assignment.id}>
+                    <td>{assignment.title}</td>
+                    <td>{assignment.description}</td>
+                    <td>{new Date(assignment.dueDate).toLocaleString()}</td>
+                    <td>
+                      {assignment.links && renderLinkList(assignment.links)}
+                    </td>
+                    <td>
+                      <button 
+                        className="view-submissions-btn"
+                        onClick={() => setViewSubmissions(assignment.id)}
+                      >
+                        View Submissions
+                      </button>
+                      <button 
+                        className="delete-btn"
+                        onClick={() => handleDeleteItem('assignment', assignment.id)}
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -956,19 +365,42 @@ const Courses = () => {
             <h2>Course Lectures</h2>
             <button 
               className="new-lecture-btn"
-              onClick={() => {
-                setSelectedLecture('new');
-                setNewLecture({ title: '', comment: '', links: [], date: '' });
-              }}
+              onClick={() => setSelectedLecture('new')}
             >
               <FaPlus /> New Lecture
             </button>
           </div>
-          {!selectedLecture ? (
-            renderItemList(lectures, 'lecture')
-          ) : (
-            renderItemForm('lecture', newLecture, setNewLecture, handleAddLecture)
-          )}
+          <div className="lectures-list">
+            <table>
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Date</th>
+                  <th>Links</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lectures.map(lecture => (
+                  <tr key={lecture.id}>
+                    <td>{lecture.title}</td>
+                    <td>{new Date(lecture.date).toLocaleDateString()}</td>
+                    <td>
+                      {lecture.links && renderLinkList(lecture.links)}
+                    </td>
+                    <td>
+                      <button 
+                        className="delete-btn"
+                        onClick={() => handleDeleteItem('lecture', lecture.id)}
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -978,19 +410,44 @@ const Courses = () => {
             <h2>Additional Materials</h2>
             <button 
               className="new-additional-btn"
-              onClick={() => {
-                setSelectedAdditional('new');
-                setNewAdditional({ title: '', description: '', links: [], date: '' });
-              }}
+              onClick={() => setSelectedAdditional('new')}
             >
-              <FaPlus /> New Additional
+              <FaPlus /> New Material
             </button>
           </div>
-          {!selectedAdditional ? (
-            renderItemList(additionals, 'additional')
-          ) : (
-            renderItemForm('additional', newAdditional, setNewAdditional, handleAddAdditional)
-          )}
+          <div className="additionals-list">
+            <table>
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Description</th>
+                  <th>Date</th>
+                  <th>Links</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {additionals.map(material => (
+                  <tr key={material.id}>
+                    <td>{material.title}</td>
+                    <td>{material.description}</td>
+                    <td>{new Date(material.date).toLocaleDateString()}</td>
+                    <td>
+                      {material.links && renderLinkList(material.links)}
+                    </td>
+                    <td>
+                      <button 
+                        className="delete-btn"
+                        onClick={() => handleDeleteItem('additional', material.id)}
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -1000,19 +457,44 @@ const Courses = () => {
             <h2>Course Labs</h2>
             <button 
               className="new-lab-btn"
-              onClick={() => {
-                setSelectedLab('new');
-                setNewLab({ title: '', description: '', links: [], deadlineDate: '', deadlineTime: '' });
-              }}
+              onClick={() => setSelectedLab('new')}
             >
               <FaPlus /> New Lab
             </button>
           </div>
-          {!selectedLab ? (
-            renderItemList(labs, 'lab')
-          ) : (
-            renderItemForm('lab', newLab, setNewLab, handleAddLab)
-          )}
+          <div className="labs-list">
+            <table>
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Description</th>
+                  <th>Deadline</th>
+                  <th>Links</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {labs.map(lab => (
+                  <tr key={lab.id}>
+                    <td>{lab.title}</td>
+                    <td>{lab.description}</td>
+                    <td>{new Date(lab.deadline).toLocaleString()}</td>
+                    <td>
+                      {lab.links && renderLinkList(lab.links)}
+                    </td>
+                    <td>
+                      <button 
+                        className="delete-btn"
+                        onClick={() => handleDeleteItem('lab', lab.id)}
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
