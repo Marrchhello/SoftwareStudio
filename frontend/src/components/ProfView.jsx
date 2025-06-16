@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  FaBell, FaCalendarAlt, FaBook, FaUserTie, FaUserCircle, 
+import {
+  FaBell, FaCalendarAlt, FaBook, FaUserTie, FaUserCircle,
   FaSearch, FaSignOutAlt, FaHome, FaChartBar, FaComments,
   FaSun, FaMoon, FaClock, FaCalendarDay, FaCalendarWeek, FaCalendar,
   FaEnvelope, FaPaperPlane, FaUsers, FaBuilding, FaGraduationCap,
@@ -8,7 +8,16 @@ import {
 } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
 import './ProfView.css';
-import Courses from './courses'; 
+import Courses from './courses';
+import {
+  getUserRole,
+  getTeacherScheduleDay,
+  getTeacherScheduleDayByDate,
+  getTeacherScheduleWeek,
+  getTeacherScheduleWeekByDate,
+  getTeacherScheduleMonth,
+  getTeacherScheduleMonthByDate
+} from '../api'; // Adjust path as needed
 
 const ProfDashboard = () => {
   const [activeView, setActiveView] = useState('dashboard');
@@ -27,7 +36,8 @@ const ProfDashboard = () => {
     name: '',
     title: '',
     email: '',
-    department: ''
+    department: '',
+    teacherId: null
   });
   const [quickStats, setQuickStats] = useState({
     courses: 0,
@@ -36,6 +46,7 @@ const ProfDashboard = () => {
   });
   const [messages, setMessages] = useState([]);
   const [todayClasses, setTodayClasses] = useState([]);
+  const [weeklySchedule, setWeeklySchedule] = useState(null);
 
   const navigate = useNavigate();
   const { professorId } = useParams();
@@ -57,32 +68,6 @@ const ProfDashboard = () => {
     return result;
   }
 
-  function shouldShowClass(cls, weekStart) {
-    const classDate = new Date(cls.startDate);
-    const weekEnd = addDays(weekStart, 6);
-    
-    if (new Date(cls.endDate) < weekStart) return false;
-    if (classDate > weekEnd) return false;
-    
-    const classDay = classDate.toLocaleDateString('en-US', { weekday: 'long' });
-    const currentDate = new Date(weekStart);
-
-    for (let i = 0; i < 7; i++) {
-      const dateToCheck = addDays(currentDate, i);
-      const dateDay = dateToCheck.toLocaleDateString('en-US', { weekday: 'long' });
-      
-      if (classDay === dateDay) {
-        if (cls.frequency === 'weekly') return true;
-        if (cls.frequency === 'biweekly') {
-          const weeksBetween = Math.floor((dateToCheck - classDate) / (7 * 24 * 60 * 60 * 1000));
-          return weeksBetween % 2 === 0;
-        }
-      }
-    }
-    
-    return false;
-  }
-
   function getWeekDates(startDate) {
     const dates = [];
     for (let i = 0; i < 7; i++) {
@@ -91,12 +76,34 @@ const ProfDashboard = () => {
     return dates;
   }
 
-  function getClassesForDay(dayDate) {
-    const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'long' });
-    return allClasses.filter(cls => {
-      const classDay = new Date(cls.startDate).toLocaleDateString('en-US', { weekday: 'long' });
-      return classDay === dayName && shouldShowClass(cls, currentWeekStart);
-    });
+  function formatDateForAPI(date) {
+    return date.toISOString().split('T')[0];
+  }
+
+  function parseScheduleData(scheduleData) {
+    if (!scheduleData || !scheduleData.Courses) return [];
+
+    return scheduleData.Courses.flatMap(course =>
+      course.ClassSchedule.ClassTime.map(classTime => ({
+        id: Math.random().toString(36).substr(2, 9),
+        course: course.ClassSchedule.CourseName,
+        type: "Class",
+        time: `${new Date(classTime.StartDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}-${new Date(classTime.EndDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        room: `${course.ClassSchedule.Building} ${course.ClassSchedule.RoomNumber}`,
+        group: "Group",
+        startDateTime: new Date(classTime.StartDateTime),
+        endDateTime: new Date(classTime.EndDateTime),
+        dayOfWeek: new Date(classTime.StartDateTime).getDay(),
+        roomLink: `/campus-map?room=${course.ClassSchedule.Building}-${course.ClassSchedule.RoomNumber}`
+      }))
+    );
+  }
+
+  function getClassesForDay(dayDate, scheduleData) {
+    if (!scheduleData) return [];
+
+    const targetDay = dayDate.getDay();
+    return scheduleData.filter(cls => cls.dayOfWeek === targetDay);
   }
 
   const goToToday = () => {
@@ -110,96 +117,91 @@ const ProfDashboard = () => {
     setShowTodayButton(currentWeekStart.getTime() !== currentWeek.getTime());
   }, [currentWeekStart]);
 
-  const fetchWithToken = async (url, options = {}) => {
-    const headers = {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...options.headers
-    };
-    
-    const response = await fetch(url, { ...options, headers });
-    
-    if (response.status === 401) {
-      localStorage.removeItem('token');
-      navigate('/login');
+  const fetchUserInfo = async () => {
+    try {
+      const userData = await getUserRole(token);
+      if (userData) {
+        setUserInfo(prev => ({
+          ...prev,
+          teacherId: userData.user_id,
+          name: userData.username || "Professor"
+        }));
+        return userData.user_id;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching user info:', error);
+      if (error.message.includes('401')) {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
       return null;
     }
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  };
+
+  const fetchTodaySchedule = async (teacherId) => {
+    try {
+      const today = formatDateForAPI(new Date());
+      const todaySchedule = await getTeacherScheduleDayByDate(teacherId, today, token);
+
+      if (todaySchedule && todaySchedule.Courses) {
+        const classes = todaySchedule.Courses.flatMap(course =>
+          course.ClassSchedule.ClassTime.map(classTime => ({
+            course: course.ClassSchedule.CourseName,
+            time: new Date(classTime.StartDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            room: `${course.ClassSchedule.Building} ${course.ClassSchedule.RoomNumber}`,
+            type: "Class",
+            roomLink: `/campus-map?room=${course.ClassSchedule.Building}-${course.ClassSchedule.RoomNumber}`
+          }))
+        );
+
+        setTodayClasses(classes);
+        setQuickStats(prev => ({ ...prev, upcomingClasses: classes.length }));
+      }
+    } catch (error) {
+      console.error('Error fetching today schedule:', error);
     }
-    
-    return await response.json();
+  };
+
+  const fetchWeeklySchedule = async (teacherId, weekStart = null) => {
+    try {
+      let scheduleData;
+
+      if (weekStart) {
+        const weekStartDate = formatDateForAPI(weekStart);
+        scheduleData = await getTeacherScheduleWeekByDate(teacherId, weekStartDate, token);
+      } else {
+        scheduleData = await getTeacherScheduleWeek(teacherId, token);
+      }
+
+      if (scheduleData) {
+        const parsedSchedule = parseScheduleData(scheduleData);
+        setWeeklySchedule(parsedSchedule);
+        setAllClasses(parsedSchedule);
+      }
+    } catch (error) {
+      console.error('Error fetching weekly schedule:', error);
+    }
   };
 
   const fetchProfessorData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch user info
-      const userData = await fetchWithToken('/me');
-      const teacherId = userData.role_id;
-      
-      // Fetch teacher details
-      const teacherResponse = await fetchWithToken(`/teacher/${teacherId}`);
-      if (teacherResponse) {
-        setUserInfo({
-          name: teacherResponse.name || "Professor",
-          title: teacherResponse.title || "Professor",
-          email: teacherResponse.email || "",
-          department: teacherResponse.department || "Computer Science"
-        });
+
+      // Get user info and teacher ID
+      const teacherId = await fetchUserInfo();
+      if (!teacherId) {
+        setLoading(false);
+        return;
       }
-      
-      // Fetch courses
-      const coursesData = await fetchWithToken(`/teacher/${teacherId}/courses`);
-      if (coursesData) {
-        setCourses(coursesData.TeacherCourseList || []);
-        setQuickStats(prev => ({ ...prev, courses: coursesData.TeacherCourseList?.length || 0 }));
-      }
-      
-      // Fetch schedule for representative classes
-      const scheduleData = await fetchWithToken(`/teacher/${teacherId}/schedule/semester`);
-      if (scheduleData) {
-        const classes = scheduleData.Courses.map(course => {
-          const firstClass = course.ClassSchedule.ClassTime[0];
-          return {
-            id: Math.random().toString(36).substr(2, 9),
-            course: course.ClassSchedule.CourseName,
-            type: "Class",
-            time: `${new Date(firstClass.StartDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}-${new Date(firstClass.EndDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
-            room: `${course.ClassSchedule.Building} ${course.ClassSchedule.RoomNumber}`,
-            group: "Group", // Tymczasowe, do wymiany na dane z backendu
-            frequency: course.isBiWeekly ? "biweekly" : "weekly",
-            startDate: new Date(firstClass.StartDateTime).toISOString().split('T')[0],
-            endDate: new Date(firstClass.EndDateTime).toISOString().split('T')[0],
-            roomLink: `/campus-map?room=${course.ClassSchedule.Building}-${course.ClassSchedule.RoomNumber}`
-          };
-        });
-        setAllClasses(classes);
-      }
-      
-      // Fetch today's classes
-      const today = new Date().toISOString().split('T')[0];
-      const todaySchedule = await fetchWithToken(`/teacher/${teacherId}/schedule/day/${today}`);
-      if (todaySchedule) {
-        // Extract today's classes
-        const classes = todaySchedule.Courses.map(course => {
-          const firstClass = course.ClassSchedule.ClassTime[0];
-          return {
-            course: course.ClassSchedule.CourseName,
-            time: `${new Date(firstClass.StartDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
-            room: `${course.ClassSchedule.Building} ${course.ClassSchedule.RoomNumber}`,
-            type: "Class",
-            roomLink: `/campus-map?room=${course.ClassSchedule.Building}-${course.ClassSchedule.RoomNumber}`
-          };
-        });
-        
-        setTodayClasses(classes);
-        setQuickStats(prev => ({ ...prev, upcomingClasses: classes.length }));
-      }
-      
-      // Fetch messages (placeholder)
+
+      // Fetch today's schedule
+      await fetchTodaySchedule(teacherId);
+
+      // Fetch weekly schedule
+      await fetchWeeklySchedule(teacherId);
+
+      // Set placeholder data for messages and courses
       setMessages([
         {
           id: 1,
@@ -211,7 +213,9 @@ const ProfDashboard = () => {
           ]
         }
       ]);
-      
+
+      setQuickStats(prev => ({ ...prev, courses: 3, unreadMessages: 1 }));
+
       setLoading(false);
     } catch (error) {
       console.error('Error fetching professor data:', error);
@@ -227,6 +231,18 @@ const ProfDashboard = () => {
     }
   }, [professorId, token]);
 
+  useEffect(() => {
+    // Fetch weekly schedule when week changes
+    if (userInfo.teacherId && currentWeekStart) {
+      const today = new Date();
+      const currentWeek = getStartOfWeek(today);
+
+      if (currentWeekStart.getTime() !== currentWeek.getTime()) {
+        fetchWeeklySchedule(userInfo.teacherId, currentWeekStart);
+      }
+    }
+  }, [currentWeekStart, userInfo.teacherId]);
+
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
     document.body.classList.toggle('dark-mode', !darkMode);
@@ -234,13 +250,13 @@ const ProfDashboard = () => {
 
   const sendMessage = () => {
     if (messageText.trim() === '') return;
-    
+
     const newMessage = {
       text: messageText,
       sent: true,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
-    
+
     const updatedMessages = [...messages];
     updatedMessages[activeConversation].messages.push(newMessage);
     setMessages(updatedMessages);
@@ -266,41 +282,41 @@ const ProfDashboard = () => {
     return (
       <div className="view-content schedule-view">
         <h2>Teaching Schedule</h2>
-        
+
         <div className="schedule-tabs">
-          <button 
+          <button
             className={`schedule-tab ${activeScheduleTab === 'weekly' ? 'active' : ''}`}
             onClick={() => setActiveScheduleTab('weekly')}
           >
             <FaCalendarWeek /> Weekly
           </button>
         </div>
-        
+
         <div className="week-navigation">
           <button className="nav-button" onClick={() => navigateWeek('prev')}>
             <FaChevronLeft /> Previous Week
           </button>
-          
+
           {showTodayButton && (
             <button className="today-button" onClick={goToToday}>
               Today
             </button>
           )}
-          
+
           <h3>
-            {currentWeekStart.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - 
+            {currentWeekStart.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} -
             {addDays(currentWeekStart, 6).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
           </h3>
-          
+
           <button className="nav-button" onClick={() => navigateWeek('next')}>
             Next Week <FaChevronRight />
           </button>
         </div>
-        
+
         <div className="weekly-schedule">
           <div className="week-days">
             {weekDates.map(date => (
-              <div 
+              <div
                 key={date.toString()}
                 className={`week-day ${date.toDateString() === today.toDateString() ? 'current-day' : ''}`}
               >
@@ -308,17 +324,17 @@ const ProfDashboard = () => {
               </div>
             ))}
           </div>
-          
+
           <div className="day-classes">
             {weekDates.map(date => {
-              const classes = getClassesForDay(date);
+              const classes = getClassesForDay(date, weeklySchedule);
               return (
                 <div key={date.toString()} className="day-column">
                   {classes.map((cls, idx) => (
                     <div key={idx} className="class-card">
                       <h4>{cls.course} ({cls.group})</h4>
                       <div className="time-frequency">
-                        <FaClock  /> { cls.time}
+                        <FaClock /> {cls.time}
                       </div>
                       <p>{cls.type} | <a href={cls.roomLink} className="room-link"><FaMapMarkerAlt /> {cls.room}</a></p>
                     </div>
@@ -341,7 +357,7 @@ const ProfDashboard = () => {
       );
     }
 
-    switch(activeView) {
+    switch (activeView) {
       case 'schedule':
         return renderScheduleView();
       case 'courses':
@@ -368,7 +384,7 @@ const ProfDashboard = () => {
             </div>
           </div>
         );
-        
+
       case 'messages':
         return (
           <div className="view-content">
@@ -376,7 +392,7 @@ const ProfDashboard = () => {
             <div className="messages-container">
               <div className="conversations-list">
                 {messages.map((conv, idx) => (
-                  <div 
+                  <div
                     key={conv.id}
                     className={`conversation-item ${activeConversation === idx ? 'active' : ''}`}
                     onClick={() => setActiveConversation(idx)}
@@ -397,7 +413,7 @@ const ProfDashboard = () => {
                   ))}
                 </div>
                 <div className="message-input">
-                  <textarea 
+                  <textarea
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     placeholder="Type your message..."
@@ -408,12 +424,12 @@ const ProfDashboard = () => {
             </div>
           </div>
         );
-      
+
       case 'course-detail':
         return (
           <div className="view-content">
-            <button 
-              className="back-button" 
+            <button
+              className="back-button"
               onClick={() => {
                 setSelectedCourse(null);
                 setActiveView('courses');
@@ -424,7 +440,7 @@ const ProfDashboard = () => {
             <Courses courseId={selectedCourse} />
           </div>
         );
-      
+
       default:
         return (
           <div className="view-content">
@@ -493,7 +509,7 @@ const ProfDashboard = () => {
           </div>
         </div>
         <ul className="nav-menu">
-          <li 
+          <li
             className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveView('dashboard')}
           >
@@ -502,7 +518,7 @@ const ProfDashboard = () => {
               <span>Dashboard</span>
             </div>
           </li>
-          <li 
+          <li
             className={`nav-item ${activeView === 'schedule' ? 'active' : ''}`}
             onClick={() => setActiveView('schedule')}
           >
@@ -511,7 +527,7 @@ const ProfDashboard = () => {
               <span>Schedule</span>
             </div>
           </li>
-          <li 
+          <li
             className={`nav-item ${activeView === 'courses' ? 'active' : ''}`}
             onClick={() => setActiveView('courses')}
           >
@@ -520,7 +536,7 @@ const ProfDashboard = () => {
               <span>My Courses</span>
             </div>
           </li>
-          <li 
+          <li
             className={`nav-item ${activeView === 'messages' ? 'active' : ''}`}
             onClick={() => setActiveView('messages')}
           >
@@ -539,9 +555,9 @@ const ProfDashboard = () => {
       <main className="main-content">
         <header className="top-nav">
           <div className="search-bar">
-            <input 
-              type="text" 
-              placeholder="Search courses, students..." 
+            <input
+              type="text"
+              placeholder="Search courses, students..."
             />
             <button><FaSearch /></button>
           </div>
