@@ -2,6 +2,7 @@ import datetime, pytz, sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from backend.Database import *
+from sqlalchemy import create_engine
 
 # Demo for inserting data into the database. First insert is minimum required fields. Second insert is maximum fields.
 # Warning. When inserting, be aware of foreign key restraints. The key (field in another table) must exists before insert.
@@ -9,7 +10,7 @@ from backend.Database import *
 
 try:
     
-    engine = create_engine('postgresql+psycopg://postgres:password@localhost/postgres')
+    engine = create_engine('postgresql+psycopg://postgres:password@SS_Database:5432/postgres')
     with engine.connect() as conn:
         
         print("Connected to Database!")
