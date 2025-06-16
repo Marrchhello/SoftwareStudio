@@ -17,7 +17,7 @@ import {
   getTeacherScheduleWeekByDate,
   getTeacherScheduleMonth,
   getTeacherScheduleMonthByDate
-} from '../api'; // Adjust path as needed
+} from '../api';
 
 const ProfDashboard = () => {
   const [activeView, setActiveView] = useState('dashboard');
