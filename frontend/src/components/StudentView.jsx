@@ -7,7 +7,8 @@ import {
   FaMapMarkerAlt, FaChevronLeft, FaChevronRight
 } from 'react-icons/fa'; 
 import './StudentView.css'; 
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
+import api from '../api';
 
 const StudentDashboard = ({ studentData, studentId = 1 }) => { 
   const [activeView, setActiveView] = useState('dashboard'); 
@@ -22,38 +23,74 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   const [allClasses, setAllClasses] = useState([]); 
   const [universityEvents, setUniversityEvents] = useState([]); 
   const [loading, setLoading] = useState(true); 
+  const [userInfo, setUserInfo] = useState({
+    name: "",
+    roleId: null,
+    faculty: "Computer Science",
+    semester: "Summer 2025"
+  });
   const [token, setToken] = useState(localStorage.getItem('token') || ''); 
   
   const navigate = useNavigate(); 
 
   // Helper function to fetch with token
-  const fetchWithToken = async (url, options = {}) => {
-    const headers = {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...options.headers
-    };
-    
-    const response = await fetch(url, { ...options, headers });
-    
-    if (response.status === 401) {
-      // Token expired or invalid, redirect to login
-      localStorage.removeItem('token');
-      navigate('/login');
-      return null;
+  const fetchWithToken = async (endpoint) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return null;
+      }
+
+      const response = await api.get(endpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 401) {
+        // Token expired or invalid, redirect to login
+        localStorage.removeItem('token');
+        navigate('/login');
+        return null;
+      }
+      throw error;
     }
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  };
+
+  // Fetch user info from API
+  const fetchUserInfo = async () => {
+    try {
+      // Get user's name
+      const nameData = await fetchWithToken('/name');
+      // Get user's role ID
+      const roleIdData = await fetchWithToken('/role_id');
+      
+      if (nameData && roleIdData) {
+        setUserInfo(prevInfo => ({
+          ...prevInfo,
+          name: nameData.name,
+          roleId: roleIdData.role_id
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching user info:', error);
     }
-    
-    return await response.json();
   };
 
   // Fetch student data from API
   const fetchStudentData = async () => {
     try {
       setLoading(true);
+      
+      // First fetch user info
+      await fetchUserInfo();
+      
+      // Then fetch all other data using the user's role ID
+      const roleIdData = await fetchWithToken('/role_id');
+      const studentId = roleIdData.role_id;
       
       // Fetch courses
       const coursesData = await fetchWithToken(`/student/${studentId}/courses`);
@@ -110,13 +147,13 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
     if (token) {
       fetchStudentData();
     } else {
-      // Redirect to login if no token
       navigate('/login');
     }
-  }, [studentId, token]);
+  }, [studentId]);
 
   function getStartOfWeek(date) {
     const d = new Date(date);
@@ -201,15 +238,6 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
     const currentWeek = getStartOfWeek(today);
     setShowTodayButton(currentWeekStart.getTime() !== currentWeek.getTime());
   }, [currentWeekStart]);
-
-  const defaultUserInfo = {
-    name: "Jack Smith",
-    indexNumber: "123456",
-    faculty: "Computer Science",
-    semester: "Summer 2025"
-  };
-
-  const userInfo = studentData?.userInfo || defaultUserInfo;
 
   const getGradeClass = (grade) => {
     if (grade >= 4.5) return 'grade-excellent';
@@ -583,7 +611,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
           <FaUserCircle className="user-icon" />
           <div className="user-info">
             <span className="user-name">{userInfo.name}</span>
-            <span className="user-id">{userInfo.indexNumber}</span>
+            <span className="user-id">{userInfo.roleId}</span>
           </div>
         </div>
         <ul className="nav-menu">

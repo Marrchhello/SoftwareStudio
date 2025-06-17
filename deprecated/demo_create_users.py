@@ -12,8 +12,9 @@ engine = create_engine('postgresql+psycopg://postgres:password@localhost/postgre
 Base.metadata.create_all(engine)
 
 # Create user
-print(create_user(engine, 1, 1, 'ben', 'banana', Roles.STUDENT))
-print(create_user(engine, 2, 1, 'rick', 'roll', Roles.TEACHER))
+# Parameters: engine, roleId, username, password, role, [uuid]
+print(create_user(engine, roleId=1, username='ben', password='banana', role=Roles.STUDENT))
+print(create_user(engine, roleId=1, username='rick', password='roll', role=Roles.TEACHER))
 
 with Session(engine) as session:
 # Query User

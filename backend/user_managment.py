@@ -82,7 +82,10 @@ def create_user(engine: Engine, roleId: int, username: str, password: str, role:
         with engine.connect() as conn:
             result = conn.execute(select(func.max(User.userId)))
             max_id = result.scalar()
-            uuid = max_id + 1
+            if max_id is None:
+                uuid = 0
+            else:
+                uuid = max_id + 1
     
     # Test if passed params can create a user.
     test_params = can_create_user(engine, uuid, roleId, role)

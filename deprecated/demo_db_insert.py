@@ -89,7 +89,7 @@ try:
         
         # Student
         addlist.append(Student(studentId=0))
-        addlist.append(Student(studentId=1, semester=4, degreeId=1, age=22, email='roll@rick.lel'))
+        addlist.append(Student(studentId=1, semester=4, degreeId=1, name='ben', age=22, email='roll@rick.lel'))
         
         session = Session()
         
