@@ -266,6 +266,7 @@ class Student(Base):
     studentId: int primary
     semester: def(1) int (which semester is the student in)
     degreeId: def(0) int (Degree the student is trying to earn)
+    name: opt str
     age: opt int
     email: opt str
     """
@@ -274,11 +275,12 @@ class Student(Base):
     studentId: Mapped[int] = mapped_column(primary_key=True)
     semester: Mapped[int] = mapped_column(insert_default=1)
     degreeId: Mapped[int] = mapped_column(ForeignKey('Degree.degreeId'), insert_default=0)
+    name: Mapped[Optional[str]]
     age: Mapped[Optional[int]]
     email: Mapped[Optional[str]]
 
     def __repr__(self):
-        return f"Student ID: {self.studentId}, Semester: {self.semester}, Degree ID: {self.degreeId}, Age: {self.age}, Email: {self.email}"
+        return f"Student ID: {self.studentId}, Semester: {self.semester}, Degree ID: {self.degreeId}, Name: {self.name}, Age: {self.age}, Email: {self.email}"
 
 
 # Change log V1 -> V2: add docstring, update __repr__

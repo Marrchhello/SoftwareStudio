@@ -1326,3 +1326,36 @@ def getFAQ(engine: Engine):
             output.append(FAQModel(Question=row[0], Answer=row[1]))
             
     return FAQListModel(FAQList=output)
+
+
+# ----------------------------------------------------------------------------
+# User
+# ----------------------------------------------------------------------------
+
+# Get User's name
+def getName(engine: Engine, role: str, role_id: int) -> str:
+    """Get user's name from db.
+    
+    Args:
+        engine: Engine connection to use.
+        role: str (Role of the user)
+        role_id: int (Role ID of the user)
+        
+    Returns:
+        output: str (User's name)
+    """
+
+    role = role.upper()
+    sel = None
+    if role == "STUDENT":
+        sel = select(Student.name).where(Student.studentId == role_id)
+    elif role == "TEACHER":
+        sel = select(Teacher.name).where(Teacher.teacherId == role_id)
+    else:
+        return ''
+    
+    with engine.connect() as conn:
+        result = conn.execute(sel).scalar()
+        return result if result is not None else ''
+
+
