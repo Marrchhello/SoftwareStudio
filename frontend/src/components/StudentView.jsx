@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect, useRef } from 'react'; 
 import { 
   FaBell, FaCalendarAlt, FaBook, FaGraduationCap, FaUserCircle, 
   FaSearch, FaSignOutAlt, FaHome, FaChartBar, FaComments,
@@ -26,10 +26,21 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   const [userInfo, setUserInfo] = useState({
     name: "",
     roleId: null,
+    user_id: null,
     faculty: "Computer Science",
     semester: "Summer 2025"
   });
   const [token, setToken] = useState(localStorage.getItem('token') || ''); 
+  const [chats, setChats] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [newChatRole, setNewChatRole] = useState('TEACHER');
+  const [newChatRoleId, setNewChatRoleId] = useState('');
+  const [userNames, setUserNames] = useState({});
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const chatMessagesRef = useRef(null);
   
   const navigate = useNavigate(); 
 
@@ -67,12 +78,15 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
       const nameData = await fetchWithToken('/name');
       // Get user's role ID
       const roleIdData = await fetchWithToken('/role_id');
+      // Get user's profile
+      const profileData = await fetchWithToken('/me');
       
-      if (nameData && roleIdData) {
+      if (nameData && roleIdData && profileData) {
         setUserInfo(prevInfo => ({
           ...prevInfo,
           name: nameData.name,
-          roleId: roleIdData.role_id
+          roleId: roleIdData.role_id,
+          user_id: profileData.user_id
         }));
       }
     } catch (error) {
@@ -240,6 +254,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   }, [currentWeekStart]);
 
   const getGradeClass = (grade) => {
+    if (!grade || grade === null) return 'grade-pending';
     if (grade >= 4.5) return 'grade-excellent';
     if (grade >= 3.5) return 'grade-good';
     if (grade >= 3.0) return 'grade-average';
@@ -259,8 +274,10 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
 
   const calculateCourseAverage = (courseGrades) => {
     if (!courseGrades || courseGrades.length === 0) return 0;
-    const sum = courseGrades.reduce((acc, grade) => acc + grade.Grade, 0);
-    return sum / courseGrades.length;
+    const validGrades = courseGrades.filter(grade => grade.Grade !== null);
+    if (validGrades.length === 0) return 0;
+    const sum = validGrades.reduce((acc, grade) => acc + grade.Grade, 0);
+    return sum / validGrades.length;
   };
 
   const toggleDarkMode = () => {
@@ -286,6 +303,211 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
+  };
+
+  const fetchUserName = async (userId) => {
+    try {
+      // Don't fetch if we already have the name
+      if (userNames[userId]) {
+        return userNames[userId];
+      }
+
+      const response = await api.get(`/name/${userId}`);
+      console.log('Name response for user', userId, ':', response.data); // Debug log
+
+      // The response format is { "name": "username" }
+      const name = response.data?.name;
+
+      // Handle empty string or null/undefined name
+      if (!name && name !== 0) { // Include 0 check in case name is numeric
+        setUserNames(prev => ({
+          ...prev,
+          [userId]: 'Unknown User'
+        }));
+        return 'Unknown User';
+      }
+
+      // Only update state if we got a valid name
+      setUserNames(prev => ({
+        ...prev,
+        [userId]: name || 'Unknown User'
+      }));
+      return name || 'Unknown User';
+    } catch (error) {
+      console.error('Error fetching user name:', error);
+      setUserNames(prev => ({
+        ...prev,
+        [userId]: 'Unknown User'
+      }));
+      return 'Unknown User';
+    }
+  };
+
+  const fetchChats = async () => {
+    try {
+      const response = await api.get('/chats/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.data && response.data.ChatList) {
+        setChats(response.data.ChatList);
+        
+        // Fetch names for all users in chats
+        const uniqueUserIds = new Set(
+          response.data.ChatList.flatMap(chat => [chat.user1Id, chat.user2Id])
+        );
+        
+        const namePromises = Array.from(uniqueUserIds)
+          .filter(userId => !userNames[userId])
+          .map(fetchUserName);
+        
+        await Promise.all(namePromises);
+      } else {
+        setChats([]);
+        console.warn('No chats found in response:', response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching chats:', error);
+      setChats([]);
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  };
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages]);
+
+  // Scroll to bottom when chat changes
+  useEffect(() => {
+    scrollToBottom();
+  }, [activeChat]);
+
+  const fetchChatMessages = async (chatId) => {
+    try {
+      setIsLoadingMessages(true);
+      const response = await api.get(`/chats/${chatId}/messages/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      // Always set messages, even if empty
+      setChatMessages(response.data?.ChatMessageList || []);
+    } catch (error) {
+      console.error('Error fetching chat messages:', error);
+      // Only set empty array on initial load error
+      if (isInitialLoad) {
+        setChatMessages([]);
+      }
+    } finally {
+      setIsLoadingMessages(false);
+      setIsInitialLoad(false);
+    }
+  };
+
+  const sendMessage = async (chatId, message) => {
+    try {
+      console.log('Sending message:', { chatId, message }); // Debug log
+      const response = await api.post(`/chats/${chatId}/messages/`, null, {
+        params: { message },
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      console.log('Message sent response:', response.data); // Debug log
+      setChatMessages(response.data.ChatMessageList || []);
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Failed to send message. Please try again.');
+    }
+  };
+
+  const createNewChat = async () => {
+    if (!newChatRoleId.trim()) {
+      return;
+    }
+    try {
+      await api.post('/chats/', null, {
+        params: {
+          user2_role: newChatRole,
+          user2_role_id: parseInt(newChatRoleId)
+        },
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      // Fetch updated chat list
+      await fetchChats();
+      
+      // Reset form
+      setNewChatRole('TEACHER');
+      setNewChatRoleId('');
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      alert('Failed to create chat. Please try again.');
+    }
+  };
+
+  useEffect(() => {
+    if (activeView === 'messages') {
+      fetchChats();
+    }
+  }, [activeView]);
+
+  useEffect(() => {
+    if (activeChat) {
+      setIsInitialLoad(true);
+      fetchChatMessages(activeChat);
+    } else {
+      // Clear messages when no chat is selected
+      setChatMessages([]);
+      setIsInitialLoad(true);
+    }
+  }, [activeChat]);
+
+  useEffect(() => {
+    if (activeView === 'messages' && chats.length > 0) {
+      const uniqueUserIds = new Set(
+        chats.flatMap(chat => [chat.user1Id, chat.user2Id])
+      );
+      
+      uniqueUserIds.forEach(userId => {
+        if (!userNames[userId]) {
+          fetchUserName(userId);
+        }
+      });
+    }
+  }, [activeView, chats, userNames]);
+
+  // Auto-refresh chat messages
+  useEffect(() => {
+    let intervalId;
+
+    if (activeView === 'messages' && activeChat && !isInitialLoad) {
+      // Set up interval for subsequent fetches
+      intervalId = setInterval(() => {
+        fetchChatMessages(activeChat);
+      }, 10000); // 10 seconds
+    }
+
+    // Cleanup function
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [activeView, activeChat, isInitialLoad]); // Dependencies: activeView, activeChat, and isInitialLoad
+
+  const getCurrentUserId = async () => {
+    try {
+      const response = await api.get('/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.data.user_id;
+    } catch (error) {
+      console.error('Error getting current user ID:', error);
+      return null;
+    }
   };
 
   const renderScheduleView = () => {
@@ -486,8 +708,10 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                     <tbody>
                       {courseGrades.map((grade, idx) => (
                         <tr key={idx}>
-                          <td>{grade.Assignment}</td>
-                          <td className={getGradeClass(grade.Grade)}>{grade.Grade.toFixed(1)}</td>
+                          <td>{grade.Assignment || 'Pending'}</td>
+                          <td className={getGradeClass(grade.Grade)}>
+                            {grade.Grade !== null ? grade.Grade.toFixed(1) : 'Pending'}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -503,11 +727,118 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
           <div className="view-content">
             <h2>Messages</h2>
             <div className="messages-container">
-              <div className="message-placeholder">
-                <FaEnvelope size={48} />
-                <h3>Messages Feature</h3>
-                <p>Will be implemented...</p>
+              <div className="chat-sidebar">
+                <div className="new-chat-form">
+                  <h3>Start New Chat</h3>
+                  <select 
+                    value={newChatRole}
+                    onChange={(e) => setNewChatRole(e.target.value)}
+                  >
+                    <option value="TEACHER">Teacher</option>
+                    <option value="STUDENT">Student</option>
+                  </select>
+                  <input
+                    type="number"
+                    placeholder="Enter ID"
+                    value={newChatRoleId}
+                    onChange={(e) => setNewChatRoleId(e.target.value)}
+                  />
+                  <button onClick={createNewChat}>
+                    <FaPaperPlane /> Create Chat
+                  </button>
+                </div>
                 
+                <div className="chat-list">
+                  {chats.map(chat => {
+                    const currentUserId = parseInt(userInfo.user_id);
+                    const otherUserId = parseInt(chat.user1Id) === currentUserId ? 
+                      parseInt(chat.user2Id) : parseInt(chat.user1Id);
+                    const otherUserName = userNames[otherUserId];
+                    
+                    return (
+                      <div
+                        key={chat.chatId}
+                        className={`chat-item ${activeChat === chat.chatId ? 'active' : ''}`}
+                        onClick={() => setActiveChat(chat.chatId)}
+                      ><FaUserCircle className="chat-avatar"/><div className="chat-info"><span>{(otherUserName || 'Loading...').trim()}</span><small>Click to open chat</small></div></div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              <div className="chat-main">
+                {activeChat ? (
+                  <>
+                    <div className="chat-messages" ref={chatMessagesRef}>
+                      {chatMessages.length > 0 ? (
+                        <>
+                          {chatMessages.map((msg, idx) => {
+                            const isCurrentUser = msg.senderName === userInfo.name;
+                            return (
+                              <div 
+                                key={idx} 
+                                className={`message ${isCurrentUser ? 'sent' : 'received'}`}
+                              >
+                                <div className="message-content">
+                                  <div className="message-header">
+                                    <span className="sender-name">{msg.senderName}</span>
+                                  </div>
+                                  <p>{msg.message}</p>
+                                </div>
+                                <div className="message-time">
+                                  {new Date(msg.timestamp).toLocaleTimeString()}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {isLoadingMessages && (
+                            <div className="refresh-indicator">
+                              <div className="loading-spinner">Refreshing...</div>
+                            </div>
+                          )}
+                        </>
+                      ) : isInitialLoad ? (
+                        <div className="loading-messages">
+                          <div className="loading-spinner">Loading messages...</div>
+                        </div>
+                      ) : (
+                        <div className="no-messages">
+                          <p>No messages yet. Start the conversation!</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="chat-input">
+                      <input
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        placeholder="Type a message..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey && newMessage.trim()) {
+                            e.preventDefault();
+                            sendMessage(activeChat, newMessage.trim());
+                          }
+                        }}
+                      />
+                      <button 
+                        onClick={() => {
+                          if (newMessage.trim()) {
+                            sendMessage(activeChat, newMessage.trim());
+                            scrollToBottom(); // Add scroll to bottom after sending
+                          }
+                        }}
+                        disabled={!newMessage.trim()}
+                      >
+                        <FaPaperPlane />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="no-chat-selected">
+                    <FaComments size={48} />
+                    <h3>Select a chat to start messaging</h3>
+                  </div>
+                )}
               </div>
             </div>
           </div>

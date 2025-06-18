@@ -269,6 +269,69 @@ class UniEventScheduleModel(BaseModel):
     
     Events: List[EventScheduleModel] = []
 
+
+# ----------------------------------------------------------------------------
+# Chat
+# ----------------------------------------------------------------------------
+
+# Chat Model
+class ChatModel(BaseModel):
+    """Model for a chat.
+    
+    Args:
+        chatId: int (chat id)
+        user1Id: int (first user in the chat)
+        user2Id: int (second user in the chat)
+    """
+
+    chatId: int
+    user1Id: int
+    user2Id: int
+
+
+# Chat List Model
+class ChatListModel(BaseModel):
+    """Model for a list of chats.
+    
+    Args:
+        ChatList: List[ChatModel]
+    """
+
+    ChatList: List[ChatModel] = []
+
+
+# Chat Message Model
+class ChatMessageModel(BaseModel):
+    """Model for a chat message.
+    
+    Args:
+        chatId: int (chat the message belongs to)
+        senderName: str (user who sent the message)
+        message: str (the message)
+        timestamp: datetime.datetime (timestamp of the message)
+    """
+    
+    chatId: int
+    senderName: str
+    message: str
+    timestamp: datetime.datetime
+
+
+# Chat Message List Model
+class ChatMessageListModel(BaseModel):
+    """Model for a list of chat messages.
+    
+    Args:
+        ChatMessageList: List[ChatMessageModel]
+    """
+    
+    ChatMessageList: List[ChatMessageModel] = []
+    
+    
+    
+    
+    
+
     
     
     

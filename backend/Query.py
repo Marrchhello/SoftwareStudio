@@ -1357,5 +1357,163 @@ def getName(engine: Engine, role: str, role_id: int) -> str:
     with engine.connect() as conn:
         result = conn.execute(sel).scalar()
         return result if result is not None else ''
+    
+
+# Get User's name from user_id
+def getNameFromUserId(engine: Engine, user_id: int) -> str:
+    """Get user's name from db.
+    
+    Args:
+        engine: Engine connection to use.
+        user_id: int (User ID of the user)
+        
+    Returns:
+        output: str (User's name)
+    """
+
+    sel = select(User.role, User.roleId).where(User.userId == user_id)
+    
+    with engine.connect() as conn:
+        result = conn.execute(sel).fetchone()
+        if result is not None:
+            role = str(result[0])
+            # Get rid of 'Roles.'
+            role = role[6:]
+            role_id = result[1]
+            return getName(engine=engine, role=role, role_id=role_id)
+        return ''
 
 
+# ----------------------------------------------------------------------------
+# Chat
+# ----------------------------------------------------------------------------
+
+# Get Chat
+def getChats(engine: Engine, user_id: int):
+    """Get chats for a user.
+    
+    Args:
+        engine: Engine connection to use.  
+        user_id: int (user to get the chats for)
+        
+    Returns:
+        output: ChatModelListModel
+    """
+    
+    output = []
+
+    with engine.connect() as conn:
+        chat_select = select(Chat).where(or_(Chat.user1Id == user_id, Chat.user2Id == user_id))
+        result = conn.execute(chat_select).fetchall()
+        for row in result:
+            output.append(ChatModel(chatId=row.chatId, user1Id=row.user1Id, user2Id=row.user2Id))
+    return ChatListModel(ChatList=output)
+    
+
+# Get Chat Messages
+def getChatMessages(engine: Engine, chat_id: int):
+    """Get chat messages for a chat.
+    
+    Args:
+        engine: Engine connection to use.  
+        chat_id: int (chat id)
+        
+    Returns:
+        output: ChatMessageModel
+    """
+
+    output = []
+
+    with engine.connect() as conn:
+        chat_message_select = select(ChatMessage).where(ChatMessage.chatId == chat_id)
+        result = conn.execute(chat_message_select).fetchall()
+        for row in result:
+            output.append(ChatMessageModel(chatId=row.chatId, senderName=getNameFromUserId(engine=engine, user_id=row.senderId), message=row.message, timestamp=row.timestamp))
+    
+    return ChatMessageListModel(ChatMessageList=output)
+
+
+# Post Chat Message
+def postChatMessage(engine: Engine, chat_id: int, sender_id: int, message: str):
+    """Post a chat message.
+    
+    Args:
+        engine: Engine connection to use.  
+        chat_id: int (chat id)
+        sender_id: int (user who sent the message)
+        message: str (the message)
+        
+    Returns:
+        output: ChatMessageListModel
+    """
+    
+    with engine.connect() as conn:
+        chat_message_insert = insert(ChatMessage).values(chatId=chat_id, senderId=sender_id, message=message, timestamp=datetime.datetime.now())
+        conn.execute(chat_message_insert)
+        conn.commit()
+    
+    return getChatMessages(engine=engine, chat_id=chat_id)
+
+# get User ID
+def getUserId(engine: Engine, role_id: int, role: str):
+    """Get user id from username.
+    
+    Args:
+        engine: Engine connection to use.  
+        role_id: int (role id)
+        role: str (role)
+        
+    Returns:
+        output: int (user id)
+    """
+    
+    role = role.upper()
+    with engine.connect() as conn:
+        user_select = select(User.userId).where(User.roleId == role_id, User.role == role)
+        result = conn.execute(user_select).scalar()
+        return result if result is not None else None
+
+# Test if user is in chat
+def TestUserChat(engine: Engine, user_id: int, chat_id: int):
+    """Test if user is in chat.
+    
+    Args:
+        engine: Engine connection to use.  
+        user_id: int (user id)
+        chat_id: int (chat id)
+        
+    Returns:
+        output: bool (True if user is in chat, False otherwise)
+    """
+
+    with engine.connect() as conn:
+        chat_select = select(Chat).where(Chat.chatId == chat_id)
+        result = conn.execute(chat_select).fetchall()
+        for row in result:
+            if row.user1Id == user_id or row.user2Id == user_id:
+                return True
+    return False
+
+
+# Create chat between two users
+def createChat(engine: Engine, user1_id: int, user2_id: int):
+    """Create a chat between two users.
+    
+    Args:
+        engine: Engine connection to use.  
+        user1_id: int (first user in the chat)
+        user2_id: int (second user in the chat)
+        
+    Returns:
+        output: id of new chat
+    """
+
+    with engine.connect() as conn:
+        chat_insert = insert(Chat).values(user1Id=user1_id, user2Id=user2_id)
+        conn.execute(chat_insert)
+        conn.commit()
+
+        chat_select = select(Chat).where(Chat.user1Id == user1_id, Chat.user2Id == user2_id)
+        result = conn.execute(chat_select).scalar()
+        return result
+    

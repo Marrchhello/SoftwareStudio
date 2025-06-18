@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FaBell, FaCalendarAlt, FaBook, FaUserTie, FaUserCircle,
   FaSearch, FaSignOutAlt, FaHome, FaChartBar, FaComments,
@@ -9,6 +9,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import './ProfView.css';
 import Courses from './courses';
+import api from '../api';
 import {
   getUserRole,
   getTeacherScheduleDay,
@@ -47,6 +48,16 @@ const ProfDashboard = () => {
   const [messages, setMessages] = useState([]);
   const [todayClasses, setTodayClasses] = useState([]);
   const [weeklySchedule, setWeeklySchedule] = useState(null);
+  const [chats, setChats] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [newChatRole, setNewChatRole] = useState('STUDENT');
+  const [newChatRoleId, setNewChatRoleId] = useState('');
+  const [userNames, setUserNames] = useState({});
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const chatMessagesRef = useRef(null);
 
   const navigate = useNavigate();
   const { professorId } = useParams();
@@ -121,10 +132,16 @@ const ProfDashboard = () => {
     try {
       const userData = await getUserRole(token);
       if (userData) {
+        // Get user's name
+        const nameResponse = await api.get('/name', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
         setUserInfo(prev => ({
           ...prev,
           teacherId: userData.user_id,
-          name: userData.username || "Professor"
+          name: nameResponse.data?.name || "Professor",
+          role: userData.role
         }));
         return userData.user_id;
       }
@@ -201,20 +218,10 @@ const ProfDashboard = () => {
       // Fetch weekly schedule
       await fetchWeeklySchedule(teacherId);
 
-      // Set placeholder data for messages and courses
-      setMessages([
-        {
-          id: 1,
-          recipient: "John Doe",
-          course: "Advanced Programming",
-          lastMessage: "About the project deadline...",
-          messages: [
-            { text: "Hello, I have a question about your assignment.", sent: false, time: "10:30 AM" }
-          ]
-        }
-      ]);
-
-      setQuickStats(prev => ({ ...prev, courses: 3, unreadMessages: 1 }));
+      // Fetch chats if we're on the messages view
+      if (activeView === 'messages') {
+        await fetchChats();
+      }
 
       setLoading(false);
     } catch (error) {
@@ -248,21 +255,6 @@ const ProfDashboard = () => {
     document.body.classList.toggle('dark-mode', !darkMode);
   };
 
-  const sendMessage = () => {
-    if (messageText.trim() === '') return;
-
-    const newMessage = {
-      text: messageText,
-      sent: true,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    const updatedMessages = [...messages];
-    updatedMessages[activeConversation].messages.push(newMessage);
-    setMessages(updatedMessages);
-    setMessageText('');
-  };
-
   const navigateWeek = (direction) => {
     const newDate = new Date(currentWeekStart);
     newDate.setDate(newDate.getDate() + (direction === 'prev' ? -7 : 7));
@@ -273,6 +265,178 @@ const ProfDashboard = () => {
     localStorage.removeItem('token');
     navigate('/login');
   };
+
+  const scrollToBottom = () => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  };
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages]);
+
+  // Scroll to bottom when chat changes
+  useEffect(() => {
+    scrollToBottom();
+  }, [activeChat]);
+
+  const fetchUserName = async (userId) => {
+    try {
+      if (userNames[userId]) {
+        return userNames[userId];
+      }
+
+      const response = await api.get(`/name/${userId}`);
+      const name = response.data?.name;
+
+      if (!name && name !== 0) {
+        setUserNames(prev => ({
+          ...prev,
+          [userId]: 'Unknown User'
+        }));
+        return 'Unknown User';
+      }
+
+      setUserNames(prev => ({
+        ...prev,
+        [userId]: name || 'Unknown User'
+      }));
+      return name || 'Unknown User';
+    } catch (error) {
+      console.error('Error fetching user name:', error);
+      setUserNames(prev => ({
+        ...prev,
+        [userId]: 'Unknown User'
+      }));
+      return 'Unknown User';
+    }
+  };
+
+  const fetchChats = async () => {
+    try {
+      const response = await api.get('/chats/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.data && response.data.ChatList) {
+        setChats(response.data.ChatList);
+        
+        const uniqueUserIds = new Set(
+          response.data.ChatList.flatMap(chat => [chat.user1Id, chat.user2Id])
+        );
+        
+        const namePromises = Array.from(uniqueUserIds)
+          .filter(userId => !userNames[userId])
+          .map(fetchUserName);
+        
+        await Promise.all(namePromises);
+
+        // Update unread messages count for quick stats
+        setQuickStats(prev => ({
+          ...prev,
+          unreadMessages: response.data.ChatList.length
+        }));
+      } else {
+        setChats([]);
+        console.warn('No chats found in response:', response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching chats:', error);
+      setChats([]);
+    }
+  };
+
+  const fetchChatMessages = async (chatId) => {
+    try {
+      setIsLoadingMessages(true);
+      const response = await api.get(`/chats/${chatId}/messages/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setChatMessages(response.data?.ChatMessageList || []);
+    } catch (error) {
+      console.error('Error fetching chat messages:', error);
+      if (isInitialLoad) {
+        setChatMessages([]);
+      }
+    } finally {
+      setIsLoadingMessages(false);
+      setIsInitialLoad(false);
+    }
+  };
+
+  const sendMessage = async (chatId, message) => {
+    try {
+      const response = await api.post(`/chats/${chatId}/messages/`, null, {
+        params: { message },
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setChatMessages(response.data.ChatMessageList || []);
+      setNewMessage('');
+      scrollToBottom();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Failed to send message. Please try again.');
+    }
+  };
+
+  const createNewChat = async () => {
+    if (!newChatRoleId.trim()) {
+      return;
+    }
+    try {
+      await api.post('/chats/', null, {
+        params: {
+          user2_role: newChatRole,
+          user2_role_id: parseInt(newChatRoleId)
+        },
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      await fetchChats();
+      
+      setNewChatRole('STUDENT');
+      setNewChatRoleId('');
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      alert('Failed to create chat. Please try again.');
+    }
+  };
+
+  // Effect for fetching chats when switching to messages view
+  useEffect(() => {
+    if (activeView === 'messages' && token) {
+      fetchChats();
+    }
+  }, [activeView]);
+
+  // Effect for fetching messages when selecting a chat
+  useEffect(() => {
+    if (activeChat) {
+      setIsInitialLoad(true);
+      fetchChatMessages(activeChat);
+    } else {
+      setChatMessages([]);
+      setIsInitialLoad(true);
+    }
+  }, [activeChat]);
+
+  // Effect for auto-refreshing messages
+  useEffect(() => {
+    let intervalId;
+
+    if (activeView === 'messages' && activeChat && !isInitialLoad) {
+      intervalId = setInterval(() => {
+        fetchChatMessages(activeChat);
+      }, 10000); // 10 seconds
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [activeView, activeChat, isInitialLoad]);
 
   const renderScheduleView = () => {
     const weekDates = getWeekDates(currentWeekStart);
@@ -348,6 +512,135 @@ const ProfDashboard = () => {
     );
   };
 
+  const renderMessagesView = () => {
+    return (
+      <div className="view-content">
+        <h2>Messages</h2>
+        <div className="messages-container">
+          <div className="chat-sidebar">
+            <div className="new-chat-form">
+              <h3>Start New Chat</h3>
+              <select 
+                value={newChatRole}
+                onChange={(e) => setNewChatRole(e.target.value)}
+              >
+                <option value="STUDENT">Student</option>
+                <option value="TEACHER">Teacher</option>
+              </select>
+              <input
+                type="number"
+                placeholder="Enter ID"
+                value={newChatRoleId}
+                onChange={(e) => setNewChatRoleId(e.target.value)}
+              />
+              <button onClick={createNewChat}>
+                <FaPaperPlane /> Create Chat
+              </button>
+            </div>
+            
+            <div className="chat-list">
+              {chats.map(chat => {
+                const currentUserId = parseInt(userInfo.teacherId);
+                const otherUserId = parseInt(chat.user1Id) === currentUserId ? 
+                  parseInt(chat.user2Id) : parseInt(chat.user1Id);
+                const otherUserName = userNames[otherUserId];
+                
+                return (
+                  <div
+                    key={chat.chatId}
+                    className={`chat-item ${activeChat === chat.chatId ? 'active' : ''}`}
+                    onClick={() => setActiveChat(chat.chatId)}
+                  >
+                    <FaUserCircle className="chat-avatar"/>
+                    <div className="chat-info">
+                      <span>{(otherUserName || 'Loading...').trim()}</span>
+                      <small>Click to open chat</small>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
+          <div className="chat-main">
+            {activeChat ? (
+              <>
+                <div className="chat-messages" ref={chatMessagesRef}>
+                  {chatMessages.length > 0 ? (
+                    <>
+                      {chatMessages.map((msg, idx) => {
+                        const isCurrentUser = msg.senderName === userInfo.name;
+                        return (
+                          <div 
+                            key={idx} 
+                            className={`message ${isCurrentUser ? 'sent' : 'received'}`}
+                          >
+                            <div className="message-content">
+                              <div className="message-header">
+                                <span className="sender-name">{msg.senderName}</span>
+                              </div>
+                              <p>{msg.message}</p>
+                            </div>
+                            <div className="message-time">
+                              {new Date(msg.timestamp).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {isLoadingMessages && (
+                        <div className="refresh-indicator">
+                          <div className="loading-spinner">Refreshing...</div>
+                        </div>
+                      )}
+                    </>
+                  ) : isInitialLoad ? (
+                    <div className="loading-messages">
+                      <div className="loading-spinner">Loading messages...</div>
+                    </div>
+                  ) : (
+                    <div className="no-messages">
+                      <p>No messages yet. Start the conversation!</p>
+                    </div>
+                  )}
+                </div>
+                <div className="chat-input">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey && newMessage.trim()) {
+                        e.preventDefault();
+                        sendMessage(activeChat, newMessage.trim());
+                      }
+                    }}
+                  />
+                  <button 
+                    onClick={() => {
+                      if (newMessage.trim()) {
+                        sendMessage(activeChat, newMessage.trim());
+                        scrollToBottom();
+                      }
+                    }}
+                    disabled={!newMessage.trim()}
+                  >
+                    <FaPaperPlane />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="no-chat-selected">
+                <FaComments size={48} />
+                <h3>Select a chat to start messaging</h3>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderView = () => {
     if (loading) {
       return (
@@ -386,44 +679,7 @@ const ProfDashboard = () => {
         );
 
       case 'messages':
-        return (
-          <div className="view-content">
-            <h2>Messages</h2>
-            <div className="messages-container">
-              <div className="conversations-list">
-                {messages.map((conv, idx) => (
-                  <div
-                    key={conv.id}
-                    className={`conversation-item ${activeConversation === idx ? 'active' : ''}`}
-                    onClick={() => setActiveConversation(idx)}
-                  >
-                    <h4>{conv.recipient}</h4>
-                    <p>{conv.course}</p>
-                    <p className="conversation-preview">{conv.lastMessage}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="message-area">
-                <div className="messages-list">
-                  {messages[activeConversation]?.messages.map((msg, idx) => (
-                    <div key={idx} className={`message ${msg.sent ? 'sent' : ''}`}>
-                      <p>{msg.text}</p>
-                      <small>{msg.time}</small>
-                    </div>
-                  ))}
-                </div>
-                <div className="message-input">
-                  <textarea
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    placeholder="Type your message..."
-                  />
-                  <button onClick={sendMessage}><FaPaperPlane /></button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
+        return renderMessagesView();
 
       case 'course-detail':
         return (
