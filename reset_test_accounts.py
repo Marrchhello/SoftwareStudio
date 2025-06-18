@@ -11,7 +11,7 @@ from Database import Base, User, Student, Teacher
 from sqlalchemy.orm import Session
 
 # Database connection
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/postgres")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:4243/postgres")
 
 def reset_test_accounts():
     print("\n🔄 Resetting test accounts...")

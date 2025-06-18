@@ -8,7 +8,7 @@ import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-engine = create_engine('postgresql+psycopg://postgres:password@localhost/postgres')
+engine = create_engine('postgresql+psycopg://postgres:password@localhost:4243/postgres')
 Base.metadata.create_all(engine)
 
 # Create user
