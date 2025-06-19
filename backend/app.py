@@ -42,7 +42,7 @@ app.add_middleware(
 )
 
 # Database connection
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:password@localhost/postgres")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:password@localhost:4243/postgres")
 engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
 
 # Create all tables on startup
@@ -121,93 +121,6 @@ async def register_info():
             "year": "integer (1-4, default: 1, for STUDENT only)"
         }
     }
-
-# @app.post("/register")
-# async def register(
-#     role: str,
-#     user_id: int,
-#     email: str,
-#     username: str,
-#     password: str,
-#     name: str = None,
-#     title: str = None,
-#     semester: int = 1,
-#     degreeId: int = 1,      # Default to Computer Science
-#     age: int = None,        
-# ):
-#     try:
-#         role = role.lower()
-#         if role not in ['student', 'teacher']:
-#             raise ValueError("Role must be either 'student' or 'teacher'")
-
-#         # Check if user already exists
-#         with Session(engine) as session:
-#             existing_user = session.query(User).filter(User.userId == user_id).first()
-#             if existing_user:
-#                 raise ValueError(f"User with ID {user_id} already exists")
-
-#             if role == 'student':
-#                 existing_student = session.query(Student).filter(Student.studentId == user_id).first()
-#                 if existing_student:
-#                     raise ValueError(f"Student with ID {user_id} already exists")
-#             elif role == 'teacher':
-#                 existing_teacher = session.query(Teacher).filter(Teacher.teacherId == user_id).first()
-#                 if existing_teacher:
-#                     raise ValueError(f"Teacher with ID {user_id} already exists")
-
-#         # First create the role-specific record
-#         if role == 'student':
-#             # Check if degree exists, if not create default degrees
-#             with Session(engine) as session:
-#                 degree = session.query(Degree).filter(Degree.degreeId == degreeId).first()
-#                 if not degree:
-#                     # Create default degrees
-#                     degrees = [
-#                         Degree(degreeId=1, name='Computer Science', numSemesters=8),
-#                         Degree(degreeId=2, name='Software Engineering', numSemesters=7),
-#                         Degree(degreeId=3, name='Data Science', numSemesters=8)
-#                     ]
-#                     session.add_all(degrees)
-#                     session.commit()
-
-#             try:
-#                 # Add student record
-#                 db.add_student(
-#                     student_id=user_id,
-#                     semester=semester,
-#                     degree_id=degreeId,
-#                     age=age,
-#                     email=email
-#                 )
-#             except Exception as e:
-#                 raise ValueError(f"Failed to create student record: {str(e)}")
-
-#         elif role == 'teacher':
-#             try:
-#                 # Add teacher record
-#                 db.add_teacher(
-#                     teacher_id=user_id,
-#                     name=name,
-#                     title=title,
-#                     email=email
-#                 )
-#             except Exception as e:
-#                 raise ValueError(f"Failed to create teacher record: {str(e)}")
-
-#         # Then create the user account
-#         if not create_user(engine, user_id, user_id, username, password, Roles(role)):
-#             # If user creation fails, we should clean up the role-specific record
-#             if role == 'student':
-#                 db.delete_student(user_id)
-#             elif role == 'teacher':
-#                 db.delete_teacher(user_id)
-#             raise ValueError("Failed to create user account")
-            
-#         return {"message": "Registration successful", "user_id": user_id, "role": role}
-#     except ValueError as e:
-#         raise HTTPException(status_code=400, detail=str(e))
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     
 # Register V2
 @app.post("/register")
@@ -286,6 +199,14 @@ async def get_name(
 ):
     role = current_user.role
     return {"name": getName(engine=engine, role=role, role_id=current_user.role_id)}
+
+
+# Get unknown user name from user_id
+@app.get("/name/{user_id}")
+async def get_name(
+    user_id: int
+):
+    return {"name": getNameFromUserId(engine=engine, user_id=user_id)}
 
     
 # ----------------------------------------------------------------------------
@@ -549,6 +470,54 @@ def university_events_get(date: str):
 def faq_get():
     return getFAQ(engine=engine)
 
+
+# ----------------------------------------------------------------------------
+# Chat
+# ----------------------------------------------------------------------------
+
+# Get Chats
+@app.get("/chats/", response_model=ChatListModel)
+def chat_get(
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    user_id = getUserId(engine=engine, role_id=current_user.role_id, role=current_user.role)
+    return getChats(engine=engine, user_id=user_id)
+
+
+# Get Chat Messages
+@app.get("/chats/{chat_id}/messages/", response_model=ChatMessageListModel)
+def chat_messages_get(
+    chat_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if not TestUserChat(engine=engine, user_id=getUserId(engine=engine, role_id=current_user.role_id, role=current_user.role), chat_id=chat_id):
+        raise HTTPException(status_code=403, detail="Not authorized to access this chat")
+    chat_messages = getChatMessages(engine=engine, chat_id=chat_id)
+    if chat_messages.ChatMessageList:
+        return chat_messages
+    raise HTTPException(status_code=404, detail="No messages found for this chat")
+
+
+# Post Chat Message
+@app.post("/chats/{chat_id}/messages/")
+def chat_message_post(
+    chat_id: int,
+    message: str,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if not TestUserChat(engine=engine, user_id=getUserId(engine=engine, role_id=current_user.role_id, role=current_user.role), chat_id=chat_id):
+        raise HTTPException(status_code=403, detail="Not authorized to access this chat")
+    return postChatMessage(engine=engine, chat_id=chat_id, sender_id=getUserId(engine=engine, role_id=current_user.role_id, role=current_user.role), message=message)
+
+
+# Create Chat (returns chat id)
+@app.post("/chats/")
+def chat_create(
+    user2_role: str,
+    user2_role_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    return createChat(engine=engine, user1_id=getUserId(engine=engine, role_id=current_user.role_id, role=current_user.role), user2_id=getUserId(engine=engine, role_id=user2_role_id, role=user2_role))
 
 # ----------------------------------------------------------------------------
 # Main Method

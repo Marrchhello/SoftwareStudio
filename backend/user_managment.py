@@ -85,7 +85,7 @@ def create_user(engine: Engine, roleId: int, username: str, password: str, role:
             if max_id is None:
                 uuid = 0
             else:
-                uuid = max_id + 1
+                uuid = (max_id or 0) + 1
     
     # Test if passed params can create a user.
     test_params = can_create_user(engine, uuid, roleId, role)

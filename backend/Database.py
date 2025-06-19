@@ -67,6 +67,46 @@ class AssignmentSubmission(Base):
         return f"Assignment Submission ID: {self.assignmentSubmissionId}, Assignment ID: {self.assignmentId}, Student ID: {self.studentId}, Submission Date and Time: {self.submissionDateTime}, Submission: {self.submission}"
 
 
+# Change log V1: create chat table
+class Chat(Base):
+    """Chat table for postgres.
+    
+    chatId: int primary
+    user1Id: int (first user in the chat)
+    user2Id: int (second user in the chat)
+    """
+
+    __tablename__ = 'Chat'
+    chatId: Mapped[int] = mapped_column(primary_key=True)
+    user1Id: Mapped[int] = mapped_column(ForeignKey('User.userId'))
+    user2Id: Mapped[int] = mapped_column(ForeignKey('User.userId'))
+    
+    def __repr__(self):
+        return f"Chat ID: {self.chatId}, User 1 ID: {self.user1Id}, User 2 ID: {self.user2Id}"
+    
+
+# Change log V1: create chat message table
+class ChatMessage(Base):
+    """ChatMessage table for postgres.
+    
+    chatMessageId: int primary
+    chatId: int (chat the message belongs to)
+    senderId: int (user who sent the message)
+    message: str (the message)
+    timestamp: datetime.datetime (timestamp of the message)
+    """
+    
+    __tablename__ = 'ChatMessage'
+    chatMessageId: Mapped[int] = mapped_column(primary_key=True)
+    chatId: Mapped[int] = mapped_column(ForeignKey('Chat.chatId'))
+    senderId: Mapped[int] = mapped_column(ForeignKey('User.userId'))
+    message: Mapped[str]
+    timestamp: Mapped[datetime.datetime]
+    
+    def __repr__(self):
+        return f"Chat Message ID: {self.chatMessageId}, Chat ID: {self.chatId}, Sender ID: {self.senderId}, Message: {self.message}, Timestamp: {self.timestamp}"
+
+
 # Change log V1 -> V2: add table ClassDateTime to handle the dates and times for each course.
 class ClassDateTime(Base):
     """ClassDateTime table for postgres.
