@@ -1,0 +1,129 @@
+.faq-page-outer {
+  width: 100%;
+  max-width: 1200px;
+  margin: 60px auto 0;
+  padding: 2rem 1rem;
+  color: var(--text-color);
+}
+
+.faq-title-row {
+  display: flex;
+  align-items: flex-end;
+  margin-left: 0;
+}
+
+.faq-title-main {
+  font-size: 6rem;
+  color: #888;
+  margin-top: 0.001rem;
+  margin-bottom: 0.5rem;
+  margin-left: 2.5rem;
+  letter-spacing: -2px;
+  font-weight: normal;
+}
+
+.faq-title-sub {
+  font-size: 1.5rem;
+  font-weight: normal;
+  color: #0e0e0e;
+  margin-bottom: 3rem;
+  margin-left: 4rem;
+}
+
+.faq-breadcrumb {
+  font-size: 1.1rem;
+  color: var(--text-color);
+  opacity: 0.9;
+  margin-bottom: 1rem;
+  margin-left: 3rem;
+}
+
+.faq-home-link {
+  color: var(--primary-color);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.faq-home-link:hover {
+  color: var(--primary-color);
+  position: relative;
+}
+
+.faq-home-link:hover::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--primary-color);
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.faq-item-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(14, 129, 178, 0.10), 0 1.5px 4px rgba(0,0,0,0.04);
+  padding: 0.5rem 1.5rem 0.5rem 1.5rem;
+  transition: box-shadow 0.2s, background 0.2s;
+  border: 1px solid #eaf6fb;
+  cursor: pointer;
+  position: relative;
+}
+.faq-item-card.open {
+  background: #f7fbfd;
+  box-shadow: 0 8px 32px rgba(14, 129, 178, 0.18), 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.faq-question-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #0E81B2;
+  padding: 1.2rem 0 1.2rem 0.2rem;
+  transition: color 0.2s;
+}
+.faq-question-row:hover {
+  color: #085a7a;
+}
+
+.faq-chevron {
+  font-size: 1.3rem;
+  color: #0E81B2;
+  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+}
+.faq-item-card.open .faq-chevron {
+  color: #085a7a;
+}
+
+.faq-answer-animated {
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  background: none;
+}
+.faq-answer-animated.show {
+  margin-top: 0.5rem;
+}
+.faq-answer-inner {
+  font-size: 1.08rem;
+  color: #333;
+  font-weight: 400;
+  line-height: 1.6;
+  padding-bottom: 1.2rem;
+  padding-left: 2.2rem;
+  padding-right: 0.5rem;
+}
+
+.no-underline {
+  text-decoration: none !important;
+}
