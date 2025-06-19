@@ -166,6 +166,13 @@ class DatabaseManager:
         session.add(staff)
         session.commit()
 
+    def add_faq(self, question: str, answer: str):
+        """Add a new FAQ entry to the FAQ table."""
+        with self.Session() as session:
+            faq = FAQ(question=question, answer=answer)
+            session.add(faq)
+            session.commit()
+
     # ----------- Deleting Records -----------
 
     def delete_student(self, student_id):

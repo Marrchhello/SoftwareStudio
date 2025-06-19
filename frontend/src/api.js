@@ -103,6 +103,9 @@ export const getTeacherScheduleMonthByDate = async (teacherId, date, token) => {
     });
     return response.data;
 };
+export const faq = async () => {
+    return api.get('/faq/');
+}
 
 // export api connection to be used in other files
 export default api;
