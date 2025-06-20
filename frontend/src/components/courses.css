@@ -1,4 +1,20 @@
 /* courses.css */
+
+/* CSS Variables */
+:root {
+  --primary-color: #007bff;
+  --secondary-color: #6c757d;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
+  --light-color: #f8f9fa;
+  --dark-color: #343a40;
+  --text-color: #212529;
+  --border-color: #dee2e6;
+  --card-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 .teacher-courses-container {
   max-width: 1200px;
   margin: 2rem auto;
@@ -49,6 +65,7 @@
   gap: 0.5rem;
   font-weight: 500;
   transition: all 0.3s;
+  color: var(--text-color);
 }
 
 .course-tabs button.active {
@@ -124,43 +141,9 @@
   padding: 1rem;
   text-align: left;
   border-bottom: 1px solid #eee;
-}
-/* Style dla przycisków edycji */
-.edit-btn {
-  background: #ffc107;
-  color: black;
-  border: none;
-  padding: 0.3rem 0.6rem;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-right: 0.5rem;
+  color: var(--text-color);
 }
 
-.save-btn {
-  background: #28a745;
-  color: white;
-  border: none;
-  padding: 0.3rem 0.6rem;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-right: 0.5rem;
-}
-
-.cancel-btn {
-  background: #dc3545;
-  color: white;
-  border: none;
-  padding: 0.3rem 0.6rem;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.grades-table input {
-  padding: 0.3rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  width: 60px;
-}
 .students-list th,
 .assignments-list th,
 .lectures-list th,
@@ -168,6 +151,7 @@
 .labs-list th {
   background-color: #f5f5f5;
   font-weight: 600;
+  color: var(--dark-color);
 }
 
 .students-list tr:hover,
@@ -176,6 +160,290 @@
 .additionals-list tr:hover,
 .labs-list tr:hover {
   background-color: #f9f9f9;
+}
+
+/* Style dla przycisków edycji */
+.edit-btn {
+  background: var(--warning-color);
+  color: black;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.edit-btn:hover {
+  background: #e0a800;
+}
+
+.save-btn {
+  background: var(--success-color);
+  color: white;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.save-btn:hover {
+  background: #218838;
+}
+
+.save-btn:disabled {
+  background: var(--secondary-color);
+  cursor: not-allowed;
+}
+
+.save-btn:disabled:hover {
+  background: var(--secondary-color);
+}
+
+.cancel-btn {
+  background: var(--danger-color);
+  color: white;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.cancel-btn:hover {
+  background: #c82333;
+}
+
+/* Grade editing styles */
+.edit-grade-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 150px;
+}
+
+.grade-format-select {
+  padding: 0.3rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: white;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.grade-format-select option {
+  background: white;
+  color: var(--text-color);
+  padding: 0.3rem;
+}
+
+.grade-input {
+  padding: 0.3rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: white;
+  min-width: 80px;
+  color: var(--text-color);
+}
+
+.grade-input:focus,
+.grade-format-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* Grades modal styles */
+.grades-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.grades-content {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  color: var(--text-color);
+  position: relative;
+}
+
+.grades-content h3 {
+  margin-bottom: 1.5rem;
+  color: var(--dark-color);
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 0.5rem;
+}
+
+.grades-list {
+  margin-bottom: 2rem;
+}
+
+.grades-list table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.grades-list th,
+.grades-list td {
+  padding: 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  color: var(--text-color);
+}
+
+.grades-list th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+  color: var(--dark-color);
+}
+
+.grade-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Add grade form styles */
+.add-grade-form {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #dee2e6;
+}
+
+.add-grade-form h4 {
+  margin-bottom: 1rem;
+  color: var(--dark-color);
+}
+
+.add-grade-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.add-grade-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--dark-color);
+}
+
+.add-grade-form select,
+.add-grade-form input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: white;
+  color: var(--text-color);
+}
+
+.add-grade-form select option {
+  background: white;
+  color: var(--text-color);
+  padding: 0.3rem;
+}
+
+.add-grade-form select:focus,
+.add-grade-form input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.close-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.close-btn:hover {
+  background: #0056b3;
+}
+
+/* Debug panel styles */
+.debug-panel {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.debug-panel h4 {
+  margin-bottom: 0.5rem;
+  color: var(--dark-color);
+  font-size: 0.9rem;
+}
+
+.debug-logs {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+}
+
+.debug-log-entry {
+  margin-bottom: 0.5rem;
+  padding: 0.3rem;
+  background: white;
+  border-radius: 2px;
+  border-left: 3px solid var(--primary-color);
+}
+
+.debug-timestamp {
+  color: #6c757d;
+  font-size: 0.7rem;
+  margin-right: 0.5rem;
+}
+
+.debug-message {
+  color: var(--dark-color);
+  font-weight: 500;
+}
+
+.debug-data {
+  background: #e9ecef;
+  padding: 0.5rem;
+  border-radius: 2px;
+  margin-top: 0.3rem;
+  font-size: 0.7rem;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  color: var(--text-color);
 }
 
 /* File Item Styles */
@@ -210,6 +478,7 @@
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
+  color: var(--dark-color);
 }
 
 .form-group input,
@@ -220,6 +489,8 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   font-family: inherit;
+  background: white;
+  color: var(--text-color);
 }
 
 .form-group textarea {
@@ -295,13 +566,8 @@
   gap: 0.5rem;
 }
 
-.cancel-btn {
-  background: #6c757d;
-  color: white;
-  border: none;
-  padding: 0.8rem 1.5rem;
-  border-radius: 4px;
-  cursor: pointer;
+.submit-btn:hover {
+  background: #0056b3;
 }
 
 /* Button Styles */
@@ -309,7 +575,6 @@
 .send-message-btn,
 .view-submissions-btn,
 .download-btn,
-.edit-btn,
 .delete-btn,
 .add-grade-btn,
 .save-grade-btn,
@@ -322,6 +587,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  color: white;
 }
 
 .view-grades-btn,
@@ -329,71 +595,214 @@
 .save-grade-btn,
 .add-grade-btn {
   background: var(--primary-color);
-  color: white;
+}
+
+.view-grades-btn:hover,
+.view-submissions-btn:hover,
+.save-grade-btn:hover,
+.add-grade-btn:hover {
+  background: #0056b3;
 }
 
 .send-message-btn {
   background: var(--secondary-color);
-  color: white;
+}
+
+.send-message-btn:hover {
+  background: #5a6268;
 }
 
 .download-btn {
-  background: #28a745;
-  color: white;
+  background: var(--success-color);
 }
 
-.edit-btn {
-  background: #ffc107;
-  color: black;
+.download-btn:hover {
+  background: #218838;
 }
 
 .delete-btn,
 .delete-grade-btn {
-  background: #dc3545;
-  color: white;
+  background: var(--danger-color);
 }
 
-/* Back Button Styles */
-.back-to-list,
-.back-to-assignments,
-.back-to-assignments {
+.delete-btn:hover,
+.delete-grade-btn:hover {
+  background: #c82333;
+}
+
+/* Search bar styles */
+.search-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: white;
+  color: var(--text-color);
+}
+
+.search-bar input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.search-bar button {
+  padding: 0.5rem;
+  border: none;
+  background: var(--primary-color);
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: var(--primary-color);
-  background: none;
-  border: none;
-  cursor: pointer;
-  margin-bottom: 1rem;
-  padding: 0;
+  justify-content: center;
 }
 
-/* Dark Mode */
-.dark-mode .teacher-courses-container h1,
+.search-bar button:hover {
+  background: #0056b3;
+}
+
+/* Schedule styles */
+.schedule-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.schedule-group {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.schedule-group h3 {
+  margin-bottom: 0.5rem;
+  color: var(--dark-color);
+}
+
+.schedule-group p {
+  margin: 0.3rem 0;
+  color: var(--text-color);
+}
+
+.course-frequency-info {
+  background: #e7f3ff;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border-left: 4px solid var(--primary-color);
+}
+
+.course-frequency-info p {
+  margin: 0;
+  color: var(--dark-color);
+  font-weight: 500;
+}
+
+/* New assignment form styles */
+.new-assignment-form {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #dee2e6;
+}
+
+.new-assignment-form h3 {
+  margin-bottom: 1rem;
+  color: var(--dark-color);
+}
+
+.new-assignment-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.new-assignment-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--dark-color);
+}
+
+.new-assignment-form input,
+.new-assignment-form textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: white;
+  color: var(--text-color);
+}
+
+.new-assignment-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.new-assignment-form input:focus,
+.new-assignment-form textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* Dark mode styles */
+.dark-mode .teacher-courses-container {
+  color: #e0e0e0;
+  background-color: #1a1a1a;
+}
+
+.dark-mode .course-header h1 {
+  color: #ffffff;
+}
+
+.dark-mode .course-tabs button:not(.active) {
+  background: #333;
+  color: #e0e0e0;
+}
+
+.dark-mode .course-tabs button:hover:not(.active) {
+  background: #444;
+}
+
 .dark-mode .students-section,
 .dark-mode .schedule-section,
 .dark-mode .assignments-section,
 .dark-mode .lectures-section,
 .dark-mode .additionals-section,
-.dark-mode .labs-section,
-.dark-mode .add-grade-form,
-.dark-mode .add-assignment-form {
-  color: var(--text-light);
+.dark-mode .labs-section {
   background: #2d2d2d;
-}
-
-.dark-mode .course-tabs button:not(.active) {
-  background: #333;
-  color: var(--text-light);
+  color: #e0e0e0;
+  border: 1px solid #444;
 }
 
 .dark-mode .students-list th,
-.dark-mode .grades-list th,
 .dark-mode .assignments-list th,
 .dark-mode .lectures-list th,
 .dark-mode .additionals-list th,
 .dark-mode .labs-list th {
-  background-color: #333;
+  background-color: #3a3a3a;
+  color: #ffffff;
+  border-bottom: 1px solid #555;
+}
+
+.dark-mode .students-list td,
+.dark-mode .assignments-list td,
+.dark-mode .lectures-list td,
+.dark-mode .additionals-list td,
+.dark-mode .labs-list td {
+  color: #e0e0e0;
+  border-bottom: 1px solid #444;
 }
 
 .dark-mode .students-list tr:hover,
@@ -401,60 +810,334 @@
 .dark-mode .lectures-list tr:hover,
 .dark-mode .additionals-list tr:hover,
 .dark-mode .labs-list tr:hover {
-  background-color: #3d3d3d;
+  background-color: #3a3a3a;
 }
 
 .dark-mode .form-group input,
 .dark-mode .form-group select,
 .dark-mode .form-group textarea {
-  background-color: #3d3d3d;
-  border-color: #444;
-  color: var(--text-light);
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+}
+
+.dark-mode .form-group input:focus,
+.dark-mode .form-group select:focus,
+.dark-mode .form-group textarea:focus {
+  border-color: var(--primary-color);
+  background-color: #404040;
+}
+
+.dark-mode .form-group select option {
+  background-color: #333;
+  color: #e0e0e0;
 }
 
 .dark-mode .file-input-label {
-  background: #3d3d3d;
-  color: var(--text-light);
+  background-color: #333;
+  color: #e0e0e0;
 }
 
 .dark-mode .drop-zone {
-  border-color: #444;
-  background-color: #3d3d3d;
+  background-color: #2d2d2d;
+  border: 2px dashed #555;
 }
 
 .dark-mode .drop-zone.active {
   border-color: var(--primary-color);
-  background-color: #1a3a5a;
+  background-color: #3a3a3a;
 }
 
-/* Responsive */
+/* Dark mode for grades modal */
+.dark-mode .grades-modal {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.dark-mode .grades-content {
+  background-color: #2d2d2d;
+  color: #e0e0e0;
+  border: 1px solid #555;
+}
+
+.dark-mode .grades-content h3 {
+  color: #ffffff;
+}
+
+.dark-mode .grades-list th {
+  background-color: #3a3a3a;
+  color: #ffffff;
+  border-bottom: 1px solid #555;
+}
+
+.dark-mode .grades-list td {
+  color: #e0e0e0;
+  border-bottom: 1px solid #444;
+}
+
+.dark-mode .grades-list tr:hover {
+  background-color: #3a3a3a;
+}
+
+/* Dark mode for edit grade inputs */
+.dark-mode .edit-grade-inputs {
+  background-color: #333;
+  border: 1px solid #555;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.dark-mode .grade-format-select {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+}
+
+.dark-mode .grade-format-select option {
+  background-color: #333;
+  color: #e0e0e0;
+}
+
+.dark-mode .grade-input {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+}
+
+.dark-mode .grade-input:focus {
+  border-color: var(--primary-color);
+  background-color: #404040;
+}
+
+/* Dark mode for add grade form */
+.dark-mode .add-grade-form {
+  background-color: #2d2d2d;
+  border: 1px solid #555;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.dark-mode .add-grade-form h4 {
+  color: #ffffff;
+}
+
+.dark-mode .add-grade-form label {
+  color: #e0e0e0;
+}
+
+.dark-mode .add-grade-form select,
+.dark-mode .add-grade-form input {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+}
+
+.dark-mode .add-grade-form select option {
+  background-color: #333;
+  color: #e0e0e0;
+}
+
+.dark-mode .add-grade-form select:focus,
+.dark-mode .add-grade-form input:focus {
+  border-color: var(--primary-color);
+  background-color: #404040;
+}
+
+/* Dark mode for new assignment form */
+.dark-mode .new-assignment-form {
+  background-color: #2d2d2d;
+  border: 1px solid #555;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.dark-mode .new-assignment-form h3 {
+  color: #ffffff;
+}
+
+.dark-mode .new-assignment-form label {
+  color: #e0e0e0;
+}
+
+.dark-mode .new-assignment-form input,
+.dark-mode .new-assignment-form textarea {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+}
+
+.dark-mode .new-assignment-form input:focus,
+.dark-mode .new-assignment-form textarea:focus {
+  border-color: var(--primary-color);
+  background-color: #404040;
+}
+
+/* Dark mode for search bar */
+.dark-mode .search-bar input {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+}
+
+.dark-mode .search-bar input:focus {
+  border-color: var(--primary-color);
+  background-color: #404040;
+}
+
+.dark-mode .search-bar button {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+}
+
+.dark-mode .search-bar button:hover {
+  background-color: #444;
+}
+
+/* Dark mode for schedule groups */
+.dark-mode .schedule-group {
+  background-color: #2d2d2d;
+  border: 1px solid #555;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.dark-mode .schedule-group h3 {
+  color: #ffffff;
+}
+
+.dark-mode .schedule-group p {
+  color: #e0e0e0;
+}
+
+.dark-mode .course-frequency-info {
+  background-color: #2d2d2d;
+  border: 1px solid #555;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.dark-mode .course-frequency-info p {
+  color: #e0e0e0;
+}
+
+/* Dark mode for debug panel */
+.dark-mode .debug-panel {
+  background-color: #2d2d2d !important;
+  border: 1px solid #555 !important;
+  color: #e0e0e0;
+}
+
+.dark-mode .debug-panel h4 {
+  color: #ffffff;
+}
+
+.dark-mode .debug-logs {
+  background-color: #1a1a1a;
+  border: 1px solid #444;
+  padding: 10px;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dark-mode .debug-log-entry {
+  border-bottom: 1px solid #444;
+  padding: 5px 0;
+}
+
+.dark-mode .debug-timestamp {
+  color: #888;
+}
+
+.dark-mode .debug-message {
+  color: #e0e0e0;
+}
+
+.dark-mode .debug-data {
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+}
+
+/* Dark mode for buttons */
+.dark-mode .new-assignment-btn,
+.dark-mode .new-lecture-btn,
+.dark-mode .new-additional-btn,
+.dark-mode .new-lab-btn {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.dark-mode .view-grades-btn,
+.dark-mode .send-message-btn {
+  background-color: var(--info-color);
+  color: white;
+}
+
+.dark-mode .view-grades-btn:hover,
+.dark-mode .send-message-btn:hover {
+  background-color: #138496;
+}
+
+.dark-mode .download-btn {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.dark-mode .download-btn:hover {
+  background-color: #218838;
+}
+
+.dark-mode .delete-btn {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.dark-mode .delete-btn:hover {
+  background-color: #c82333;
+}
+
+/* Dark mode for close button */
+.dark-mode .close-btn {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+.dark-mode .close-btn:hover {
+  background-color: #5a6268;
+}
+
+/* Responsive styles */
 @media (max-width: 768px) {
   .teacher-courses-container {
     padding: 0 1rem;
+    margin: 1rem auto;
   }
-  
+
   .course-tabs button {
-    flex: 1;
-    min-width: 120px;
-    justify-content: center;
-    font-size: 0.8rem;
-    padding: 0.6rem 0.8rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
   }
-  
+
   .assignments-header,
   .lectures-header,
   .additionals-header,
   .labs-header {
     flex-direction: column;
-    align-items: flex-start;
     gap: 1rem;
+    align-items: stretch;
   }
-  
+
   .student-actions {
+    display: flex;
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .students-list th,
   .students-list td,
   .assignments-list th,
@@ -468,13 +1151,48 @@
     padding: 0.5rem;
     font-size: 0.9rem;
   }
-  
+
   .form-actions {
     flex-direction: column;
   }
-  
+
   .submit-btn,
   .cancel-btn {
     width: 100%;
+    justify-content: center;
   }
+}
+
+/* Back arrow button styles */
+.back-arrow-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-color);
+  padding: 5px;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.back-arrow-btn:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
+}
+
+/* Dark mode for back arrow button */
+.dark-mode .back-arrow-btn {
+  color: #e0e0e0;
+}
+
+.dark-mode .back-arrow-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }

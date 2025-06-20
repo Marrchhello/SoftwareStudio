@@ -12,12 +12,15 @@ import Courses from './courses';
 import api from '../api';
 import {
   getUserRole,
+  getUserRoleId,
+  getUserName,
   getTeacherScheduleDay,
   getTeacherScheduleDayByDate,
   getTeacherScheduleWeek,
   getTeacherScheduleWeekByDate,
   getTeacherScheduleMonth,
-  getTeacherScheduleMonthByDate
+  getTeacherScheduleMonthByDate,
+  getTeacherCourses
 } from '../api';
 
 const ProfDashboard = () => {
@@ -130,20 +133,23 @@ const ProfDashboard = () => {
 
   const fetchUserInfo = async () => {
     try {
+      console.log('Fetching user info with token:', token);
       const userData = await getUserRole(token);
-      if (userData) {
+      const roleIdData = await getUserRoleId(token);
+      console.log('Received user data:', userData);
+      console.log('Received role ID data:', roleIdData);
+      
+      if (userData && roleIdData) {
         // Get user's name
-        const nameResponse = await api.get('/name', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const nameResponse = await getUserName(token);
         
         setUserInfo(prev => ({
           ...prev,
-          teacherId: userData.user_id,
-          name: nameResponse.data?.name || "Professor",
+          teacherId: roleIdData.role_id,
+          name: nameResponse?.name || "Professor",
           role: userData.role
         }));
-        return userData.user_id;
+        return roleIdData.role_id;
       }
       return null;
     } catch (error) {
@@ -204,18 +210,42 @@ const ProfDashboard = () => {
   const fetchProfessorData = async () => {
     try {
       setLoading(true);
+      console.log('Starting to fetch professor data...');
 
       // Get user info and teacher ID
       const teacherId = await fetchUserInfo();
+      console.log('Fetched teacher ID:', teacherId);
+      
       if (!teacherId) {
+        console.log('No teacher ID found, stopping...');
         setLoading(false);
         return;
       }
 
+      // Fetch teacher's courses
+      console.log('Fetching teacher courses...');
+      const teacherCoursesResponse = await getTeacherCourses(teacherId, token);
+      console.log('Fetched courses response:', teacherCoursesResponse);
+      console.log('Fetched courses type:', typeof teacherCoursesResponse);
+      console.log('Fetched courses length:', Array.isArray(teacherCoursesResponse) ? teacherCoursesResponse.length : 'Not an array');
+      
+      // The getTeacherCourses function already returns the CourseList array
+      setCourses(teacherCoursesResponse);
+      setQuickStats(prev => ({ ...prev, courses: teacherCoursesResponse.length }));
+      
+      // If no courses found, add a test course for debugging
+      if (!teacherCoursesResponse || teacherCoursesResponse.length === 0) {
+        console.log('No courses found, adding test course');
+        setCourses([{ Course: 'Test Course', ID: 1 }]);
+        setQuickStats(prev => ({ ...prev, courses: 1 }));
+      }
+
       // Fetch today's schedule
+      console.log('Fetching today schedule...');
       await fetchTodaySchedule(teacherId);
 
       // Fetch weekly schedule
+      console.log('Fetching weekly schedule...');
       await fetchWeeklySchedule(teacherId);
 
       // Fetch chats if we're on the messages view
@@ -224,6 +254,7 @@ const ProfDashboard = () => {
       }
 
       setLoading(false);
+      console.log('Finished fetching professor data');
     } catch (error) {
       console.error('Error fetching professor data:', error);
       setLoading(false);
@@ -654,26 +685,42 @@ const ProfDashboard = () => {
       case 'schedule':
         return renderScheduleView();
       case 'courses':
+        console.log('Rendering courses section, courses data:', courses);
         return (
           <div className="view-content">
             <h2>Your Courses</h2>
             <div className="courses-list">
-              {courses.map(course => (
-                <div key={course.ID} className="course-card">
-                  <h3>{course.Course}</h3>
-                  <div className="course-details">
-                    <p><FaBook /> Course ID: {course.ID}</p>
+              {courses && courses.length > 0 ? courses.map((course, index) => {
+                console.log(`Course ${index}:`, course);
+                console.log(`Course ${index} ID:`, course.ID, 'Type:', typeof course.ID);
+                console.log(`Course ${index} properties:`, Object.keys(course));
+                console.log(`Course ${index} Course property:`, course.Course);
+                return (
+                  <div key={course.ID || index} className="course-card">
+                    <h3>{course.Course || 'Unknown Course'}</h3>
+                    <div className="course-details">
+                      <p><FaBook /> Course ID: {course.ID || 'N/A'}</p>
+                    </div>
+                    <div className="course-actions">
+                      <button onClick={() => {
+                        console.log('Button clicked for course:', course);
+                        console.log('Setting selected course:', course.ID);
+                        console.log('Current activeView:', activeView);
+                        setSelectedCourse(course.ID);
+                        console.log('About to set activeView to course-detail');
+                        setActiveView('course-detail');
+                        console.log('activeView should now be course-detail');
+                      }}>
+                        <FaChalkboardTeacher /> Manage Course
+                      </button>
+                    </div>
                   </div>
-                  <div className="course-actions">
-                    <button onClick={() => {
-                      setSelectedCourse(course.ID);
-                      setActiveView('course-detail');
-                    }}>
-                      <FaChalkboardTeacher /> Manage Course
-                    </button>
-                  </div>
+                );
+              }) : (
+                <div className="no-courses">
+                  <p>No courses found. Loading...</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         );
@@ -682,6 +729,12 @@ const ProfDashboard = () => {
         return renderMessagesView();
 
       case 'course-detail':
+        console.log('Rendering course-detail with selectedCourse:', selectedCourse);
+        if (!selectedCourse) {
+          console.log('No selected course, going back to courses');
+          setActiveView('courses');
+          return null;
+        }
         return (
           <div className="view-content">
             <button
@@ -755,7 +808,7 @@ const ProfDashboard = () => {
   };
 
   return (
-    <div className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`}>
+    <div className={`dashboard-container ${darkMode ? 'dark-mode' : 'light-mode'}`}>
       <nav className="sidebar">
         <div className="sidebar-header">
           <FaUserCircle className="user-icon" />

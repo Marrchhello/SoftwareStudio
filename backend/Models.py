@@ -328,6 +328,118 @@ class ChatMessageListModel(BaseModel):
     ChatMessageList: List[ChatMessageModel] = []
     
     
+# ----------------------------------------------------------------------------
+# Course Management
+# ----------------------------------------------------------------------------
+
+# Student Course Info Model
+class StudentCourseInfoModel(BaseModel):
+    """Model for storing student information in a course context.
+
+    Args:
+        student_id: int
+        student_name: str
+        student_email: str
+        group: Optional[int]
+    """
+    
+    student_id: int
+    student_name: str
+    student_email: str
+    group: Optional[int]
+
+
+# Course Students List Model
+class CourseStudentsListModel(BaseModel):
+    """Model for storing a list of students in a course.
+
+    Args:
+        CourseName: str
+        CourseId: int
+        Students: List[StudentCourseInfoModel]
+    """
+    
+    CourseName: str
+    CourseId: int
+    Students: List[StudentCourseInfoModel] = []
+
+
+# Assignment Info Model
+class AssignmentInfoModel(BaseModel):
+    """Model for storing assignment information.
+
+    Args:
+        assignment_id: int
+        assignment_name: str
+        desc: Optional[str]
+        due_date_time: datetime.datetime
+        needs_submission: bool
+        valid_file_types: Optional[str]
+        group: Optional[int]
+    """
+    
+    assignment_id: int
+    assignment_name: str
+    desc: Optional[str]
+    due_date_time: datetime.datetime
+    needs_submission: bool
+    valid_file_types: Optional[str]
+    group: Optional[int]
+
+
+# Course Assignments List Model
+class CourseAssignmentsListModel(BaseModel):
+    """Model for storing a list of assignments in a course.
+
+    Args:
+        CourseName: str
+        CourseId: int
+        Assignments: List[AssignmentInfoModel]
+    """
+    
+    CourseName: str
+    CourseId: int
+    Assignments: List[AssignmentInfoModel] = []
+
+
+# Course Group Schedule Model
+class CourseGroupScheduleModel(BaseModel):
+    """Model for storing course group schedule information.
+
+    Args:
+        GroupNumber: int
+        DayOfWeek: str
+        StartTime: datetime.time
+        EndTime: datetime.time
+    """
+    
+    GroupNumber: int
+    DayOfWeek: str
+    StartTime: datetime.time
+    EndTime: datetime.time
+
+
+# Course Schedule View Model
+class CourseScheduleViewModel(BaseModel):
+    """Model for storing course schedule view information.
+
+    Args:
+        CourseName: str
+        CourseId: int
+        Building: Optional[str]
+        RoomNumber: Optional[int]
+        isBiWeekly: bool
+        Groups: List[CourseGroupScheduleModel]
+    """
+    
+    CourseName: str
+    CourseId: int
+    Building: Optional[str]
+    RoomNumber: Optional[int]
+    isBiWeekly: bool
+    Groups: List[CourseGroupScheduleModel] = []
+    
+    
     
     
     

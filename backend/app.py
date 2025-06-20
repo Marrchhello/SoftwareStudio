@@ -24,6 +24,7 @@ from typing import Annotated, Dict
 import os
 from user_managment import create_user
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 
 # Initialize FastAPI
 app = FastAPI()
@@ -235,6 +236,88 @@ def teacher_courses_get(
     return getTeacherCourses(engine=engine, teacher_id=teacher_id)
 
 
+# GET All Students for Course
+@app.get("/course/{course_id}/students", response_model=CourseStudentsListModel)
+def course_students_get(
+    course_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER":
+        raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
+    
+    # Check if teacher is assigned to this course
+    with Session(engine) as session:
+        teacher_course = session.query(CourseTeacher).filter(
+            and_(
+                CourseTeacher.teacherId == current_user.role_id,
+                CourseTeacher.courseId == course_id
+            )
+        ).first()
+        
+        if not teacher_course:
+            raise HTTPException(
+                status_code=403, 
+                detail="Teacher is not assigned to this course"
+            )
+    
+    return getCourseStudents(engine=engine, course_id=course_id)
+
+
+# GET All Assignments for Course (Teacher only)
+@app.get("/course/{course_id}/assignments", response_model=CourseAssignmentsListModel)
+def course_assignments_get(
+    course_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER":
+        raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
+    
+    # Check if teacher is assigned to this course
+    with Session(engine) as session:
+        teacher_course = session.query(CourseTeacher).filter(
+            and_(
+                CourseTeacher.teacherId == current_user.role_id,
+                CourseTeacher.courseId == course_id
+            )
+        ).first()
+        
+        if not teacher_course:
+            raise HTTPException(
+                status_code=403, 
+                detail="Teacher is not assigned to this course"
+            )
+    
+    return getCourseAssignments(engine=engine, course_id=course_id)
+
+
+# GET All Assignments for Course (Student view with group filtering)
+@app.get("/student/{student_id}/courses/{course_id}/assignments", response_model=CourseAssignmentsListModel)
+def student_course_assignments_get(
+    student_id: int,
+    course_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "STUDENT" or current_user.role_id != student_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
+    
+    # Check if student is enrolled in this course
+    with Session(engine) as session:
+        student_course = session.query(CourseStudent).filter(
+            and_(
+                CourseStudent.studentId == student_id,
+                CourseStudent.courseId == course_id
+            )
+        ).first()
+        
+        if not student_course:
+            raise HTTPException(
+                status_code=403, 
+                detail="Student is not enrolled in this course"
+            )
+    
+    return getCourseAssignmentsForStudent(engine=engine, course_id=course_id, student_id=student_id)
+
+
 # ----------------------------------------------------------------------------
 # Grades
 # ----------------------------------------------------------------------------
@@ -248,6 +331,48 @@ def student_course_grades_get(
 ):
     if current_user.role.upper() != "STUDENT" or current_user.role_id != student_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
+    return getStudentGradesForCourse(engine=engine, student_id=student_id, course_id=course_id)
+
+
+# GET Student Grades for Specific Course (Teacher access)
+@app.get("/course/{course_id}/student/{student_id}/grades", response_model=GradeListModel)
+def teacher_student_course_grades_get(
+    course_id: int,
+    student_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER":
+        raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
+    
+    # Check if teacher is assigned to this course
+    with Session(engine) as session:
+        teacher_course = session.query(CourseTeacher).filter(
+            and_(
+                CourseTeacher.teacherId == current_user.role_id,
+                CourseTeacher.courseId == course_id
+            )
+        ).first()
+        
+        if not teacher_course:
+            raise HTTPException(
+                status_code=403, 
+                detail="Teacher is not assigned to this course"
+            )
+        
+        # Check if student is enrolled in this course
+        student_course = session.query(CourseStudent).filter(
+            and_(
+                CourseStudent.studentId == student_id,
+                CourseStudent.courseId == course_id
+            )
+        ).first()
+        
+        if not student_course:
+            raise HTTPException(
+                status_code=403, 
+                detail="Student is not enrolled in this course"
+            )
+    
     return getStudentGradesForCourse(engine=engine, student_id=student_id, course_id=course_id)
 
 
@@ -518,6 +643,36 @@ def chat_create(
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
     return createChat(engine=engine, user1_id=getUserId(engine=engine, role_id=current_user.role_id, role=current_user.role), user2_id=getUserId(engine=engine, role_id=user2_role_id, role=user2_role))
+
+# ----------------------------------------------------------------------------
+# Course Schedule View
+# ----------------------------------------------------------------------------
+
+@app.get("/course/{course_id}/schedule-view", response_model=CourseScheduleViewModel)
+def get_course_schedule_view(
+    course_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    """Get the schedule view for a specific course."""
+    if current_user.role.upper() != "TEACHER":
+        raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
+    
+    # Check if teacher is assigned to this course
+    with Session(engine) as session:
+        teacher_course = session.query(CourseTeacher).filter(
+            and_(
+                CourseTeacher.teacherId == current_user.role_id,
+                CourseTeacher.courseId == course_id
+            )
+        ).first()
+        
+        if not teacher_course:
+            raise HTTPException(
+                status_code=403, 
+                detail="Teacher is not assigned to this course"
+            )
+    
+    return getCourseScheduleView(engine=engine, course_id=course_id)
 
 # ----------------------------------------------------------------------------
 # Main Method
