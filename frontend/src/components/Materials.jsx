@@ -4,59 +4,63 @@ import {
   FaChalkboardTeacher, FaFlask, FaTasks, FaBookOpen,
   FaTimes, FaCopy
 } from 'react-icons/fa';
-import { useNavigate, useParams } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom'; 
 import './Materials.css';
+import api from '../api';
 
-const Materials = () => {
+const Materials = ({ courseId, onBackToCourses }) => {
   const navigate = useNavigate();
-  const { courseId } = useParams(); 
-  const [activeTab, setActiveTab] = useState('lectures');
+  const [assignments, setAssignments] = useState([]);
   const [submissionModal, setSubmissionModal] = useState(null);
-  const [submissionData, setSubmissionData] = useState({
-    link: '',
-    comment: ''
-  });
+  const [submissionData, setSubmissionData] = useState({ link: '', comment: '' });
   const [copiedLink, setCopiedLink] = useState(null);
-  const [materials, setMaterials] = useState(null); s
-  const [courseInfo, setCourseInfo] = useState({
-    name: 'Loading...',
-    lecturer: 'Loading...',
-    group: 'Loading...'
-  });
+  const [courseInfo, setCourseInfo] = useState({ name: 'Loading...', lecturer: 'Loading...', group: 'Loading...' });
 
-  // Fetch materials from API
+  // Fetch assignments from API
   useEffect(() => {
-    const fetchMaterials = async () => {
+    const fetchAssignments = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`/course/${courseId}/materials`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch materials');
+        const studentId = localStorage.getItem('student_id');
+        console.log('DEBUG: studentId:', studentId, 'courseId:', courseId, 'token:', token);
+        if (!studentId) {
+          console.error('Brak student_id w localStorage');
+          setAssignments([]);
+          return;
         }
-        
-        const data = await response.json();
-        setMaterials(data.materials);
-        setCourseInfo({
-          name: data.courseName,
-          lecturer: data.lecturer,
-          group: data.group
+        const url = `/student/${studentId}/courses/${courseId}/assignments`;
+        console.log('DEBUG: Fetching assignments from:', url);
+        const response = await api.get(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
+        console.log('DEBUG: Response status:', response.status);
+        const data = response.data;
+        // Mapuj assignmenty na strukturę oczekiwaną przez frontend
+        const rawAssignments = data.CourseAssignmentsList || data.Assignments || data.assignments || data.Assignments || [];
+        const mappedAssignments = Array.isArray(rawAssignments)
+          ? rawAssignments.map(a => ({
+              id: a.assignment_id || a.id,
+              name: a.assignment_name || a.name,
+              date: a.due_date_time || a.date,
+              status: a.submission_status || a.status || (a.needs_submission ? 'Not Submitted' : 'N/A'),
+              submittedLink: a.submitted_link || '',
+              submittedComment: a.submitted_comment || ''
+            }))
+          : [];
+        setAssignments(mappedAssignments);
+        // Jeśli chcesz pobierać info o kursie, dodaj osobny fetch
       } catch (error) {
-        console.error('Error fetching materials:', error);
+        setAssignments([]);
+        console.error('Error fetching assignments:', error);
       }
     };
-    
-    fetchMaterials();
+    fetchAssignments();
   }, [courseId]);
 
   const handleSubmissionClick = (assignmentId) => {
+    console.log('Opening modal for assignment', assignmentId);
     setSubmissionModal(assignmentId);
-    const assignment = courseMaterials.assignments.find(a => a.id === assignmentId);
+    const assignment = assignments.find(a => a.id === assignmentId) || {};
     setSubmissionData({
       link: assignment.submittedLink || '',
       comment: assignment.submittedComment || ''
@@ -64,6 +68,7 @@ const Materials = () => {
   };
 
   const closeModal = () => {
+    console.log('Closing modal');
     setSubmissionModal(null);
     setSubmissionData({ link: '', comment: '' });
   };
@@ -73,24 +78,57 @@ const Materials = () => {
     setSubmissionData(prev => ({ ...prev, [name]: value }));
   };
 
-  const submitSolution = () => {
-    if (!submissionData.link.trim()) return;
-    
-    setCourseMaterials(prev => ({
-      ...prev,
-      assignments: prev.assignments.map(assignment => 
-        assignment.id === submissionModal 
-          ? { 
-              ...assignment, 
-              status: 'Submitted',
-              submittedLink: submissionData.link,
-              submittedComment: submissionData.comment
-            } 
-          : assignment
-      )
-    }));
-    
-    closeModal();
+  const submitSolution = async () => {
+    console.log('submitSolution called');
+    if (!submissionData.link.trim()) {
+      console.log('Link is empty, not submitting');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const studentId = localStorage.getItem('student_id');
+      console.log('POSTING SUBMISSION:', {
+        student_id: parseInt(studentId),
+        assignment_id: submissionModal,
+        submission_link: submissionData.link,
+        comment: submissionData.comment
+      });
+      // Wyślij submission do backendu
+      await api.post(
+        `/student/${studentId}/courses/${courseId}/assignments/${submissionModal}/submission`,
+        {
+          student_id: parseInt(studentId),
+          assignment_id: submissionModal,
+          submission_link: submissionData.link,
+          comment: submissionData.comment
+        },
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+      // Po sukcesie odśwież assignmenty
+      const response = await api.get(
+        `/student/${studentId}/courses/${courseId}/assignments`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      const data = response.data;
+      const rawAssignments = data.CourseAssignmentsList || data.Assignments || data.assignments || data.Assignments || [];
+      const mappedAssignments = Array.isArray(rawAssignments)
+        ? rawAssignments.map(a => ({
+            id: a.assignment_id || a.id,
+            name: a.assignment_name || a.name,
+            date: a.due_date_time || a.date,
+            status: a.submission_status || a.status || (a.needs_submission ? 'Not Submitted' : 'N/A'),
+            submittedLink: a.submitted_link || '',
+            submittedComment: a.submitted_comment || ''
+          }))
+        : [];
+      setAssignments(mappedAssignments);
+      closeModal();
+    } catch (error) {
+      alert('Błąd podczas wysyłania submissiona!');
+      console.error('POST submission error:', error);
+    }
   };
 
   const copyToClipboard = (link) => {
@@ -102,100 +140,45 @@ const Materials = () => {
   return (
     <div className="materials-view">
       <div className="materials-header">
-        <button className="back-button" onClick={() => navigate('/student')}>
-          &larr; Back to Dashboard
+        <button className="back-button" onClick={onBackToCourses ? onBackToCourses : () => navigate(-1)}>
+          &larr; Back to Courses
         </button>
-        <h2>Course Materials</h2>
-        <div className="course-info">
-          <h3>{courseInfo.name}</h3>
-          <p>Lecturer: {courseInfo.lecturer} | Group: {courseInfo.group}</p>
-        </div>
+        <h2>Assignments</h2>
       </div>
-
-      <div className="materials-tabs">
-        <button 
-          className={`material-tab ${activeTab === 'lectures' ? 'active' : ''}`}
-          onClick={() => setActiveTab('lectures')}
-        >
-          <FaChalkboardTeacher /> Lectures
-        </button>
-        <button 
-          className={`material-tab ${activeTab === 'labs' ? 'active' : ''}`}
-          onClick={() => setActiveTab('labs')}
-        >
-          <FaFlask /> Labs
-        </button>
-        <button 
-          className={`material-tab ${activeTab === 'assignments' ? 'active' : ''}`}
-          onClick={() => setActiveTab('assignments')}
-        >
-          <FaTasks /> Assignments
-        </button>
-        <button 
-          className={`material-tab ${activeTab === 'additional' ? 'active' : ''}`}
-          onClick={() => setActiveTab('additional')}
-        >
-          <FaBookOpen /> Additional
-        </button>
-      </div>
-
       <div className="materials-grid">
-        {courseMaterials[activeTab].map(material => (
-          <div key={material.id} className="material-card">
+        {assignments.map(assignment => (
+          <div key={assignment.id} className="material-card">
             <div className="material-header">
-              <FaLink className="file-icon link" />
-              <h4>{material.name}</h4>
+              <FaTasks className="file-icon" />
+              <h4>{assignment.name}</h4>
             </div>
             <div className="material-details">
-              <p><span>Date:</span> {material.date}</p>
-              
-              {activeTab === 'assignments' ? (
+              <p><span>Date:</span> {assignment.date}</p>
+              <p><span>Status:</span> {assignment.status || 'Not Submitted'}</p>
+              {assignment.status === 'Submitted' && (
                 <>
-                  <p><span>Status:</span> {material.status}</p>
-                  {material.status === 'Submitted' && (
-                    <>
-                      <p><span>Link:</span> 
-                        <a href={material.submittedLink} target="_blank" rel="noopener noreferrer">
-                          View Submission
-                        </a>
-                      </p>
-                      {material.submittedComment && (
-                        <p><span>Comment:</span> {material.submittedComment}</p>
-                      )}
-                    </>
+                  <p><span>Link:</span> 
+                    <a href={assignment.submittedLink} target="_blank" rel="noopener noreferrer">
+                      View Submission
+                    </a>
+                  </p>
+                  {assignment.submittedComment && (
+                    <p><span>Comment:</span> {assignment.submittedComment}</p>
                   )}
                 </>
-              ) : material.link && (
-                <p>
-                  <span>Link:</span> 
-                  <a href={material.link} target="_blank" rel="noopener noreferrer">
-                    Open Resource
-                  </a>
-                  <button 
-                    className="copy-link-btn"
-                    onClick={() => copyToClipboard(material.link)}
-                    title="Copy link"
-                  >
-                    <FaCopy />
-                    {copiedLink === material.link && <span className="copied-tooltip">Copied!</span>}
-                  </button>
-                </p>
               )}
             </div>
-            {activeTab === 'assignments' && (
-              <div className="material-actions">
-                <button 
-                  className="submit-btn"
-                  onClick={() => handleSubmissionClick(material.id)}
-                >
-                  <FaLink /> {material.status === 'Submitted' ? 'Edit Submission' : 'Submit Solution'}
-                </button>
-              </div>
-            )}
+            <div className="material-actions">
+              <button 
+                className="submit-btn"
+                onClick={() => handleSubmissionClick(assignment.id)}
+              >
+                <FaLink /> {assignment.status === 'Submitted' ? 'Edit Submission' : 'Submit Solution'}
+              </button>
+            </div>
           </div>
         ))}
       </div>
-
       {submissionModal && (
         <div className="upload-modal">
           <div className="modal-content">
@@ -203,8 +186,7 @@ const Materials = () => {
               <FaTimes />
             </button>
             <h3>Submit Solution</h3>
-            <p>For: {courseMaterials.assignments.find(a => a.id === submissionModal)?.name}</p>
-            
+            <p>For: {assignments.find(a => a.id === submissionModal)?.name}</p>
             <div className="form-group">
               <label htmlFor="solution-link">Solution Link*</label>
               <input
@@ -217,7 +199,6 @@ const Materials = () => {
                 required
               />
             </div>
-            
             <div className="form-group">
               <label htmlFor="solution-comment">Comment (optional)</label>
               <textarea
@@ -229,17 +210,16 @@ const Materials = () => {
                 rows="3"
               />
             </div>
-            
             <div className="modal-actions">
               <button onClick={closeModal} className="cancel-btn">
                 Cancel
               </button>
               <button 
-                onClick={submitSolution} 
+                onClick={() => { console.log('Submit button clicked'); submitSolution(); }} 
                 className="submit-btn"
                 disabled={!submissionData.link.trim()}
               >
-                {courseMaterials.assignments.find(a => a.id === submissionModal)?.status === 'Submitted' 
+                {assignments.find(a => a.id === submissionModal)?.status === 'Submitted' 
                   ? 'Update Submission' 
                   : 'Submit Solution'}
               </button>

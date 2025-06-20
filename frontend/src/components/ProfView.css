@@ -752,23 +752,23 @@ body {
 /* Improved responsive behavior for dark mode */
 @media (max-width: 768px) {
   .dark-mode .sidebar {
-    position: relative;
+  position: relative;
     width: 100%;
     height: auto;
     transform: translateX(-100%);
-  }
-  
+}
+
   .dark-mode .sidebar.open {
     transform: translateX(0);
-  }
-  
+}
+
   .dark-mode .main-content {
     margin-left: 0;
-  }
-  
+}
+
   .dark-mode .dashboard-container {
     flex-direction: column;
-  }
+}
 }
 
 /* Enhanced hover effects */
@@ -792,18 +792,18 @@ body {
   .content-wrapper {
     max-width: 100%;
     padding: 12px 15px;
-  }
-  
+}
+
   .quick-stats {
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 15px;
-  }
-  
+}
+
   .courses-list {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 18px;
-  }
-  
+}
+
   .upcoming-classes-list {
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 15px;
@@ -825,12 +825,12 @@ body {
   
   .main-content {
     margin-left: 0;
-  }
-  
+}
+
   .content-wrapper {
     padding: 10px;
-  }
-  
+}
+
   .welcome-section {
     padding: 25px;
     margin-bottom: 20px;
@@ -843,25 +843,25 @@ body {
   .quick-stats {
     grid-template-columns: 1fr;
     gap: 15px;
-  }
-  
+}
+
   .courses-list {
     grid-template-columns: 1fr;
     gap: 15px;
-  }
-  
+}
+
   .upcoming-classes-list {
     grid-template-columns: 1fr;
     gap: 15px;
-  }
-  
+}
+
   .view-content {
     padding: 20px;
   }
   
   .stat-card {
     padding: 20px;
-  }
+}
 }
 
 @media (max-width: 480px) {
@@ -875,8 +875,8 @@ body {
   
   .welcome-section {
     padding: 20px;
-  }
-  
+}
+
   .welcome-section h1 {
     font-size: 1.6rem;
   }
@@ -892,19 +892,19 @@ body {
     width: 50px;
     height: 50px;
     font-size: 1.2rem;
-  }
-  
+}
+
   .top-nav {
     padding: 10px 15px;
-  }
-  
+}
+
   .search-bar {
     flex: 1;
     margin-right: 10px;
   }
   
   .nav-right {
-    gap: 8px;
+  gap: 8px;
   }
 }
 
@@ -928,7 +928,7 @@ body {
   .dark-mode .dashboard-container {
     flex-direction: column;
   }
-  
+
   .dark-mode .welcome-section {
     background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
   }
