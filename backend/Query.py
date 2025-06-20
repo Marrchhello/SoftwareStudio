@@ -52,16 +52,15 @@ def getStudentGrades(engine: Engine, student_id: int):
     
     with engine.connect() as conn:
         
-        mega_select = select(CourseCatalog.courseName, Assignment.name, Grade.grade).where(and_(Grade.studentId == student_id, Assignment.courseId == CourseCatalog.courseId, Grade.assignmentId == Assignment.assignmentId))
+        mega_select = select(CourseCatalog.courseName, Grade.grade).where(and_(Grade.studentId == student_id, Assignment.courseId == CourseCatalog.courseId, Grade.assignmentId == Assignment.assignmentId))
         
         # Get all grades for each course
         for row in conn.execute(mega_select):
             if row[0] in grades:
-                grades[row[0]].append(row[2])
+                grades[row[0]].append(row[1])
             else:
                 grades[row[0]] = []
-                grades[row[0]].append(row[2])
-            # output.append(GradeModel(Course=row[0], Assignment=row[1], Grade=row[2], AGH_Grade=__convert_grade_to_AGH__(row[2])))
+                grades[row[0]].append(row[1])
     
         # Loop through all courses
         for key in grades:

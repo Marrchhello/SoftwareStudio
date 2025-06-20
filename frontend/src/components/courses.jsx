@@ -12,9 +12,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import './courses.css';
 import {
   getCourseStudents,
-  getCourseAssignments,
+  getCourseAssignmentsTeacher,
   getStudentGradesForCourse,
-  getTeacherStudentGradesForCourse,
+  getStudentsGradesAsTeacher,
   postGrade,
   postAssignment,
   getCourseScheduleView
@@ -104,7 +104,7 @@ const Courses = ({ courseId: propCourseId }) => {
       
       // Fetch assignments
       try {
-        const assignmentsData = await getCourseAssignments(courseId, token);
+        const assignmentsData = await getCourseAssignmentsTeacher(courseId, token);
         console.log('Assignments response:', assignmentsData);
         if (assignmentsData) {
           setAssignments(assignmentsData.Assignments || []);
@@ -156,7 +156,7 @@ const Courses = ({ courseId: propCourseId }) => {
         let gradesData;
         if (userRole === 'teacher') {
           // Use teacher endpoint
-          gradesData = await getTeacherStudentGradesForCourse(courseId, studentId, token);
+          gradesData = await getStudentsGradesAsTeacher(courseId, studentId, token);
         } else {
           // Use student endpoint (fallback)
           gradesData = await getStudentGradesForCourse(studentId, courseId, token);

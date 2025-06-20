@@ -3,7 +3,7 @@ import './FAQPage.css';
 import { Link } from 'react-router-dom';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import Banner from './Banner';
-import { faq } from '../api'; // Import the FAQ function from your API
+import { getFAQ } from '../api'; // Import the FAQ function from your API
 
 const FAQPage = () => {
   const [faqs, setFaqs] = useState([]);
@@ -16,7 +16,7 @@ const FAQPage = () => {
     const fetchFAQs = async () => {
       try {
         setLoading(true);
-        const response = await faq();
+        const response = await getFAQ();
 
         // Extract FAQlist from response and map to expected format
         const faqData = response.data?.FAQList || [];
