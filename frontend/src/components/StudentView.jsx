@@ -23,6 +23,7 @@ import api, {
   createChat,
   getUserNameUserID
 } from '../api';
+import Materials from './Materials';
 
 const StudentDashboard = ({ studentData, studentId = 1 }) => { 
   const [activeView, setActiveView] = useState('dashboard'); 
@@ -58,6 +59,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const chatMessagesRef = useRef(null);
+  const [selectedCourseId, setSelectedCourseId] = useState(null);
   
   const navigate = useNavigate(); 
 
@@ -302,6 +304,17 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
     if (grade >= 3.5) return 'grade-good';
     if (grade >= 3.0) return 'grade-average';
     return 'grade-poor';
+  };
+
+  // Helper function to convert percentage to AGH scale (2.0-5.0)
+  const percentageToScale = (percentage) => {
+    if (percentage === null || percentage === undefined) return 'N/A';
+    if (percentage < 50.0) return '2.0';
+    else if (percentage < 60.0) return '3.0';
+    else if (percentage < 70.0) return '3.5';
+    else if (percentage < 80.0) return '4.0';
+    else if (percentage < 90.0) return '4.5';
+    else return '5.0';
   };
 
   const getGradesByCourse = () => {
@@ -761,8 +774,11 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                     <p><FaBook /> Course ID: {course.ID}</p>
                   </div>
                   <div className="course-actions">
-                    <button onClick={() => navigate('/student/materials')}>
-                      <FaBook /> Materials
+                    <button onClick={() => {
+                      setSelectedCourseId(course.ID);
+                      setActiveView('materials');
+                    }}>
+                      <FaBook /> Assignments
                     </button>
                     <button onClick={() => setActiveView('grades')}>
                       <FaGraduationCap /> Grades
@@ -794,7 +810,10 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                     <h3>{courseName}</h3>
                     <div className="average-grade">
                       Average: <span className={getGradeClass(calculateCourseAverage(courseGrades))}>
-                        {calculateCourseAverage(courseGrades).toFixed(1)}
+                        {calculateCourseAverage(courseGrades).toFixed(1)}%
+                        {' '}(
+                          {percentageToScale(calculateCourseAverage(courseGrades))}
+                        )
                       </span>
                     </div>
                   </div>
@@ -802,7 +821,8 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                     <thead>
                       <tr>
                         <th>Assignment</th>
-                        <th>Grade</th>
+                        <th>Grade (%)</th>
+                        <th>AGH Grade</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -811,6 +831,9 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                           <td>{grade.Assignment || 'Pending'}</td>
                           <td className={getGradeClass(grade.Grade)}>
                             {grade.Grade !== null ? grade.Grade.toFixed(1) : 'Pending'}
+                          </td>
+                          <td className={getGradeClass(parseFloat(percentageToScale(grade.Grade)))}>
+                            {grade.Grade !== null ? percentageToScale(grade.Grade) : 'Pending'}
                           </td>
                         </tr>
                       ))}
@@ -958,6 +981,13 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                 </div>
               ))}
             </div>
+          </div>
+        );
+        
+      case 'materials':
+        return (
+          <div className="view-content">
+            <Materials courseId={selectedCourseId} focusTab="assignments" onBackToCourses={() => setActiveView('courses')} />
           </div>
         );
         

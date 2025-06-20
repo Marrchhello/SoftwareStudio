@@ -17,7 +17,8 @@ import {
   getStudentsGradesAsTeacher,
   postGrade,
   postAssignment,
-  getCourseScheduleView
+  getCourseScheduleView,
+  deleteAssignment
 } from '../api';
 
 const Courses = ({ courseId: propCourseId }) => {
@@ -62,6 +63,8 @@ const Courses = ({ courseId: propCourseId }) => {
   const [debugLogs, setDebugLogs] = useState([]);
   const [showDebug, setShowDebug] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [submissionsModal, setSubmissionsModal] = useState({ open: false, assignment: null, submissions: [] });
+  const [grading, setGrading] = useState({});
 
   // Use prop courseId if provided, otherwise use route param
   const courseId = propCourseId || params.courseId;
@@ -457,6 +460,45 @@ const Courses = ({ courseId: propCourseId }) => {
       student.student_email?.toLowerCase().includes(searchLower)
     );
   });
+
+  // Funkcja do pobierania submissions
+  const fetchSubmissions = async (assignment) => {
+    try {
+      setSubmissionsModal({ open: true, assignment, submissions: [], loading: true });
+      const response = await fetch(
+        `/course/${courseId}/assignment/${assignment.assignment_id}/submissions`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+      const data = await response.json();
+      setSubmissionsModal({ open: true, assignment, submissions: data.submissions, loading: false });
+    } catch (error) {
+      setSubmissionsModal({ open: true, assignment, submissions: [], loading: false, error: 'Error fetching submissions' });
+    }
+  };
+
+  const handleGradeSubmission = async (studentId, assignmentId, gradeValue) => {
+    try {
+      await postGrade({ student_id: studentId, assignment_id: assignmentId, grade: gradeValue }, token);
+      // Odśwież submissions po ocenie
+      fetchSubmissions(submissionsModal.assignment);
+      setGrading({});
+    } catch (error) {
+      alert('Error grading submission');
+    }
+  };
+
+  // Funkcja do usuwania assignmentu
+  const handleDeleteAssignment = async (assignmentId) => {
+    if (!window.confirm('Are you sure you want to delete this assignment? This will also delete all related submissions and grades.')) return;
+    try {
+      await deleteAssignment(assignmentId, token);
+      fetchCourseData(); // odśwież listę assignments
+    } catch (error) {
+      alert('Error deleting assignment');
+    }
+  };
 
   if (loading) {
     return (
@@ -890,6 +932,68 @@ const Courses = ({ courseId: propCourseId }) => {
             </div>
           )}
 
+          {/* Modal z submissions */}
+          {submissionsModal.open && (
+            <div className="submissions-modal">
+              <div className="submissions-modal-content">
+                <button className="close-btn" onClick={() => setSubmissionsModal({ open: false, assignment: null, submissions: [] })}><FaTimes /></button>
+                <h3>Submissions for: {submissionsModal.assignment.assignment_name}</h3>
+                {submissionsModal.loading ? (
+                  <div>Loading...</div>
+                ) : (
+                  <table className="submissions-table">
+                    <thead>
+                      <tr>
+                        <th>Student</th>
+                        <th>Email</th>
+                        <th>Submission Link</th>
+                        <th>Date</th>
+                        <th>Grade</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {submissionsModal.submissions.map((sub) => (
+                        <tr key={sub.student_id}>
+                          <td>{sub.student_name}</td>
+                          <td>{sub.student_email}</td>
+                          <td>
+                            {sub.submission_link ? (
+                              <a href={sub.submission_link} target="_blank" rel="noopener noreferrer">View</a>
+                            ) : (
+                              <span style={{ color: '#aaa' }}>No submission</span>
+                            )}
+                          </td>
+                          <td>{sub.submission_date ? new Date(sub.submission_date).toLocaleString() : '-'}</td>
+                          <td>{sub.grade !== null && sub.grade !== undefined ? sub.grade : '-'}</td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              value={grading[sub.student_id] !== undefined ? grading[sub.student_id] : (sub.grade !== null && sub.grade !== undefined ? sub.grade : '')}
+                              onChange={e => setGrading(g => ({ ...g, [sub.student_id]: e.target.value }))}
+                              style={{ width: 60 }}
+                              placeholder="Grade"
+                            />
+                            <button
+                              className="save-btn"
+                              onClick={() => handleGradeSubmission(sub.student_id, submissionsModal.assignment.assignment_id, grading[sub.student_id])}
+                              disabled={grading[sub.student_id] === '' || grading[sub.student_id] === undefined}
+                            >
+                              <FaCheck />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="assignments-list">
             <table>
               <thead>
@@ -911,9 +1015,16 @@ const Courses = ({ courseId: propCourseId }) => {
                     <td>
                       <button 
                         className="delete-btn"
-                        onClick={() => console.log('Delete assignment:', assignment.assignment_id)}
+                        onClick={() => handleDeleteAssignment(assignment.assignment_id)}
                       >
                         <FaTrash />
+                      </button>
+                      <button
+                        className="view-submissions-btn"
+                        style={{ marginLeft: 8, background: '#1976d2', color: '#fff', borderRadius: 4, border: 'none', padding: '0.3rem 0.8rem', cursor: 'pointer' }}
+                        onClick={() => navigate(`/course/${courseId}/assignment/${assignment.assignment_id}/submissions`)}
+                      >
+                        <FaFileAlt style={{ marginRight: 4 }} /> Submissions
                       </button>
                     </td>
                   </tr>

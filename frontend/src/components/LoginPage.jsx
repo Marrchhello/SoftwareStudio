@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { login, getUserRole } from '../api';
+import { login, getUserRole, getUserRoleId } from '../api';
 import Banner from './Banner';
 import './LoginPage.css';
 
@@ -31,9 +31,12 @@ const LoginPage = () => {
       const roleData = await getUserRole(data.access_token);
       localStorage.setItem('role', roleData.role.toUpperCase());
 
-      if (roleData.role.toUpperCase() === 'student'.toUpperCase()) {
+      const roleIdData = await getUserRoleId(data.access_token);
+      if (roleData.role.toUpperCase() === 'STUDENT') {
+        localStorage.setItem('student_id', roleIdData.role_id);
         navigate('/student');
-      } else if (roleData.role.toUpperCase() === 'teacher'.toUpperCase()) {
+      } else if (roleData.role.toUpperCase() === 'TEACHER') {
+        localStorage.setItem('teacher_id', roleIdData.role_id);
         navigate('/teacher');
       } else {
         setError('Invalid role');

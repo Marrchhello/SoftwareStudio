@@ -7,6 +7,7 @@ import StudentView from './components/StudentView'
 import ProfView from './components/ProfView'
 import FAQPage from './components/FAQPage'
 import MapPage from './components/MapPage'
+import AssignmentSubmissions from './components/AssignmentSubmissions'
 import { DarkModeProvider } from './DarkModeContext'
 import './App.css'
 
@@ -21,6 +22,7 @@ function App() {
         <Route path="/teacher" element={<ProfView />} />
         <Route path="/faq" element={<FAQPage />} />
         <Route path="/map" element={<MapPage />} />
+        <Route path="/course/:courseId/assignment/:assignmentId/submissions" element={<AssignmentSubmissions />} />
       </Routes>
     </DarkModeProvider>
   )

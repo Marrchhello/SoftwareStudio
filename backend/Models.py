@@ -376,6 +376,9 @@ class AssignmentInfoModel(BaseModel):
         needs_submission: bool
         valid_file_types: Optional[str]
         group: Optional[int]
+        submitted_link: Optional[str]
+        submitted_comment: Optional[str]
+        submission_status: Optional[str]
     """
     
     assignment_id: int
@@ -385,6 +388,9 @@ class AssignmentInfoModel(BaseModel):
     needs_submission: bool
     valid_file_types: Optional[str]
     group: Optional[int]
+    submitted_link: Optional[str] = None
+    submitted_comment: Optional[str] = None
+    submission_status: Optional[str] = None
 
 
 # Course Assignments List Model
@@ -438,6 +444,21 @@ class CourseScheduleViewModel(BaseModel):
     RoomNumber: Optional[int]
     isBiWeekly: bool
     Groups: List[CourseGroupScheduleModel] = []
+    
+    
+# Assignment Submission Post Model
+class AssignmentSubmissionPostModel(BaseModel):
+    """Model for posting an assignment submission.
+    Args:
+        student_id: int
+        assignment_id: int
+        submission_link: str
+        comment: Optional[str]
+    """
+    student_id: int
+    assignment_id: int
+    submission_link: str
+    comment: Optional[str] = None
     
     
     

@@ -1705,6 +1705,22 @@ def getCourseAssignmentsForStudent(engine: Engine, course_id: int, student_id: i
             
             assignments = []
             for assignment in assignments_result:
+                # Pobierz submission dla tego assignmentu i studenta
+                submission_query = select(AssignmentSubmission).where(
+                    and_(
+                        AssignmentSubmission.assignmentId == assignment.assignmentId,
+                        AssignmentSubmission.studentId == student_id
+                    )
+                )
+                submission_row = conn.execute(submission_query).fetchone()
+                if submission_row:
+                    submitted_link = submission_row.submission
+                    submitted_comment = None  # Jeśli chcesz obsłużyć komentarz, dodaj pole w bazie
+                    submission_status = 'Submitted'
+                else:
+                    submitted_link = None
+                    submitted_comment = None
+                    submission_status = 'Not Submitted'
                 assignments.append(AssignmentInfoModel(
                     assignment_id=assignment.assignmentId,
                     assignment_name=assignment.name,
@@ -1712,7 +1728,10 @@ def getCourseAssignmentsForStudent(engine: Engine, course_id: int, student_id: i
                     due_date_time=assignment.dueDateTime,
                     needs_submission=assignment.needsSubmission,
                     valid_file_types=assignment.validFileTypes,
-                    group=assignment.group
+                    group=assignment.group,
+                    submitted_link=submitted_link,
+                    submitted_comment=submitted_comment,
+                    submission_status=submission_status
                 ))
             
             return CourseAssignmentsListModel(
@@ -1817,4 +1836,47 @@ def getCourseScheduleView(engine: Engine, course_id: int):
             isBiWeekly=False,
             Groups=[]
         )
+    
+
+def postAssignmentSubmission(engine, model):
+    """Posts or updates an assignment submission for a student."""
+    from sqlalchemy import select, insert, update, func, and_
+    from Database import Assignment, AssignmentSubmission, CourseStudent
+    with engine.connect() as conn:
+        # Check if assignment exists
+        assignment_exists = select(Assignment).where(Assignment.assignmentId == model.assignment_id)
+        if conn.execute(assignment_exists).fetchone() is None:
+            return {"status_code": 404, "detail": "Assignment does not exist"}
+        # Check if student is in the course
+        # Get course_id from assignment
+        course_id_query = select(Assignment.courseId).where(Assignment.assignmentId == model.assignment_id)
+        course_id = conn.execute(course_id_query).scalar()
+        student_in_course = select(CourseStudent).where(and_(CourseStudent.studentId == model.student_id, CourseStudent.courseId == course_id))
+        if conn.execute(student_in_course).fetchone() is None:
+            return {"status_code": 403, "detail": "Student is not in the course"}
+        # Check if submission already exists
+        submission_exists = select(AssignmentSubmission).where(and_(AssignmentSubmission.assignmentId == model.assignment_id, AssignmentSubmission.studentId == model.student_id))
+        row = conn.execute(submission_exists).fetchone()
+        import datetime
+        now = datetime.datetime.now()
+        if row is not None:
+            # Update existing submission
+            submission_update = update(AssignmentSubmission).where(and_(AssignmentSubmission.assignmentId == model.assignment_id, AssignmentSubmission.studentId == model.student_id)).values(submission=model.submission_link, submissionDateTime=now)
+            conn.execute(submission_update)
+            conn.commit()
+            return {"status_code": 200, "detail": "Submission updated successfully"}
+        else:
+            # Insert new submission
+            max_id_query = select(func.max(AssignmentSubmission.assignmentSubmissionId))
+            max_id = conn.execute(max_id_query).scalar() or 0
+            submission_insert = insert(AssignmentSubmission).values(
+                assignmentSubmissionId=max_id + 1,
+                assignmentId=model.assignment_id,
+                studentId=model.student_id,
+                submissionDateTime=now,
+                submission=model.submission_link
+            )
+            conn.execute(submission_insert)
+            conn.commit()
+            return {"status_code": 200, "detail": "Submission posted successfully"}
     

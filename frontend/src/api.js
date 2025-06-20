@@ -1,8 +1,20 @@
 import axios from 'axios';
 
-// Show axios where backend is
+// Show axios where backend is + dodaj globalne logowanie requestów i odpowiedzi
 const api = axios.create({
     baseURL: "http://localhost:8000"
+});
+
+api.interceptors.request.use(request => {
+  console.log('AXIOS REQUEST:', request);
+  return request;
+});
+api.interceptors.response.use(response => {
+  console.log('AXIOS RESPONSE:', response);
+  return response;
+}, error => {
+  console.log('AXIOS ERROR:', error);
+  return Promise.reject(error);
 });
 
 // ----------------------------------------------------------------------------
@@ -365,6 +377,16 @@ export const getCourseScheduleView = async (courseId, token) => {
 // ----------------------------------------------------------------------------
 // Export API
 // ----------------------------------------------------------------------------
+
+// Usuń assignment
+export const deleteAssignment = async (assignmentId, token) => {
+  const response = await api.delete(`/assignment/${assignmentId}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  return response.data;
+};
 
 // export api connection to be used in other files
 export default api;

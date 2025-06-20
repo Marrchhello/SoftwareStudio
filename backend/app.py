@@ -25,6 +25,9 @@ import os
 from user_managment import create_user
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
+from sqlalchemy.orm import joinedload
+from Models import AssignmentSubmissionPostModel
+from Query import postAssignmentSubmission
 
 # Initialize FastAPI
 app = FastAPI()
@@ -604,6 +607,49 @@ def get_course_schedule_view(
     
     return getCourseScheduleView(engine=engine, course_id=course_id)
 
+# --- NOWY ENDPOINT: Submissions do zadania dla nauczyciela ---
+@app.get("/course/{course_id}/assignment/{assignment_id}/submissions")
+def get_assignment_submissions(
+    course_id: int,
+    assignment_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER":
+        raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
+    # Sprawdź, czy nauczyciel jest przypisany do kursu
+    with Session(engine) as session:
+        teacher_course = session.query(CourseTeacher).filter(
+            and_(
+                CourseTeacher.teacherId == current_user.role_id,
+                CourseTeacher.courseId == course_id
+            )
+        ).first()
+        if not teacher_course:
+            raise HTTPException(status_code=403, detail="Teacher is not assigned to this course")
+        # Pobierz wszystkich studentów zapisanych na kurs
+        students = session.query(CourseStudent, Student).join(Student, CourseStudent.studentId == Student.studentId).filter(CourseStudent.courseId == course_id).all()
+        # Pobierz submissiony do zadania
+        submissions = session.query(AssignmentSubmission).filter(AssignmentSubmission.assignmentId == assignment_id).all()
+        # Pobierz oceny do zadania
+        grades = session.query(Grade).filter(Grade.assignmentId == assignment_id).all()
+        # Zbuduj mapy dla szybkiego lookup
+        submission_map = {(s.studentId): s for s in submissions}
+        grade_map = {(g.studentId): g for g in grades}
+        # Zbuduj wynik
+        result = []
+        for course_student, student in students:
+            sub = submission_map.get(student.studentId)
+            grade = grade_map.get(student.studentId)
+            result.append({
+                "student_id": student.studentId,
+                "student_name": student.name,
+                "student_email": student.email,
+                "submission_link": sub.submission if sub else None,
+                "submission_date": sub.submissionDateTime.isoformat() if sub else None,
+                "grade": grade.grade if grade else None
+            })
+        return {"submissions": result}
+
 # ----------------------------------------------------------------------------
 # Main Method
 # ----------------------------------------------------------------------------
@@ -611,3 +657,42 @@ def get_course_schedule_view(
 # Run the backend
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+
+@app.delete("/assignment/{assignment_id}")
+def delete_assignment(
+    assignment_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER":
+        raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
+    with Session(engine) as session:
+        # Pobierz assignment
+        assignment = session.query(Assignment).filter(Assignment.assignmentId == assignment_id).first()
+        if not assignment:
+            raise HTTPException(status_code=404, detail="Assignment not found")
+        # Sprawdź, czy nauczyciel jest przypisany do kursu
+        teacher_course = session.query(CourseTeacher).filter(
+            and_(
+                CourseTeacher.teacherId == current_user.role_id,
+                CourseTeacher.courseId == assignment.courseId
+            )
+        ).first()
+        if not teacher_course:
+            raise HTTPException(status_code=403, detail="Teacher is not assigned to this course")
+        # Usuń powiązane submissiony
+        session.query(AssignmentSubmission).filter(AssignmentSubmission.assignmentId == assignment_id).delete()
+        # Usuń powiązane oceny
+        session.query(Grade).filter(Grade.assignmentId == assignment_id).delete()
+        # Usuń assignment
+        session.delete(assignment)
+        session.commit()
+        return {"message": "Assignment and related submissions/grades deleted"}
+
+@app.post("/student/{student_id}/courses/{course_id}/assignments/{assignment_id}/submission")
+def post_assignment_submission(student_id: int, course_id: int, assignment_id: int, model: AssignmentSubmissionPostModel, current_user: Annotated[UserAuth, Depends(get_current_active_user)]):
+    if current_user.role.upper() != "STUDENT" or current_user.role_id != student_id:
+        raise HTTPException(status_code=403, detail="Not authorized to submit for this student")
+    # model.student_id, model.assignment_id muszą się zgadzać z path
+    if model.student_id != student_id or model.assignment_id != assignment_id:
+        raise HTTPException(status_code=400, detail="student_id or assignment_id mismatch")
+    return postAssignmentSubmission(engine=engine, model=model)
