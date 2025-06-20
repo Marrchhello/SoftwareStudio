@@ -209,6 +209,16 @@ export const getCourseAssignmentsTeacher = async (courseId, token) => {
     return response.data;
 };
 
+// Delete assignment
+export const deleteAssignment = async (assignmentId, token) => {
+    const response = await api.delete(`/assignment/${assignmentId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return response.data;
+  };
+
 // ----------------------------------------------------------------------------
 // Schedule
 // ----------------------------------------------------------------------------
@@ -377,16 +387,6 @@ export const getCourseScheduleView = async (courseId, token) => {
 // ----------------------------------------------------------------------------
 // Export API
 // ----------------------------------------------------------------------------
-
-// Usuń assignment
-export const deleteAssignment = async (assignmentId, token) => {
-  const response = await api.delete(`/assignment/${assignmentId}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  return response.data;
-};
 
 // export api connection to be used in other files
 export default api;
