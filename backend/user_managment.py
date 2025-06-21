@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import insert, select, update, delete, Engine
 from sqlalchemy.orm import sessionmaker
 from auth import get_password_hash, verify_password
+from validation import validate_password
 
 
 # Check if student/teacher/staff account can be created.
@@ -62,6 +63,7 @@ def can_create_user(engine: Engine, uuid: int, roleId: int, role: Roles) -> tupl
 # Create User
 # Change log V1: create function for creating a user, while auto encrypting the password.
 # Change log V1 -> V2: update to check if params are adequate, and add roleId param.
+# Change log V2 -> V3: add password validation
 def create_user(engine: Engine, roleId: int, username: str, password: str, role: Roles, uuid: int = None) -> tuple[bool, str]:
     """Create a new user. Automatically encrypts password.
     
@@ -76,6 +78,11 @@ def create_user(engine: Engine, roleId: int, username: str, password: str, role:
     Returns:
     tuple with bool whether or not the user was created sucessfully, and a string with the error message if not.
     """
+
+    # Validate password
+    password_valid, password_error = validate_password(password)
+    if not password_valid:
+        return (False, password_error)
 
     if uuid is None:
         # Get max value of user_id from table User
@@ -205,6 +212,12 @@ def change_password(engine, user_id: int, old_password: str, new_password: str) 
     Returns:
     bool: True if password was changed successfully, False otherwise
     """
+    
+    # Validate new password
+    password_valid, password_error = validate_password(new_password)
+    if not password_valid:
+        print(f"Password validation failed: {password_error}")
+        return False
     
     with Session(engine) as session:
         # Query the database for the user

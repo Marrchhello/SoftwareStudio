@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column   
 import datetime as dt
+from validation import validate_full_name
 
 
 class DatabaseManager:
@@ -13,25 +14,25 @@ class DatabaseManager:
 
     # ----------- Adding Records -----------
 
-    def add_student(self, student_id: int, semester: int = None, degree_id: int = None, age: int = None, email: str = None):
-        # Add a new student to the database
+    def add_student(self, student_id: int, semester: int = 1, degree_id: int = 0, name: str = None, age: int = None, email: str = None):
+        # Add a new student to the system
+        # Validate name if provided
+        if name:
+            name_valid, name_error = validate_full_name(name)
+            if not name_valid:
+                raise ValueError(f"Invalid name: {name_error}")
+        
         with self.Session() as session:
-            try:
-                student = Student(
-                    studentId=student_id,
-                    semester=semester,
-                    degreeId=degree_id,
-                    age=age,
-                    email=email
-                )
-                session.add(student)
-                session.commit()
-            except IntegrityError as e:
-                session.rollback()
-                raise ValueError(f"Database integrity error: {str(e.orig)}")
-            except Exception as e:
-                session.rollback()
-                raise ValueError(f"Error adding student: {str(e)}")
+            student = Student(
+                studentId=student_id,
+                semester=semester,
+                degreeId=degree_id,
+                name=name,
+                age=age,
+                email=email
+            )
+            session.add(student)
+            session.commit()
 
     def add_course(self, course_id: int, course_name: str, semester: int = None, ects: int = None):
         # Add a new course to the catalog
@@ -47,6 +48,12 @@ class DatabaseManager:
 
     def add_teacher(self, teacher_id: int, name: str = None, title: str = None, email: str = None):
         # Add a new teacher to the system
+        # Validate name if provided
+        if name:
+            name_valid, name_error = validate_full_name(name)
+            if not name_valid:
+                raise ValueError(f"Invalid name: {name_error}")
+        
         with self.Session() as session:
             teacher = Teacher(
                 teacherId=teacher_id,
@@ -321,18 +328,33 @@ class DatabaseManager:
         with self.Session() as session:
             try:
                 if role == 'student':
+                    # Validate name if provided
+                    name = kwargs.get('name')
+                    if name:
+                        name_valid, name_error = validate_full_name(name)
+                        if not name_valid:
+                            raise ValueError(f"Invalid name: {name_error}")
+                    
                     student = Student(
                         studentId=user_id,
                         semester=kwargs.get('semester', 1),
                         degreeId=kwargs.get('degreeId', 0),
+                        name=name,
                         age=kwargs.get('age'),
                         email=kwargs.get('email')
                     )
                     session.add(student)
                 elif role == 'teacher':
+                    # Validate name if provided
+                    name = kwargs.get('name')
+                    if name:
+                        name_valid, name_error = validate_full_name(name)
+                        if not name_valid:
+                            raise ValueError(f"Invalid name: {name_error}")
+                    
                     teacher = Teacher(
                         teacherId=user_id,
-                        name=kwargs.get('name'),
+                        name=name,
                         title=kwargs.get('title'),
                         email=kwargs.get('email')
                     )

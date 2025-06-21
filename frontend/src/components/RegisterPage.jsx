@@ -13,7 +13,22 @@ const RegisterPage = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [passwordValidation, setPasswordValidation] = useState({
+    length: false,
+    digit: false,
+    letter: false
+  });
   const navigate = useNavigate();
+
+  const validatePassword = (password) => {
+    const validation = {
+      length: password.length >= 8,
+      digit: /\d/.test(password),
+      letter: /[a-zA-Z]/.test(password)
+    };
+    setPasswordValidation(validation);
+    return validation.length && validation.digit && validation.letter;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,13 +36,18 @@ const RegisterPage = () => {
       ...prevState,
       [name]: value
     }));
+
+    // Validate password in real-time
+    if (name === 'password') {
+      validatePassword(value);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    
+
     // Validate role ID is 0 or greater
     const roleId = parseInt(formData.roleId);
     if (isNaN(roleId) || roleId < 0) {
@@ -35,10 +55,16 @@ const RegisterPage = () => {
       return;
     }
 
+    // Validate password
+    if (!validatePassword(formData.password)) {
+      setError('Password does not meet requirements');
+      return;
+    }
+
     try {
       const data = await register(formData.role, roleId, formData.username, formData.password);
       setSuccess('Registration successful! Redirecting to login...');
-      
+
       // Redirect to login after 2 seconds
       setTimeout(() => {
         navigate('/login');
@@ -113,6 +139,20 @@ const RegisterPage = () => {
               required
               placeholder="Enter your password"
             />
+            <div className="password-requirements">
+              <p>Password requirements:</p>
+              <ul>
+                <li className={passwordValidation.length ? 'valid' : 'invalid'}>
+                  At least 8 characters long
+                </li>
+                <li className={passwordValidation.digit ? 'valid' : 'invalid'}>
+                  Contains at least 1 digit
+                </li>
+                <li className={passwordValidation.letter ? 'valid' : 'invalid'}>
+                  Contains at least 1 letter
+                </li>
+              </ul>
+            </div>
           </div>
 
           <button type="submit" className="register-button">
