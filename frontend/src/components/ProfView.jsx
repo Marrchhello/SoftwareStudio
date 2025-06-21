@@ -9,15 +9,22 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import './ProfView.css';
 import Courses from './courses';
-import api from '../api';
-import {
+import api, {
   getUserRole,
-  getTeacherScheduleDay,
-  getTeacherScheduleDayByDate,
-  getTeacherScheduleWeek,
-  getTeacherScheduleWeekByDate,
-  getTeacherScheduleMonth,
-  getTeacherScheduleMonthByDate
+  getUserRoleId,
+  getUserName,
+  getCombinedScheduleDay,
+  getCombineScheduleDayByDate,
+  getCombineScheduleWeek,
+  getCombineScheduleWeekByDate,
+  getCombineScheduleMonth,
+  getCombineScheduleMonthByDate,
+  getTeacherCourses,
+  getChats,
+  getChatMessages,
+  postChatMessage,
+  createChat,
+  getUserNameUserID
 } from '../api';
 
 const ProfDashboard = () => {
@@ -58,6 +65,8 @@ const ProfDashboard = () => {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const chatMessagesRef = useRef(null);
+  const [universityEvents, setUniversityEvents] = useState([]);
+  const [weeklyScheduleData, setWeeklyScheduleData] = useState(null);
 
   const navigate = useNavigate();
   const { professorId } = useParams();
@@ -110,11 +119,37 @@ const ProfDashboard = () => {
     );
   }
 
-  function getClassesForDay(dayDate, scheduleData) {
-    if (!scheduleData) return [];
+  function getClassesForDay(dayDate) {
+    if (!weeklyScheduleData || !weeklyScheduleData.Courses) return [];
+    
+    return weeklyScheduleData.Courses.flatMap(course =>
+      course.ClassSchedule.ClassTime
+        .filter(classTime => {
+          const classDate = new Date(classTime.StartDateTime);
+          return classDate.toDateString() === dayDate.toDateString();
+        })
+        .map(classTime => ({
+          id: Math.random().toString(36).substr(2, 9),
+          course: course.ClassSchedule.CourseName,
+          type: "Class",
+          time: `${new Date(classTime.StartDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}-${new Date(classTime.EndDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
+          room: `${course.ClassSchedule.Building} ${course.ClassSchedule.RoomNumber}`,
+          group: "Group",
+          lecturer: "Professor",
+          roomLink: `/map?room=${course.ClassSchedule.Building}-${course.ClassSchedule.RoomNumber}`,
+          startDateTime: new Date(classTime.StartDateTime),
+          endDateTime: new Date(classTime.EndDateTime)
+        }))
+    );
+  }
 
-    const targetDay = dayDate.getDay();
-    return scheduleData.filter(cls => cls.dayOfWeek === targetDay);
+  function getEventsForDay(dayDate) {
+    if (!weeklyScheduleData || !weeklyScheduleData.Events) return [];
+    
+    return weeklyScheduleData.Events.filter(event => {
+      const eventDate = new Date(event.EventTime?.StartDateTime || event.StartDateTime);
+      return eventDate.toDateString() === dayDate.toDateString();
+    });
   }
 
   const goToToday = () => {
@@ -130,20 +165,23 @@ const ProfDashboard = () => {
 
   const fetchUserInfo = async () => {
     try {
+      console.log('Fetching user info with token:', token);
       const userData = await getUserRole(token);
-      if (userData) {
+      const roleIdData = await getUserRoleId(token);
+      console.log('Received user data:', userData);
+      console.log('Received role ID data:', roleIdData);
+      
+      if (userData && roleIdData) {
         // Get user's name
-        const nameResponse = await api.get('/name', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const nameResponse = await getUserName(token);
         
         setUserInfo(prev => ({
           ...prev,
-          teacherId: userData.user_id,
-          name: nameResponse.data?.name || "Professor",
+          teacherId: roleIdData.role_id,
+          name: nameResponse?.name || "Professor",
           role: userData.role
         }));
-        return userData.user_id;
+        return roleIdData.role_id;
       }
       return null;
     } catch (error) {
@@ -158,8 +196,7 @@ const ProfDashboard = () => {
 
   const fetchTodaySchedule = async (teacherId) => {
     try {
-      const today = formatDateForAPI(new Date());
-      const todaySchedule = await getTeacherScheduleDayByDate(teacherId, today, token);
+      const todaySchedule = await getCombineScheduleDayByDate(token);
 
       if (todaySchedule && todaySchedule.Courses) {
         const classes = todaySchedule.Courses.flatMap(course =>
@@ -186,36 +223,74 @@ const ProfDashboard = () => {
 
       if (weekStart) {
         const weekStartDate = formatDateForAPI(weekStart);
-        scheduleData = await getTeacherScheduleWeekByDate(teacherId, weekStartDate, token);
+        scheduleData = await getCombineScheduleWeekByDate(weekStartDate, token);
       } else {
-        scheduleData = await getTeacherScheduleWeek(teacherId, token);
+        scheduleData = await getCombineScheduleWeek(token);
       }
 
+      console.log('Weekly schedule data:', scheduleData); // Debug log
+
       if (scheduleData) {
-        const parsedSchedule = parseScheduleData(scheduleData);
-        setWeeklySchedule(parsedSchedule);
-        setAllClasses(parsedSchedule);
+        setWeeklyScheduleData(scheduleData);
+        
+        // Extract events from the schedule
+        if (scheduleData.Events) {
+          setUniversityEvents(scheduleData.Events);
+        }
+        
+        // Extract and parse classes for backward compatibility
+        const parsedClasses = parseScheduleData(scheduleData);
+        setAllClasses(parsedClasses);
+        setWeeklySchedule(parsedClasses);
       }
     } catch (error) {
       console.error('Error fetching weekly schedule:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
     }
   };
 
   const fetchProfessorData = async () => {
     try {
       setLoading(true);
+      console.log('Starting to fetch professor data...');
 
       // Get user info and teacher ID
       const teacherId = await fetchUserInfo();
+      console.log('Fetched teacher ID:', teacherId);
+      
       if (!teacherId) {
+        console.log('No teacher ID found, stopping...');
         setLoading(false);
         return;
       }
 
+      // Fetch teacher's courses
+      console.log('Fetching teacher courses...');
+      const teacherCoursesResponse = await getTeacherCourses(teacherId, token);
+      console.log('Fetched courses response:', teacherCoursesResponse);
+      console.log('Fetched courses type:', typeof teacherCoursesResponse);
+      console.log('Fetched courses length:', Array.isArray(teacherCoursesResponse) ? teacherCoursesResponse.length : 'Not an array');
+      
+      // The getTeacherCourses function already returns the CourseList array
+      setCourses(teacherCoursesResponse);
+      setQuickStats(prev => ({ ...prev, courses: teacherCoursesResponse.length }));
+      
+      // If no courses found, add a test course for debugging
+      if (!teacherCoursesResponse || teacherCoursesResponse.length === 0) {
+        console.log('No courses found, adding test course');
+        setCourses([{ Course: 'Test Course', ID: 1 }]);
+        setQuickStats(prev => ({ ...prev, courses: 1 }));
+      }
+
       // Fetch today's schedule
+      console.log('Fetching today schedule...');
       await fetchTodaySchedule(teacherId);
 
       // Fetch weekly schedule
+      console.log('Fetching weekly schedule...');
       await fetchWeeklySchedule(teacherId);
 
       // Fetch chats if we're on the messages view
@@ -224,6 +299,7 @@ const ProfDashboard = () => {
       }
 
       setLoading(false);
+      console.log('Finished fetching professor data');
     } catch (error) {
       console.error('Error fetching professor data:', error);
       setLoading(false);
@@ -240,15 +316,10 @@ const ProfDashboard = () => {
 
   useEffect(() => {
     // Fetch weekly schedule when week changes
-    if (userInfo.teacherId && currentWeekStart) {
-      const today = new Date();
-      const currentWeek = getStartOfWeek(today);
-
-      if (currentWeekStart.getTime() !== currentWeek.getTime()) {
-        fetchWeeklySchedule(userInfo.teacherId, currentWeekStart);
-      }
+    if (currentWeekStart) {
+      fetchWeeklySchedule(userInfo.teacherId, currentWeekStart);
     }
-  }, [currentWeekStart, userInfo.teacherId]);
+  }, [currentWeekStart]);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -288,8 +359,8 @@ const ProfDashboard = () => {
         return userNames[userId];
       }
 
-      const response = await api.get(`/name/${userId}`);
-      const name = response.data?.name;
+      const nameData = await getUserNameUserID(userId, token);
+      const name = nameData?.name;
 
       if (!name && name !== 0) {
         setUserNames(prev => ({
@@ -316,14 +387,12 @@ const ProfDashboard = () => {
 
   const fetchChats = async () => {
     try {
-      const response = await api.get('/chats/', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.data && response.data.ChatList) {
-        setChats(response.data.ChatList);
+      const chatsData = await getChats(token);
+      if (chatsData && chatsData.ChatList) {
+        setChats(chatsData.ChatList);
         
         const uniqueUserIds = new Set(
-          response.data.ChatList.flatMap(chat => [chat.user1Id, chat.user2Id])
+          chatsData.ChatList.flatMap(chat => [chat.user1Id, chat.user2Id])
         );
         
         const namePromises = Array.from(uniqueUserIds)
@@ -335,11 +404,11 @@ const ProfDashboard = () => {
         // Update unread messages count for quick stats
         setQuickStats(prev => ({
           ...prev,
-          unreadMessages: response.data.ChatList.length
+          unreadMessages: chatsData.ChatList.length
         }));
       } else {
         setChats([]);
-        console.warn('No chats found in response:', response.data);
+        console.warn('No chats found in response:', chatsData);
       }
     } catch (error) {
       console.error('Error fetching chats:', error);
@@ -350,10 +419,8 @@ const ProfDashboard = () => {
   const fetchChatMessages = async (chatId) => {
     try {
       setIsLoadingMessages(true);
-      const response = await api.get(`/chats/${chatId}/messages/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setChatMessages(response.data?.ChatMessageList || []);
+      const messagesData = await getChatMessages(chatId, token);
+      setChatMessages(messagesData?.ChatMessageList || []);
     } catch (error) {
       console.error('Error fetching chat messages:', error);
       if (isInitialLoad) {
@@ -367,11 +434,8 @@ const ProfDashboard = () => {
 
   const sendMessage = async (chatId, message) => {
     try {
-      const response = await api.post(`/chats/${chatId}/messages/`, null, {
-        params: { message },
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setChatMessages(response.data.ChatMessageList || []);
+      const messageData = await postChatMessage(chatId, message, token);
+      setChatMessages(messageData.ChatMessageList || []);
       setNewMessage('');
       scrollToBottom();
     } catch (error) {
@@ -385,18 +449,10 @@ const ProfDashboard = () => {
       return;
     }
     try {
-      await api.post('/chats/', null, {
-        params: {
-          user2_role: newChatRole,
-          user2_role_id: parseInt(newChatRoleId)
-        },
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      await fetchChats();
-      
+      const chatData = await createChat(newChatRole, parseInt(newChatRoleId), token);
       setNewChatRole('STUDENT');
       setNewChatRoleId('');
+      await fetchChats(); // Refresh chats list
     } catch (error) {
       console.error('Error creating chat:', error);
       alert('Failed to create chat. Please try again.');
@@ -491,18 +547,37 @@ const ProfDashboard = () => {
 
           <div className="day-classes">
             {weekDates.map(date => {
-              const classes = getClassesForDay(date, weeklySchedule);
+              const classes = getClassesForDay(date);
+              const events = getEventsForDay(date);
               return (
                 <div key={date.toString()} className="day-column">
+                  {/* Show university events */}
+                  {events.map((event, idx) => (
+                    <div key={`event-${idx}`} className={`event-card ${event.Holiday || event.IsHoliday ? 'holiday' : ''}`}>
+                      <h4>{event.EventName}</h4>
+                      <p><FaClock /> {new Date(event.EventTime?.StartDateTime || event.StartDateTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</p>
+                      {(event.Holiday || event.IsHoliday) && <span className="holiday-badge">Holiday</span>}
+                    </div>
+                  ))}
+                  
+                  {/* Show classes */}
                   {classes.map((cls, idx) => (
-                    <div key={idx} className="class-card">
-                      <h4>{cls.course} ({cls.group})</h4>
+                    <div key={`class-${idx}`} className="class-card">
+                      <h4>{cls.course}</h4>
                       <div className="time-frequency">
                         <FaClock /> {cls.time}
                       </div>
                       <p>{cls.type} | <a href={cls.roomLink} className="room-link"><FaMapMarkerAlt /> {cls.room}</a></p>
+                      <p><FaUserTie /> {cls.lecturer}</p>
                     </div>
                   ))}
+                  
+                  {/* Show "No classes" message if both classes and events are empty */}
+                  {classes.length === 0 && events.length === 0 && (
+                    <div className="no-classes">
+                      <p>No classes</p>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -654,26 +729,42 @@ const ProfDashboard = () => {
       case 'schedule':
         return renderScheduleView();
       case 'courses':
+        console.log('Rendering courses section, courses data:', courses);
         return (
           <div className="view-content">
             <h2>Your Courses</h2>
             <div className="courses-list">
-              {courses.map(course => (
-                <div key={course.ID} className="course-card">
-                  <h3>{course.Course}</h3>
-                  <div className="course-details">
-                    <p><FaBook /> Course ID: {course.ID}</p>
+              {courses && courses.length > 0 ? courses.map((course, index) => {
+                console.log(`Course ${index}:`, course);
+                console.log(`Course ${index} ID:`, course.ID, 'Type:', typeof course.ID);
+                console.log(`Course ${index} properties:`, Object.keys(course));
+                console.log(`Course ${index} Course property:`, course.Course);
+                return (
+                  <div key={course.ID || index} className="course-card">
+                    <h3>{course.Course || 'Unknown Course'}</h3>
+                    <div className="course-details">
+                      <p><FaBook /> Course ID: {course.ID || 'N/A'}</p>
+                    </div>
+                    <div className="course-actions">
+                      <button onClick={() => {
+                        console.log('Button clicked for course:', course);
+                        console.log('Setting selected course:', course.ID);
+                        console.log('Current activeView:', activeView);
+                        setSelectedCourse(course.ID);
+                        console.log('About to set activeView to course-detail');
+                        setActiveView('course-detail');
+                        console.log('activeView should now be course-detail');
+                      }}>
+                        <FaChalkboardTeacher /> Manage Course
+                      </button>
+                    </div>
                   </div>
-                  <div className="course-actions">
-                    <button onClick={() => {
-                      setSelectedCourse(course.ID);
-                      setActiveView('course-detail');
-                    }}>
-                      <FaChalkboardTeacher /> Manage Course
-                    </button>
-                  </div>
+                );
+              }) : (
+                <div className="no-courses">
+                  <p>No courses found. Loading...</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         );
@@ -682,6 +773,12 @@ const ProfDashboard = () => {
         return renderMessagesView();
 
       case 'course-detail':
+        console.log('Rendering course-detail with selectedCourse:', selectedCourse);
+        if (!selectedCourse) {
+          console.log('No selected course, going back to courses');
+          setActiveView('courses');
+          return null;
+        }
         return (
           <div className="view-content">
             <button
@@ -755,7 +852,7 @@ const ProfDashboard = () => {
   };
 
   return (
-    <div className={`dashboard-container ${darkMode ? 'dark-mode' : ''}`}>
+    <div className={`dashboard-container ${darkMode ? 'dark-mode' : 'light-mode'}`}>
       <nav className="sidebar">
         <div className="sidebar-header">
           <FaUserCircle className="user-icon" />

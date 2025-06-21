@@ -8,7 +8,22 @@ import {
 } from 'react-icons/fa'; 
 import './StudentView.css'; 
 import { useNavigate } from 'react-router-dom';
-import api from '../api';
+import api, { 
+  getStudentCourses, 
+  getAllStudentGrades, 
+  getStudentSemesterSchedule,
+  getCombineScheduleWeek,
+  getCombineScheduleWeekByDate,
+  getUniversityEvents,
+  getUserName,
+  getUserRoleId,
+  getChats,
+  getChatMessages,
+  postChatMessage,
+  createChat,
+  getUserNameUserID
+} from '../api';
+import Materials from './Materials';
 
 const StudentDashboard = ({ studentData, studentId = 1 }) => { 
   const [activeView, setActiveView] = useState('dashboard'); 
@@ -21,7 +36,10 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   const [courses, setCourses] = useState([]); 
   const [grades, setGrades] = useState([]); 
   const [allClasses, setAllClasses] = useState([]); 
-  const [universityEvents, setUniversityEvents] = useState([]); 
+  const [semesterClasses, setSemesterClasses] = useState([]);
+  const [universityEvents, setUniversityEvents] = useState([]);
+  const [weeklyScheduleData, setWeeklyScheduleData] = useState(null);
+  const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true); 
   const [userInfo, setUserInfo] = useState({
     name: "",
@@ -41,56 +59,44 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const chatMessagesRef = useRef(null);
+  const [selectedCourseId, setSelectedCourseId] = useState(null);
   
   const navigate = useNavigate(); 
 
-  // Helper function to fetch with token
-  const fetchWithToken = async (endpoint) => {
+  // Fetch user info from API
+  const fetchUserInfo = async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         navigate('/login');
-        return null;
+        return;
       }
 
-      const response = await api.get(endpoint, {
+      // Get user's name
+      const nameData = await getUserName(token);
+      // Get user's role ID
+      const roleIdData = await getUserRoleId(token);
+      // Get user's profile
+      const profileData = await api.get('/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      return response.data;
-    } catch (error) {
-      if (error.response?.status === 401) {
-        // Token expired or invalid, redirect to login
-        localStorage.removeItem('token');
-        navigate('/login');
-        return null;
-      }
-      throw error;
-    }
-  };
-
-  // Fetch user info from API
-  const fetchUserInfo = async () => {
-    try {
-      // Get user's name
-      const nameData = await fetchWithToken('/name');
-      // Get user's role ID
-      const roleIdData = await fetchWithToken('/role_id');
-      // Get user's profile
-      const profileData = await fetchWithToken('/me');
-      
-      if (nameData && roleIdData && profileData) {
+      if (nameData && roleIdData && profileData.data) {
         setUserInfo(prevInfo => ({
           ...prevInfo,
           name: nameData.name,
           roleId: roleIdData.role_id,
-          user_id: profileData.user_id
+          user_id: profileData.data.user_id
         }));
       }
     } catch (error) {
       console.error('Error fetching user info:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
     }
   };
 
@@ -98,29 +104,42 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   const fetchStudentData = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
       
       // First fetch user info
       await fetchUserInfo();
       
-      // Then fetch all other data using the user's role ID
-      const roleIdData = await fetchWithToken('/role_id');
-      const studentId = roleIdData.role_id;
+      // Fetch courses using the proper API function
+      console.log('About to fetch student courses...');
+      const coursesData = await getStudentCourses(token);
+      console.log('Raw courses response:', coursesData); // Debug log
+      console.log('Type of coursesData:', typeof coursesData); // Debug log
+      console.log('coursesData.CourseList:', coursesData?.CourseList); // Debug log
       
-      // Fetch courses
-      const coursesData = await fetchWithToken(`/student/${studentId}/courses`);
       if (coursesData) {
-        setCourses(coursesData);
+        const coursesList = coursesData.CourseList || coursesData || [];
+        console.log('Final courses list to set:', coursesList); // Debug log
+        console.log('Number of courses:', coursesList.length); // Debug log
+        setCourses(coursesList);
+      } else {
+        console.log('No courses data received');
+        setCourses([]);
       }
       
-      // Fetch grades
-      const gradesData = await fetchWithToken(`/student/${studentId}/grades`);
+      // Fetch grades using the proper API function
+      const gradesData = await getAllStudentGrades(token);
       if (gradesData) {
         setGrades(gradesData);
       }
       
-      // Fetch schedule (for classes)
-      const scheduleData = await fetchWithToken(`/student/${studentId}/schedule/semester`);
+      // Fetch schedule (for classes) using the proper API function
+      const scheduleData = await getStudentSemesterSchedule(token);
       if (scheduleData) {
+        console.log('Semester schedule data:', scheduleData); // Debug log
         // Extract classes from schedule
         const classes = scheduleData.Courses.map(course => {
           const firstClass = course.ClassSchedule.ClassTime[0];
@@ -131,17 +150,21 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
             time: `${new Date(firstClass.StartDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}-${new Date(firstClass.EndDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
             room: `${course.ClassSchedule.Building} ${course.ClassSchedule.RoomNumber}`,
             lecturer: "Lecturer",
-            roomLink: `/campus-map?room=${course.ClassSchedule.Building}-${course.ClassSchedule.RoomNumber}`,
+            roomLink: `/map?room=${course.ClassSchedule.Building}-${course.ClassSchedule.RoomNumber}`,
             frequency: course.isBiWeekly ? "biweekly" : "weekly",
             startDate: new Date(firstClass.StartDateTime).toISOString().split('T')[0],
-            endDate: new Date(firstClass.EndDateTime).toISOString().split('T')[0]
+            endDate: new Date(firstClass.EndDateTime).toISOString().split('T')[0],
+            startDateTime: new Date(firstClass.StartDateTime),
+            endDateTime: new Date(firstClass.EndDateTime),
+            dayOfWeek: new Date(firstClass.StartDateTime).getDay()
           };
         });
-        setAllClasses(classes);
+        console.log('Processed semester classes:', classes); // Debug log
+        setSemesterClasses(classes);
       }
       
-      // Fetch university events
-      const eventsData = await fetchWithToken(`/events/`);
+      // Fetch university events using the proper API function
+      const eventsData = await getUniversityEvents(token);
       if (eventsData) {
         const events = eventsData.Events.map(event => ({
           "Event ID": Math.random().toString(36).substr(2, 9),
@@ -156,6 +179,10 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching student data:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
       setLoading(false);
     }
   };
@@ -164,10 +191,18 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
     const token = localStorage.getItem('token');
     if (token) {
       fetchStudentData();
+      fetchWeeklySchedule(); // Fetch current week schedule
     } else {
       navigate('/login');
     }
   }, [studentId]);
+
+  useEffect(() => {
+    // Fetch weekly schedule when week changes
+    if (currentWeekStart) {
+      fetchWeeklySchedule(currentWeekStart);
+    }
+  }, [currentWeekStart]);
 
   function getStartOfWeek(date) {
     const d = new Date(date);
@@ -223,21 +258,31 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   function getClassesForDay(dayDate) {
     const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'long' });
     return allClasses.filter(cls => {
-      const classDay = new Date(cls.startDate).toLocaleDateString('en-US', { weekday: 'long' });
-      return classDay === dayName && shouldShowClass(cls, currentWeekStart);
+      const classDay = new Date(cls.startDateTime).toDateString();
+      return classDay === dayDate.toDateString();
     });
   }
 
   function getEventsForDay(dayDate) {
     return universityEvents.filter(event => {
-      const eventDate = new Date(event["Date and Start Time"]);
+      const eventDate = new Date(event.EventTime?.StartDateTime || event["Date and Start Time"]);
       return eventDate.toDateString() === dayDate.toDateString();
     });
   }
 
+  function getAssignmentsForDay(dayDate) {
+    return assignments.filter(assignment => {
+      const assignmentDate = new Date(assignment.AssignmentDueDateTime);
+      return assignmentDate.toDateString() === dayDate.toDateString();
+    });
+  }
+
   function getClassesForSemesterDay(dayName) {
-    return allClasses.filter(cls => {
-      const classDay = new Date(cls.startDate).toLocaleDateString('en-US', { weekday: 'long' });
+    return semesterClasses.filter(cls => {
+      // For semester schedule, we need to get the day from the first class time
+      const classDate = new Date(cls.startDateTime || cls.startDate);
+      const classDay = classDate.toLocaleDateString('en-US', { weekday: 'long' });
+      console.log(`Comparing ${classDay} with ${dayName} for class ${cls.course}`); // Debug log
       return classDay === dayName;
     });
   }
@@ -259,6 +304,17 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
     if (grade >= 3.5) return 'grade-good';
     if (grade >= 3.0) return 'grade-average';
     return 'grade-poor';
+  };
+
+  // Helper function to convert percentage to AGH scale (2.0-5.0)
+  const percentageToScale = (percentage) => {
+    if (percentage === null || percentage === undefined) return 'N/A';
+    if (percentage < 50.0) return '2.0';
+    else if (percentage < 60.0) return '3.0';
+    else if (percentage < 70.0) return '3.5';
+    else if (percentage < 80.0) return '4.0';
+    else if (percentage < 90.0) return '4.5';
+    else return '5.0';
   };
 
   const getGradesByCourse = () => {
@@ -307,19 +363,14 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
 
   const fetchUserName = async (userId) => {
     try {
-      // Don't fetch if we already have the name
       if (userNames[userId]) {
         return userNames[userId];
       }
 
-      const response = await api.get(`/name/${userId}`);
-      console.log('Name response for user', userId, ':', response.data); // Debug log
+      const nameData = await getUserNameUserID(userId, token);
+      const name = nameData?.name;
 
-      // The response format is { "name": "username" }
-      const name = response.data?.name;
-
-      // Handle empty string or null/undefined name
-      if (!name && name !== 0) { // Include 0 check in case name is numeric
+      if (!name && name !== 0) {
         setUserNames(prev => ({
           ...prev,
           [userId]: 'Unknown User'
@@ -327,7 +378,6 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         return 'Unknown User';
       }
 
-      // Only update state if we got a valid name
       setUserNames(prev => ({
         ...prev,
         [userId]: name || 'Unknown User'
@@ -345,17 +395,16 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
 
   const fetchChats = async () => {
     try {
-      const response = await api.get('/chats/', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.data && response.data.ChatList) {
-        setChats(response.data.ChatList);
+      const chatsData = await getChats(token);
+      if (chatsData && chatsData.ChatList) {
+        setChats(chatsData.ChatList);
         
-        // Fetch names for all users in chats
+        // Fetch user names for all participants
         const uniqueUserIds = new Set(
-          response.data.ChatList.flatMap(chat => [chat.user1Id, chat.user2Id])
+          chatsData.ChatList.flatMap(chat => [chat.user1Id, chat.user2Id])
         );
         
+        // Filter out user IDs we already have names for
         const namePromises = Array.from(uniqueUserIds)
           .filter(userId => !userNames[userId])
           .map(fetchUserName);
@@ -363,7 +412,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         await Promise.all(namePromises);
       } else {
         setChats([]);
-        console.warn('No chats found in response:', response.data);
+        console.warn('No chats found in response:', chatsData);
       }
     } catch (error) {
       console.error('Error fetching chats:', error);
@@ -390,14 +439,10 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   const fetchChatMessages = async (chatId) => {
     try {
       setIsLoadingMessages(true);
-      const response = await api.get(`/chats/${chatId}/messages/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      // Always set messages, even if empty
-      setChatMessages(response.data?.ChatMessageList || []);
+      const messagesData = await getChatMessages(chatId, token);
+      setChatMessages(messagesData?.ChatMessageList || []);
     } catch (error) {
       console.error('Error fetching chat messages:', error);
-      // Only set empty array on initial load error
       if (isInitialLoad) {
         setChatMessages([]);
       }
@@ -409,14 +454,10 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
 
   const sendMessage = async (chatId, message) => {
     try {
-      console.log('Sending message:', { chatId, message }); // Debug log
-      const response = await api.post(`/chats/${chatId}/messages/`, null, {
-        params: { message },
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      console.log('Message sent response:', response.data); // Debug log
-      setChatMessages(response.data.ChatMessageList || []);
+      const messageData = await postChatMessage(chatId, message, token);
+      setChatMessages(messageData.ChatMessageList || []);
       setNewMessage('');
+      scrollToBottom();
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Failed to send message. Please try again.');
@@ -428,20 +469,10 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
       return;
     }
     try {
-      await api.post('/chats/', null, {
-        params: {
-          user2_role: newChatRole,
-          user2_role_id: parseInt(newChatRoleId)
-        },
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      // Fetch updated chat list
-      await fetchChats();
-      
-      // Reset form
+      const chatData = await createChat(newChatRole, parseInt(newChatRoleId), token);
       setNewChatRole('TEACHER');
       setNewChatRoleId('');
+      await fetchChats(); // Refresh chats list
     } catch (error) {
       console.error('Error creating chat:', error);
       alert('Failed to create chat. Please try again.');
@@ -510,6 +541,67 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
     }
   };
 
+  // Fetch weekly schedule data
+  const fetchWeeklySchedule = async (weekStart = null) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      let scheduleData;
+      if (weekStart) {
+        const weekStartDate = weekStart.toISOString().split('T')[0];
+        scheduleData = await getCombineScheduleWeekByDate(weekStartDate, token);
+      } else {
+        scheduleData = await getCombineScheduleWeek(token);
+      }
+
+      console.log('Weekly schedule data:', scheduleData); // Debug log
+
+      if (scheduleData) {
+        setWeeklyScheduleData(scheduleData);
+        
+        // Extract assignments from the schedule
+        if (scheduleData.Assignments) {
+          setAssignments(scheduleData.Assignments);
+        }
+        
+        // Extract events from the schedule
+        if (scheduleData.Events) {
+          setUniversityEvents(scheduleData.Events);
+        }
+        
+        // Extract classes from the schedule
+        if (scheduleData.Courses) {
+          const classes = scheduleData.Courses.flatMap(course =>
+            course.ClassSchedule.ClassTime.map(classTime => ({
+              id: Math.random().toString(36).substr(2, 9),
+              course: course.ClassSchedule.CourseName,
+              type: "Class",
+              time: `${new Date(classTime.StartDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}-${new Date(classTime.EndDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
+              room: `${course.ClassSchedule.Building} ${course.ClassSchedule.RoomNumber}`,
+              lecturer: "Lecturer",
+              roomLink: `/map?room=${course.ClassSchedule.Building}-${course.ClassSchedule.RoomNumber}`,
+              frequency: course.isBiWeekly ? "biweekly" : "weekly",
+              startDateTime: new Date(classTime.StartDateTime),
+              endDateTime: new Date(classTime.EndDateTime),
+              dayOfWeek: new Date(classTime.StartDateTime).getDay()
+            }))
+          );
+          setAllClasses(classes);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching weekly schedule:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
   const renderScheduleView = () => {
     const weekDates = getWeekDates(currentWeekStart);
     const today = new Date();
@@ -573,14 +665,24 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                 {weekDates.map(date => {
                   const classes = getClassesForDay(date);
                   const events = getEventsForDay(date);
+                  const assignments = getAssignmentsForDay(date);
                   return (
                     <div key={date.toString()} className="day-column">
+                      {/* Show assignments */}
+                      {assignments.map((assignment, idx) => (
+                        <div key={`assignment-${idx}`} className="assignment-card">
+                          <h4>{assignment.AssignmentName}</h4>
+                          <p><FaBook /> {assignment.CourseName}</p>
+                          <p><FaClock /> Due: {new Date(assignment.AssignmentDueDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                      ))}
+                      
                       {/* Show university events */}
                       {events.map((event, idx) => (
-                        <div key={`event-${idx}`} className={`event-card ${event.Holiday ? 'holiday' : ''}`}>
-                          <h4>{event["Event Name"]}</h4>
-                          <p><FaClock /> {event["Date and Start Time"].toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</p>
-                          {event.Holiday && <span className="holiday-badge">Holiday</span>}
+                        <div key={`event-${idx}`} className={`event-card ${event.Holiday || event.IsHoliday ? 'holiday' : ''}`}>
+                          <h4>{event.EventName || event["Event Name"]}</h4>
+                          <p><FaClock /> {new Date(event.EventTime?.StartDateTime || event["Date and Start Time"]).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</p>
+                          {(event.Holiday || event.IsHoliday) && <span className="holiday-badge">Holiday</span>}
                         </div>
                       ))}
                       
@@ -602,7 +704,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
             </div>
           </>
         ) : (
-          <div className="semester-plan-grid">
+          <div className="weekly-schedule">
             <div className="week-days">
               {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
                 <div key={day} className="week-day">
@@ -630,6 +732,11 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                         </p>
                       </div>
                     ))}
+                    {classes.length === 0 && (
+                      <div className="no-classes">
+                        <p>No classes</p>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -654,11 +761,12 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         return renderScheduleView();
         
       case 'courses':
+        console.log('Current courses data:', courses); // Debug log
         return (
           <div className="view-content">
             <h2>Your Courses</h2>
             <div className="courses-list">
-              {courses.CourseList?.map(course => (
+              {courses.map(course => (
                 <div key={course.ID} className="course-card">
                   <h3>{course.Course}</h3>
                   <div className="course-details">
@@ -666,8 +774,11 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                     <p><FaBook /> Course ID: {course.ID}</p>
                   </div>
                   <div className="course-actions">
-                    <button onClick={() => navigate('/student/materials')}>
-                      <FaBook /> Materials
+                    <button onClick={() => {
+                      setSelectedCourseId(course.ID);
+                      setActiveView('materials');
+                    }}>
+                      <FaBook /> Assignments
                     </button>
                     <button onClick={() => setActiveView('grades')}>
                       <FaGraduationCap /> Grades
@@ -678,6 +789,11 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                   </div>
                 </div>
               ))}
+              {courses.length === 0 && (
+                <div className="no-courses">
+                  <p>No courses found. Please check with your academic advisor.</p>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -694,7 +810,10 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                     <h3>{courseName}</h3>
                     <div className="average-grade">
                       Average: <span className={getGradeClass(calculateCourseAverage(courseGrades))}>
-                        {calculateCourseAverage(courseGrades).toFixed(1)}
+                        {calculateCourseAverage(courseGrades).toFixed(1)}%
+                        {' '}(
+                          {percentageToScale(calculateCourseAverage(courseGrades))}
+                        )
                       </span>
                     </div>
                   </div>
@@ -702,7 +821,8 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                     <thead>
                       <tr>
                         <th>Assignment</th>
-                        <th>Grade</th>
+                        <th>Grade (%)</th>
+                        <th>AGH Grade</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -711,6 +831,9 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                           <td>{grade.Assignment || 'Pending'}</td>
                           <td className={getGradeClass(grade.Grade)}>
                             {grade.Grade !== null ? grade.Grade.toFixed(1) : 'Pending'}
+                          </td>
+                          <td className={getGradeClass(parseFloat(percentageToScale(grade.Grade)))}>
+                            {grade.Grade !== null ? percentageToScale(grade.Grade) : 'Pending'}
                           </td>
                         </tr>
                       ))}
@@ -861,9 +984,16 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
           </div>
         );
         
+      case 'materials':
+        return (
+          <div className="view-content">
+            <Materials courseId={selectedCourseId} focusTab="assignments" onBackToCourses={() => setActiveView('courses')} />
+          </div>
+        );
+        
       default:
         const todayClasses = getTodayClasses();
-        const totalCourses = courses.CourseList?.length || 0;
+        const totalCourses = courses.length || 0;
         const totalGrades = grades.GradeList?.length || 0;
         const upcomingEvents = universityEvents.filter(event => 
           event["Date and Start Time"] >= new Date()

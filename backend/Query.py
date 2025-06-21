@@ -52,16 +52,15 @@ def getStudentGrades(engine: Engine, student_id: int):
     
     with engine.connect() as conn:
         
-        mega_select = select(CourseCatalog.courseName, Assignment.name, Grade.grade).where(and_(Grade.studentId == student_id, Assignment.courseId == CourseCatalog.courseId, Grade.assignmentId == Assignment.assignmentId))
+        mega_select = select(CourseCatalog.courseName, Grade.grade).where(and_(Grade.studentId == student_id, Assignment.courseId == CourseCatalog.courseId, Grade.assignmentId == Assignment.assignmentId))
         
         # Get all grades for each course
         for row in conn.execute(mega_select):
             if row[0] in grades:
-                grades[row[0]].append(row[2])
+                grades[row[0]].append(row[1])
             else:
                 grades[row[0]] = []
-                grades[row[0]].append(row[2])
-            # output.append(GradeModel(Course=row[0], Assignment=row[1], Grade=row[2], AGH_Grade=__convert_grade_to_AGH__(row[2])))
+                grades[row[0]].append(row[1])
     
         # Loop through all courses
         for key in grades:
@@ -1516,4 +1515,368 @@ def createChat(engine: Engine, user1_id: int, user2_id: int):
         chat_select = select(Chat).where(Chat.user1Id == user1_id, Chat.user2Id == user2_id)
         result = conn.execute(chat_select).scalar()
         return result
+
+
+# ----------------------------------------------------------------------------
+# Course Management
+# ----------------------------------------------------------------------------
+
+def getCourseStudents(engine: Engine, course_id: int):
+    """Gets all students enrolled in a specific course.
+    
+    Args:
+    engine: Engine connection to use
+    course_id: course id to get all students for.
+    
+    Returns:
+    output: CourseStudentsListModel from models.py
+    """
+    
+    try:
+        print(f"getCourseStudents: Starting to fetch students for course_id={course_id}")
+        with engine.connect() as conn:
+            # First check if course exists
+            course_exists = select(CourseCatalog).where(CourseCatalog.courseId == course_id)
+            course_result = conn.execute(course_exists).first()
+            print(f"getCourseStudents: Course exists check result: {course_result}")
+            if not course_result:
+                print(f"getCourseStudents: Course {course_id} does not exist")
+                return CourseStudentsListModel(CourseName="", CourseId=course_id, Students=[])
+            
+            # Get course name
+            course_query = select(CourseCatalog.courseName).where(CourseCatalog.courseId == course_id)
+            course_name = conn.execute(course_query).scalar()
+            print(f"getCourseStudents: Course name: {course_name}")
+            
+            # Get all students enrolled in this course with proper JOIN
+            students_query = select(
+                Student.studentId,
+                Student.name,
+                Student.email,
+                CourseStudent.group
+            ).select_from(
+                CourseStudent
+            ).join(
+                Student,
+                CourseStudent.studentId == Student.studentId
+            ).where(
+                CourseStudent.courseId == course_id
+            )
+            
+            print(f"getCourseStudents: Executing students query for course_id={course_id}")
+            print(f"getCourseStudents: SQL query: {students_query}")
+            students_result = conn.execute(students_query).fetchall()
+            print(f"getCourseStudents: Students query result: {students_result}")
+            
+            students = []
+            for student in students_result:
+                student_info = StudentCourseInfoModel(
+                    student_id=student.studentId,
+                    student_name=student.name or f"Student {student.studentId}",
+                    student_email=student.email or "",
+                    group=student.group
+                )
+                print(f"getCourseStudents: Created student info: {student_info}")
+                students.append(student_info)
+            
+            result = CourseStudentsListModel(
+                CourseName=course_name,
+                CourseId=course_id,
+                Students=students
+            )
+            print(f"getCourseStudents: Returning result: {result}")
+            return result
+            
+    except Exception as e:
+        print(f"Error in getCourseStudents: {e}")
+        import traceback
+        traceback.print_exc()
+        return CourseStudentsListModel(CourseName="", CourseId=course_id, Students=[])
+
+
+def getCourseAssignments(engine: Engine, course_id: int):
+    """Gets all assignments for a specific course.
+    
+    Args:
+    engine: Engine connection to use
+    course_id: course id to get all assignments for.
+    
+    Returns:
+    output: CourseAssignmentsListModel from models.py
+    """
+    
+    try:
+        with engine.connect() as conn:
+            # First check if course exists
+            course_exists = select(CourseCatalog).where(CourseCatalog.courseId == course_id)
+            if not conn.execute(course_exists).first():
+                return CourseAssignmentsListModel(CourseName="", CourseId=course_id, Assignments=[])
+            
+            # Get course name
+            course_query = select(CourseCatalog.courseName).where(CourseCatalog.courseId == course_id)
+            course_name = conn.execute(course_query).scalar()
+            
+            # Get all assignments for this course
+            assignments_query = select(
+                Assignment.assignmentId,
+                Assignment.name,
+                Assignment.desc,
+                Assignment.dueDateTime,
+                Assignment.needsSubmission,
+                Assignment.validFileTypes,
+                Assignment.group
+            ).where(Assignment.courseId == course_id)
+            
+            assignments_result = conn.execute(assignments_query).fetchall()
+            
+            assignments = []
+            for assignment in assignments_result:
+                assignments.append(AssignmentInfoModel(
+                    assignment_id=assignment.assignmentId,
+                    assignment_name=assignment.name,
+                    desc=assignment.desc,
+                    due_date_time=assignment.dueDateTime,
+                    needs_submission=assignment.needsSubmission,
+                    valid_file_types=assignment.validFileTypes,
+                    group=assignment.group
+                ))
+            
+            return CourseAssignmentsListModel(
+                CourseName=course_name,
+                CourseId=course_id,
+                Assignments=assignments
+            )
+            
+    except Exception as e:
+        print(f"Error in getCourseAssignments: {e}")
+        return CourseAssignmentsListModel(CourseName="", CourseId=course_id, Assignments=[])
+
+
+def getCourseAssignmentsForStudent(engine: Engine, course_id: int, student_id: int):
+    """Gets all assignments for a specific course that are visible to a specific student.
+    
+    Args:
+    engine: Engine connection to use
+    course_id: course id to get all assignments for.
+    student_id: student id to filter assignments for.
+    
+    Returns:
+    output: CourseAssignmentsListModel from models.py
+    """
+    
+    try:
+        with engine.connect() as conn:
+            # First check if course exists
+            course_exists = select(CourseCatalog).where(CourseCatalog.courseId == course_id)
+            if not conn.execute(course_exists).first():
+                return CourseAssignmentsListModel(CourseName="", CourseId=course_id, Assignments=[])
+            
+            # Get course name
+            course_query = select(CourseCatalog.courseName).where(CourseCatalog.courseId == course_id)
+            course_name = conn.execute(course_query).scalar()
+            
+            # Get student's group for this course
+            student_group_query = select(CourseStudent.group).where(
+                and_(CourseStudent.courseId == course_id, CourseStudent.studentId == student_id)
+            )
+            student_group = conn.execute(student_group_query).scalar()
+            
+            # Get all assignments for this course that are visible to the student
+            # (either no group restriction or matching student's group)
+            assignments_query = select(
+                Assignment.assignmentId,
+                Assignment.name,
+                Assignment.desc,
+                Assignment.dueDateTime,
+                Assignment.needsSubmission,
+                Assignment.validFileTypes,
+                Assignment.group
+            ).where(
+                and_(
+                    Assignment.courseId == course_id,
+                    or_(
+                        Assignment.group == None,  # No group restriction
+                        Assignment.group == student_group  # Matches student's group
+                    )
+                )
+            )
+            
+            assignments_result = conn.execute(assignments_query).fetchall()
+            
+            assignments = []
+            for assignment in assignments_result:
+                # Pobierz submission dla tego assignmentu i studenta
+                submission_query = select(AssignmentSubmission).where(
+                    and_(
+                        AssignmentSubmission.assignmentId == assignment.assignmentId,
+                        AssignmentSubmission.studentId == student_id
+                    )
+                )
+                submission_row = conn.execute(submission_query).fetchone()
+                if submission_row:
+                    submitted_link = submission_row.submission
+                    submitted_comment = None  # Jeśli chcesz obsłużyć komentarz, dodaj pole w bazie
+                    submission_status = 'Submitted'
+                else:
+                    submitted_link = None
+                    submitted_comment = None
+                    submission_status = 'Not Submitted'
+                assignments.append(AssignmentInfoModel(
+                    assignment_id=assignment.assignmentId,
+                    assignment_name=assignment.name,
+                    desc=assignment.desc,
+                    due_date_time=assignment.dueDateTime,
+                    needs_submission=assignment.needsSubmission,
+                    valid_file_types=assignment.validFileTypes,
+                    group=assignment.group,
+                    submitted_link=submitted_link,
+                    submitted_comment=submitted_comment,
+                    submission_status=submission_status
+                ))
+            
+            return CourseAssignmentsListModel(
+                CourseName=course_name,
+                CourseId=course_id,
+                Assignments=assignments
+            )
+            
+    except Exception as e:
+        print(f"Error in getCourseAssignmentsForStudent: {e}")
+        return CourseAssignmentsListModel(CourseName="", CourseId=course_id, Assignments=[])
+
+
+def getCourseScheduleView(engine: Engine, course_id: int):
+    """Gets the schedule view for a specific course.
+    
+    Args:
+        engine (Engine): Engine connection to use.
+        course_id (int): Course ID to get schedule for.
+
+    Returns:
+        CourseScheduleViewModel: Course Schedule View with group information.
+    """
+    
+    try:
+        with engine.connect() as conn:
+            # Get course info with LEFT JOIN to handle cases where Room might not exist
+            course_info_sel = select(
+                CourseCatalog.courseName,
+                CourseCatalog.isBiWeekly,
+                Room.building,
+                Room.roomNumber
+            ).select_from(
+                CourseCatalog
+            ).outerjoin(
+                Room,
+                CourseCatalog.courseId == Room.courseId
+            ).where(
+                CourseCatalog.courseId == course_id
+            )
+
+            course_info = conn.execute(course_info_sel).fetchone()
+
+            if course_info is None:
+                return CourseScheduleViewModel(
+                    CourseName="",
+                    CourseId=course_id,
+                    Building=None,
+                    RoomNumber=None,
+                    isBiWeekly=False,
+                    Groups=[]
+                )
+
+            course_name, is_biweekly, building, room_number = course_info
+
+            # Get all class times for the course
+            class_times = select(
+                ClassDateTime.dateStartTime,
+                ClassDateTime.endTime
+            ).where(
+                ClassDateTime.courseId == course_id
+            ).order_by(
+                ClassDateTime.dateStartTime
+            )
+
+            class_times = conn.execute(class_times).fetchall()
+            
+            # Create groups based on unique days and times
+            groups = []
+            seen_times = set()
+            
+            for date_start_time, end_time in class_times:
+                # Create a unique key for this time slot
+                time_key = (date_start_time.strftime('%A'), date_start_time.time(), end_time)
+                
+                if time_key not in seen_times:
+                    seen_times.add(time_key)
+                    groups.append(CourseGroupScheduleModel(
+                        GroupNumber=len(groups) + 1,  # Assign sequential group numbers
+                        DayOfWeek=date_start_time.strftime('%A'),
+                        StartTime=date_start_time.time(),
+                        EndTime=end_time
+                    ))
+
+            # Create the course schedule view model with all required fields
+            return CourseScheduleViewModel(
+                CourseName=course_name,
+                CourseId=course_id,
+                Building=building,
+                RoomNumber=room_number,
+                isBiWeekly=is_biweekly,
+                Groups=groups
+            )
+    
+    except Exception as e:
+        print(f"Error in getCourseScheduleView: {e}")
+        return CourseScheduleViewModel(
+            CourseName="",
+            CourseId=course_id,
+            Building=None,
+            RoomNumber=None,
+            isBiWeekly=False,
+            Groups=[]
+        )
+    
+
+def postAssignmentSubmission(engine, model):
+    """Posts or updates an assignment submission for a student."""
+    from sqlalchemy import select, insert, update, func, and_
+    from Database import Assignment, AssignmentSubmission, CourseStudent
+    with engine.connect() as conn:
+        # Check if assignment exists
+        assignment_exists = select(Assignment).where(Assignment.assignmentId == model.assignment_id)
+        if conn.execute(assignment_exists).fetchone() is None:
+            return {"status_code": 404, "detail": "Assignment does not exist"}
+        # Check if student is in the course
+        # Get course_id from assignment
+        course_id_query = select(Assignment.courseId).where(Assignment.assignmentId == model.assignment_id)
+        course_id = conn.execute(course_id_query).scalar()
+        student_in_course = select(CourseStudent).where(and_(CourseStudent.studentId == model.student_id, CourseStudent.courseId == course_id))
+        if conn.execute(student_in_course).fetchone() is None:
+            return {"status_code": 403, "detail": "Student is not in the course"}
+        # Check if submission already exists
+        submission_exists = select(AssignmentSubmission).where(and_(AssignmentSubmission.assignmentId == model.assignment_id, AssignmentSubmission.studentId == model.student_id))
+        row = conn.execute(submission_exists).fetchone()
+        import datetime
+        now = datetime.datetime.now()
+        if row is not None:
+            # Update existing submission
+            submission_update = update(AssignmentSubmission).where(and_(AssignmentSubmission.assignmentId == model.assignment_id, AssignmentSubmission.studentId == model.student_id)).values(submission=model.submission_link, submissionDateTime=now)
+            conn.execute(submission_update)
+            conn.commit()
+            return {"status_code": 200, "detail": "Submission updated successfully"}
+        else:
+            # Insert new submission
+            max_id_query = select(func.max(AssignmentSubmission.assignmentSubmissionId))
+            max_id = conn.execute(max_id_query).scalar() or 0
+            submission_insert = insert(AssignmentSubmission).values(
+                assignmentSubmissionId=max_id + 1,
+                assignmentId=model.assignment_id,
+                studentId=model.student_id,
+                submissionDateTime=now,
+                submission=model.submission_link
+            )
+            conn.execute(submission_insert)
+            conn.commit()
+            return {"status_code": 200, "detail": "Submission posted successfully"}
     
