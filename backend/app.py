@@ -47,7 +47,7 @@ app.add_middleware(
 
 # Database connection
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:password@localhost:4243/postgres")
-engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 # Create all tables on startup
 Base.metadata.create_all(bind=engine)

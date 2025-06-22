@@ -429,13 +429,14 @@ const ProfDashboard = () => {
   const fetchChatMessages = async (chatId) => {
     try {
       setIsLoadingMessages(true);
+      // Clear messages immediately when switching chats to prevent old messages from showing
+      setChatMessages([]);
       const messagesData = await getChatMessages(chatId, token);
       setChatMessages(messagesData?.ChatMessageList || []);
     } catch (error) {
       console.error('Error fetching chat messages:', error);
-      if (isInitialLoad) {
-        setChatMessages([]);
-      }
+      // Always clear messages on error, regardless of initial load state
+      setChatMessages([]);
     } finally {
       setIsLoadingMessages(false);
       setIsInitialLoad(false);
@@ -655,21 +656,42 @@ const ProfDashboard = () => {
                     <>
                       {chatMessages.map((msg, idx) => {
                         const isCurrentUser = msg.senderName === userInfo.name;
+                        const currentMsgDate = new Date(msg.timestamp);
+                        const previousMsgDate = idx > 0 ? new Date(chatMessages[idx - 1].timestamp) : null;
+                        
+                        // Check if we need to show a date separator
+                        const showDateSeparator = !previousMsgDate || 
+                          currentMsgDate.toDateString() !== previousMsgDate.toDateString();
+                        
                         return (
-                          <div 
-                            key={idx} 
-                            className={`message ${isCurrentUser ? 'sent' : 'received'}`}
-                          >
-                            <div className="message-content">
-                              <div className="message-header">
-                                <span className="sender-name">{msg.senderName}</span>
+                          <React.Fragment key={idx}>
+                            {showDateSeparator && (
+                              <div className="date-separator">
+                                <span className="date-separator-text">
+                                  {currentMsgDate.toLocaleDateString('en-US', { 
+                                    weekday: 'long', 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                  })}
+                                </span>
                               </div>
-                              <p>{msg.message}</p>
+                            )}
+                            <div className={`message ${isCurrentUser ? 'sent' : 'received'}`}>
+                              <div className="message-content">
+                                <div className="message-header">
+                                  <span className="sender-name">{msg.senderName}</span>
+                                </div>
+                                <p>{msg.message}</p>
+                              </div>
+                              <div className="message-time">
+                                {currentMsgDate.toLocaleDateString() === new Date().toLocaleDateString() 
+                                  ? currentMsgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                  : `${currentMsgDate.toLocaleDateString()} ${currentMsgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                }
+                              </div>
                             </div>
-                            <div className="message-time">
-                              {new Date(msg.timestamp).toLocaleTimeString()}
-                            </div>
-                          </div>
+                          </React.Fragment>
                         );
                       })}
                       {isLoadingMessages && (

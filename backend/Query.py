@@ -577,7 +577,7 @@ def getWeekStudentSchedule(engine: Engine, student_id: int, date: datetime.date 
     week_end = datetime.datetime.combine(week_end, datetime.time.max)
 
     with engine.connect() as conn:
-        weeks_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
+        weeks_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.courseId, CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
             and_(
                 ClassDateTime.dateStartTime >= week_start,
                 ClassDateTime.dateStartTime < week_end,
@@ -644,14 +644,14 @@ def getWeekStudentSchedule(engine: Engine, student_id: int, date: datetime.date 
 
         # Process week's classes
         for row in conn.execute(weeks_courses):
-            course_name, isBiWeekly, building, room_number = row
+            course_name, course_id, isBiWeekly, building, room_number = row
             
             class_times_sel = select(
                 ClassDateTime.dateStartTime,
                 ClassDateTime.endTime
             ).where(
                 and_(
-                    ClassDateTime.courseId == CourseCatalog.courseId,
+                    ClassDateTime.courseId == course_id,
                     ClassDateTime.dateStartTime >= week_start,
                     ClassDateTime.dateStartTime < week_end
                 )
@@ -742,7 +742,7 @@ def getMonthStudentSchedule(engine: Engine, student_id: int, date: datetime.date
     month_end = datetime.datetime.combine(month_end, datetime.time.max)
 
     with engine.connect() as conn:
-        months_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
+        months_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.courseId, CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
             and_(
                 ClassDateTime.dateStartTime >= month_start,
                 ClassDateTime.dateStartTime < month_end,
@@ -809,14 +809,14 @@ def getMonthStudentSchedule(engine: Engine, student_id: int, date: datetime.date
 
         # Process month's classes
         for row in conn.execute(months_courses):
-            course_name, isBiWeekly, building, room_number = row
+            course_name, course_id, isBiWeekly, building, room_number = row
             
             class_times_sel = select(
                 ClassDateTime.dateStartTime,
                 ClassDateTime.endTime
             ).where(
                 and_(
-                    ClassDateTime.courseId == CourseCatalog.courseId,
+                    ClassDateTime.courseId == course_id,
                     ClassDateTime.dateStartTime >= month_start,
                     ClassDateTime.dateStartTime < month_end
                 )
@@ -1085,7 +1085,7 @@ def getWeekTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date 
     week_end = datetime.datetime.combine(week_end, datetime.time.max)
 
     with engine.connect() as conn:
-        weeks_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
+        weeks_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.courseId, CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
             and_(
                 ClassDateTime.dateStartTime >= week_start,
                 ClassDateTime.dateStartTime < week_end,
@@ -1110,14 +1110,14 @@ def getWeekTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date 
 
         # Process week's classes
         for row in conn.execute(weeks_courses):
-            course_name, isBiWeekly, building, room_number = row
+            course_name, course_id, isBiWeekly, building, room_number = row
             
             class_times_sel = select(
                 ClassDateTime.dateStartTime,
                 ClassDateTime.endTime
             ).where(
                 and_(
-                    ClassDateTime.courseId == CourseCatalog.courseId,
+                    ClassDateTime.courseId == course_id,
                     ClassDateTime.dateStartTime >= week_start,
                     ClassDateTime.dateStartTime < week_end
                 )
@@ -1197,7 +1197,7 @@ def getMonthTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date
     month_end = datetime.datetime.combine(month_end, datetime.time.max)
 
     with engine.connect() as conn:
-        months_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
+        months_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.courseId, CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
             and_(
                 ClassDateTime.dateStartTime >= month_start,
                 ClassDateTime.dateStartTime < month_end,
@@ -1222,14 +1222,14 @@ def getMonthTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date
 
         # Process month's classes
         for row in conn.execute(months_courses):
-            course_name, isBiWeekly, building, room_number = row
+            course_name, course_id, isBiWeekly, building, room_number = row
             
             class_times_sel = select(
                 ClassDateTime.dateStartTime,
                 ClassDateTime.endTime
             ).where(
                 and_(
-                    ClassDateTime.courseId == CourseCatalog.courseId,
+                    ClassDateTime.courseId == course_id,
                     ClassDateTime.dateStartTime >= month_start,
                     ClassDateTime.dateStartTime < month_end
                 )
