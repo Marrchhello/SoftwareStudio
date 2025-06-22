@@ -232,9 +232,25 @@ def student_courses_get(
 def teacher_courses_get(
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
+    print(f"DEBUG: /teacher/courses endpoint called")
+    print(f"DEBUG: Current user: {current_user}")
+    print(f"DEBUG: User role: {current_user.role}")
+    print(f"DEBUG: User role_id: {current_user.role_id}")
+    
     if current_user.role.upper() != "TEACHER":
+        print(f"DEBUG: User is not a teacher")
         raise HTTPException(status_code=403, detail="Not authorized to access this teacher's data")
-    return getTeacherCourses(engine=engine, teacher_id=current_user.role_id)
+    
+    try:
+        print(f"DEBUG: Calling getTeacherCourses with teacher_id: {current_user.role_id}")
+        result = getTeacherCourses(engine=engine, teacher_id=current_user.role_id)
+        print(f"DEBUG: getTeacherCourses returned: {result}")
+        return result
+    except Exception as e:
+        print(f"DEBUG: Error in teacher_courses_get: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 # GET All Students for Course
@@ -337,9 +353,23 @@ def assignment_grade_model_post(
     model: GradePostModel,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
+    print(f"DEBUG: /grade/ endpoint called")
+    print(f"DEBUG: Current user: {current_user}")
+    print(f"DEBUG: Received model: {model}")
+    print(f"DEBUG: Model fields: student_id={model.student_id} (type: {type(model.student_id)}), assignment_id={model.assignment_id} (type: {type(model.assignment_id)}), grade={model.grade} (type: {type(model.grade)})")
+    
     if current_user.role.upper() != "TEACHER":
         raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
-    return postGrade(engine=engine, teacher_id=current_user.role_id, model=model)
+    
+    try:
+        result = postGrade(engine=engine, teacher_id=current_user.role_id, model=model)
+        print(f"DEBUG: postGrade result: {result}")
+        return result
+    except Exception as e:
+        print(f"DEBUG: Error in assignment_grade_model_post: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 # ----------------------------------------------------------------------------
@@ -696,3 +726,86 @@ def post_assignment_submission(student_id: int, course_id: int, assignment_id: i
     if model.student_id != student_id or model.assignment_id != assignment_id:
         raise HTTPException(status_code=400, detail="student_id or assignment_id mismatch")
     return postAssignmentSubmission(engine=engine, model=model)
+
+# GET User Email
+@app.get("/email")
+async def get_email(
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    """Get user's email address."""
+    try:
+        with Session(engine) as session:
+            if current_user.role.upper() == "STUDENT":
+                student = session.query(Student).filter(Student.studentId == current_user.role_id).first()
+                if student:
+                    return {"email": student.email}
+            elif current_user.role.upper() == "TEACHER":
+                teacher = session.query(Teacher).filter(Teacher.teacherId == current_user.role_id).first()
+                if teacher:
+                    return {"email": teacher.email}
+            
+            # Fallback email based on username
+            user = session.query(User).filter(User.userId == current_user.user_id).first()
+            if user:
+                fallback_email = f"{user.username}@university.com"
+                return {"email": fallback_email}
+            
+            return {"email": "unknown@university.com"}
+    except Exception as e:
+        print(f"Error getting email: {e}")
+        return {"email": "unknown@university.com"}
+
+# GET User Profile Data
+@app.get("/profile")
+async def get_profile(
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    """Get full user profile data."""
+    try:
+        with Session(engine) as session:
+            if current_user.role.upper() == "STUDENT":
+                student = session.query(Student).filter(Student.studentId == current_user.role_id).first()
+                if student:
+                    return {
+                        "name": student.name,
+                        "email": student.email,
+                        "roleId": student.studentId,
+                        "role": "student",
+                        "semester": student.semester,
+                        "degreeId": student.degreeId
+                    }
+            elif current_user.role.upper() == "TEACHER":
+                teacher = session.query(Teacher).filter(Teacher.teacherId == current_user.role_id).first()
+                if teacher:
+                    return {
+                        "name": teacher.name,
+                        "email": teacher.email,
+                        "roleId": teacher.teacherId,
+                        "role": "teacher",
+                        "title": teacher.title
+                    }
+            
+            # Fallback data
+            user = session.query(User).filter(User.userId == current_user.user_id).first()
+            if user:
+                return {
+                    "name": user.username,
+                    "email": f"{user.username}@university.com",
+                    "roleId": current_user.role_id,
+                    "role": current_user.role
+                }
+            
+            return {
+                "name": "Unknown",
+                "email": "unknown@university.com",
+                "roleId": current_user.role_id,
+                "role": current_user.role
+            }
+    except Exception as e:
+        print(f"Error getting profile: {e}")
+        return {
+            "name": "Error",
+            "email": "error@university.com",
+            "roleId": current_user.role_id,
+            "role": current_user.role
+        }

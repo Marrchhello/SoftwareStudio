@@ -260,16 +260,23 @@ body {
   font-weight: bold;
 }
 
-.profile-icon {
-  font-size: 2rem;
-  color: var(--text-color);
+.user-profile {
+  display: flex;
+  align-items: center;
   cursor: pointer;
-  transition: var(--transition);
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
 }
 
-.profile-icon:hover {
-  color: var(--secondary-color);
+.user-profile:hover {
+  background: var(--hover-color);
   transform: scale(1.1);
+}
+
+.profile-icon {
+  font-size: 32px;
+  color: var(--primary-color);
 }
 
 .theme-toggle {

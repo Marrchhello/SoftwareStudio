@@ -1,0 +1,398 @@
+.grades-student-view {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.grades-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.back-button:hover {
+  background: #0056b3;
+}
+
+.grades-header h2 {
+  margin: 0;
+  color: #333;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.course-overview {
+  margin-bottom: 30px;
+}
+
+.course-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+  font-size: 32px;
+  color: #007bff;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.stat-info h3 {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.stat-info p {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.assignments-grades-list {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.assignments-grades-list h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.assignments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.assignment-grade-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
+  background: white;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.assignment-grade-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.assignment-grade-card.graded {
+  border-left: 4px solid #28a745;
+}
+
+.assignment-grade-card.Submitted {
+  border-left: 4px solid #17a2b8;
+}
+
+.assignment-grade-card.not_submitted,
+.assignment-grade-card.Not\ Submitted {
+  border-left: 4px solid #dc3545;
+}
+
+.assignment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.assignment-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+  margin-right: 15px;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status-badge svg {
+  font-size: 14px;
+}
+
+.status-badge.graded {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.Submitted {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-badge.not_submitted,
+.status-badge.Not\ Submitted {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.assignment-details {
+  margin-bottom: 15px;
+}
+
+.assignment-details p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assignment-details p svg {
+  font-size: 16px;
+}
+
+.due-date {
+  font-weight: 500;
+}
+
+.due-date.on-time {
+  color: #28a745;
+}
+
+.due-date.overdue {
+  color: #dc3545;
+}
+
+.due-date.no-due-date {
+  color: #6c757d;
+}
+
+.submission-required {
+  color: #007bff !important;
+  font-weight: 500;
+}
+
+.grade-section {
+  border-top: 1px solid #e0e0e0;
+  padding-top: 15px;
+}
+
+.grade-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.grade-percentage {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.grade-agh {
+  font-size: 14px;
+  color: #666;
+}
+
+.grade-agh span {
+  font-weight: 600;
+}
+
+.no-grade {
+  text-align: center;
+  padding: 10px;
+}
+
+.grade-pending {
+  color: #888;
+  font-style: italic;
+}
+
+.grade-no-grade {
+  color: #888;
+  font-style: italic;
+}
+
+/* Grade color classes */
+.grade-excellent {
+  color: #28a745;
+}
+
+.grade-good {
+  color: #17a2b8;
+}
+
+.grade-average {
+  color: #ffc107;
+}
+
+.grade-poor {
+  color: #dc3545;
+}
+
+/* Loading and error states */
+.loading-spinner {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 16px;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  background: #f8d7da;
+  color: #721c24;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.error-message svg {
+  font-size: 24px;
+}
+
+.no-assignments {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-style: italic;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .grades-student-view {
+    padding: 15px;
+  }
+  
+  .grades-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .course-stats {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+  }
+  
+  .assignments-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .assignment-grade-card {
+    padding: 15px;
+  }
+  
+  .assignment-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .assignment-header h4 {
+    margin-right: 0;
+  }
+  
+  .grade-display {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+}
+
+/* Dark mode support */
+.dark-mode .grades-student-view {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.dark-mode .grades-header {
+  border-bottom-color: #333;
+}
+
+.dark-mode .grades-header h2 {
+  color: #fff;
+}
+
+.dark-mode .stat-card,
+.dark-mode .assignments-grades-list,
+.dark-mode .assignment-grade-card {
+  background: #2d2d2d;
+  color: #fff;
+}
+
+.dark-mode .assignment-grade-card {
+  border-color: #444;
+}
+
+.dark-mode .assignment-header h4 {
+  color: #fff;
+}
+
+.dark-mode .assignment-details p {
+  color: #ccc;
+}
+
+.dark-mode .grade-section {
+  border-top-color: #444;
+}
+
+.dark-mode .grade-agh {
+  color: #ccc;
+}
+
+.dark-mode .no-assignments {
+  color: #ccc;
+} 

@@ -185,6 +185,15 @@ const Courses = ({ courseId: propCourseId }) => {
     
     if (selectedStudent && newGrade.assignmentId && newGrade.grade) {
       try {
+        // Find the assignment ID by name
+        const assignment = assignments.find(a => a.assignment_name === newGrade.assignmentId);
+        if (!assignment) {
+          addDebugLog('Assignment not found:', newGrade.assignmentId);
+          return;
+        }
+
+        addDebugLog('Found assignment:', assignment);
+
         let gradeValue;
         if (newGrade.gradeFormat === 'percentage') {
           gradeValue = parseFloat(newGrade.grade);
@@ -211,10 +220,15 @@ const Courses = ({ courseId: propCourseId }) => {
 
         const requestBody = {
           student_id: selectedStudent,
-          assignment_id: parseInt(newGrade.assignmentId),
+          assignment_id: assignment.assignment_id,
           grade: gradeValue
         };
         addDebugLog('Sending grade request:', requestBody);
+        addDebugLog('Request body types:', {
+          student_id: typeof requestBody.student_id,
+          assignment_id: typeof requestBody.assignment_id,
+          grade: typeof requestBody.grade
+        });
 
         const response = await postGrade(requestBody, token);
         
@@ -227,6 +241,11 @@ const Courses = ({ courseId: propCourseId }) => {
         }
       } catch (error) {
         addDebugLog('Error adding grade:', error);
+        addDebugLog('Error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status
+        });
         console.error('Error adding grade:', error);
       }
     } else {

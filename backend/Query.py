@@ -34,10 +34,9 @@ def __convert_grade_to_AGH__(grade: float) -> float:
     
 
 # Get all grades for a student.
-# V2: models output
-# V3: This function now calculates the average current grade from each course.
+# V5: This function now returns all assignments for courses the student is enrolled in, with grades if they exist.
 def getStudentGrades(engine: Engine, student_id: int):
-    """Gets the current average grade for each course for a given student id.
+    """Gets all assignments for courses the student is enrolled in, with grades if they exist.
     
     Args:
     engine: Engine connection to use
@@ -48,40 +47,38 @@ def getStudentGrades(engine: Engine, student_id: int):
     """
     
     output = []
-    grades = {}
     
     with engine.connect() as conn:
         
-        mega_select = select(CourseCatalog.courseName, Grade.grade).where(and_(Grade.studentId == student_id, Assignment.courseId == CourseCatalog.courseId, Grade.assignmentId == Assignment.assignmentId))
+        # Get all assignments for courses the student is enrolled in
+        # Include assignments even if they don't have grades yet
+        assignment_select = select(
+            CourseCatalog.courseName, 
+            Assignment.name, 
+            Grade.grade
+        ).select_from(
+            Assignment
+        ).join(
+            CourseCatalog, Assignment.courseId == CourseCatalog.courseId
+        ).join(
+            CourseStudent, and_(
+                CourseStudent.courseId == CourseCatalog.courseId,
+                CourseStudent.studentId == student_id
+            )
+        ).outerjoin(
+            Grade, and_(
+                Grade.assignmentId == Assignment.assignmentId,
+                Grade.studentId == student_id
+            )
+        ).order_by(CourseCatalog.courseName, Assignment.name)
         
-        # Get all grades for each course
-        for row in conn.execute(mega_select):
-            if row[0] in grades:
-                grades[row[0]].append(row[1])
-            else:
-                grades[row[0]] = []
-                grades[row[0]].append(row[1])
-    
-        # Loop through all courses
-        for key in grades:
-            
-            # Eliminate None values
-            grades[key] = [i for i in grades[key] if i is not None]
-            
-            # Correct illegal grades
-            for i, g in enumerate(grades[key]):
-                if g < 0:
-                    grades[key][i] = 0
-                elif g > 100:
-                    grades[key][i] = 100
-            
-            # Calculate the average grade for the course
-            avg = None
-            if len(grades[key]) != 0:
-                avg = sum(grades[key]) / len(grades[key])
-            
-            # Add course, average grade, agh avg grade to output
-            output.append(GradeModel(Course=key, Assignment=None, Grade=avg, AGH_Grade=__convert_grade_to_AGH__(avg)))
+        for row in conn.execute(assignment_select):
+            output.append(GradeModel(
+                Course=row[0], 
+                Assignment=row[1], 
+                Grade=row[2], 
+                AGH_Grade=__convert_grade_to_AGH__(row[2]) if row[2] is not None else None
+            ))
     
     return GradeListModel(GradeList=output)
 
@@ -128,18 +125,36 @@ def postGrade(engine: Engine, teacher_id: int, model: GradePostModel):
     with engine.connect() as conn:
 
         # check if teacher is teaching the course
-        teacher_teaching = select(CourseTeacher.teacherId).where(and_(Assignment.assignmentId == model.assignment_id, Assignment.courseId == CourseTeacher.courseId))
+        teacher_teaching = select(CourseTeacher.teacherId).select_from(
+            Assignment
+        ).join(
+            CourseTeacher, Assignment.courseId == CourseTeacher.courseId
+        ).where(
+            and_(
+                Assignment.assignmentId == model.assignment_id,
+                CourseTeacher.teacherId == teacher_id
+            )
+        )
         teacher_result = conn.execute(teacher_teaching).fetchone()
-        if teacher_result is None or teacher_result[0] != teacher_id:
+        if teacher_result is None:
             return {"status_code": 403, "detail": "Teacher is not teaching the course"}
         
         # check if assignment exists
-        assignment_exists = select(Assignment).where(and_(Assignment.assignmentId == model.assignment_id, Assignment.courseId == CourseTeacher.courseId))
+        assignment_exists = select(Assignment).where(Assignment.assignmentId == model.assignment_id)
         if conn.execute(assignment_exists).fetchone() is None:
             return {"status_code": 404, "detail": "Assignment does not exist"}
         
         # check if student is in the course
-        student_in_course = select(CourseStudent).where(and_(CourseStudent.studentId == model.student_id, CourseStudent.courseId == CourseTeacher.courseId))
+        student_in_course = select(CourseStudent).select_from(
+            Assignment
+        ).join(
+            CourseStudent, Assignment.courseId == CourseStudent.courseId
+        ).where(
+            and_(
+                Assignment.assignmentId == model.assignment_id,
+                CourseStudent.studentId == model.student_id
+            )
+        )
         if conn.execute(student_in_course).fetchone() is None:
             return {"status_code": 403, "detail": "Student is not in the course"}
 
@@ -270,19 +285,37 @@ def getTeacherCourses(engine: Engine, teacher_id: int):
     teacher_id: teacher id to get all subjects for.
     
     Returns:
-    output: TeacherCoursesListModel from models.py
+    output: TeacherCourseListModel from models.py
     """
     
+    print(f"DEBUG: getTeacherCourses called with teacher_id: {teacher_id}")
     output = []
     
-    with engine.connect() as conn:
-    
-        course_select = select(CourseCatalog.courseName, CourseCatalog.courseId).where(and_(CourseTeacher.teacherId == teacher_id, CourseCatalog.courseId == CourseTeacher.courseId))
-
-        for row in conn.execute(course_select):
+    try:
+        with engine.connect() as conn:
+            print(f"DEBUG: Connected to database")
+            
+            course_select = select(CourseCatalog.courseName, CourseCatalog.courseId).select_from(
+                CourseTeacher
+            ).join(
+                CourseCatalog, CourseTeacher.courseId == CourseCatalog.courseId
+            ).where(CourseTeacher.teacherId == teacher_id)
+            
+            print(f"DEBUG: Executing query...")
+            result = conn.execute(course_select)
+            
+            for row in result:
+                print(f"DEBUG: Found course: {row[0]} (ID: {row[1]})")
                 output.append(TeacherCourseModel(Course=row[0], ID=row[1]))
-
-    return TeacherCourseListModel(TeacherCourseList=output)
+            
+            print(f"DEBUG: Total courses found: {len(output)}")
+            
+        return TeacherCourseListModel(CourseList=output)
+    except Exception as e:
+        print(f"DEBUG: Error in getTeacherCourses: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 def getCourseSchedule(engine: Engine, course_id: int, date: datetime.date = None):
@@ -435,7 +468,10 @@ def getDayStudentSchedule(engine: Engine, student_id: int, date: datetime.date =
                     Assignment.needsSubmission == False,
                     and_(
                         Assignment.needsSubmission == True,
-                        AssignmentSubmission.submission == None
+                        or_(
+                            AssignmentSubmission.submission == None,
+                            AssignmentSubmission.submission == ''
+                        )
                     )
                 ),
                 or_(
@@ -593,7 +629,10 @@ def getWeekStudentSchedule(engine: Engine, student_id: int, date: datetime.date 
                     Assignment.needsSubmission == False,
                     and_(
                         Assignment.needsSubmission == True,
-                        AssignmentSubmission.submission == None
+                        or_(
+                            AssignmentSubmission.submission == None,
+                            AssignmentSubmission.submission == ''
+                        )
                     )
                 ),
                 or_(
@@ -755,7 +794,10 @@ def getMonthStudentSchedule(engine: Engine, student_id: int, date: datetime.date
                     Assignment.needsSubmission == False,
                     and_(
                         Assignment.needsSubmission == True,
-                        AssignmentSubmission.submission == None
+                        or_(
+                            AssignmentSubmission.submission == None,
+                            AssignmentSubmission.submission == ''
+                        )
                     )
                 ),
                 or_(
@@ -1713,7 +1755,7 @@ def getCourseAssignmentsForStudent(engine: Engine, course_id: int, student_id: i
                     )
                 )
                 submission_row = conn.execute(submission_query).fetchone()
-                if submission_row:
+                if submission_row and submission_row.submission is not None:
                     submitted_link = submission_row.submission
                     submitted_comment = None  # Jeśli chcesz obsłużyć komentarz, dodaj pole w bazie
                     submission_status = 'Submitted'

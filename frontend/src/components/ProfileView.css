@@ -1,0 +1,231 @@
+.profile-view {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background: var(--bg-color);
+  min-height: 100vh;
+}
+
+.profile-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+  gap: 20px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border-color);
+  border-top: 4px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.profile-header h1 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 2rem;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  background: var(--secondary-color);
+  color: var(--text-color);
+}
+
+.back-button:hover {
+  background: var(--secondary-hover);
+}
+
+.profile-content {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.profile-avatar {
+  text-align: center;
+  padding: 30px;
+  background: var(--card-bg);
+  border-radius: 15px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.avatar-icon {
+  font-size: 80px;
+  color: var(--primary-color);
+  margin-bottom: 20px;
+}
+
+.profile-avatar h2 {
+  margin: 0 0 10px 0;
+  color: var(--text-color);
+  font-size: 1.8rem;
+}
+
+.user-role {
+  margin: 0;
+  color: var(--secondary-text);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.detail-section {
+  background: var(--card-bg);
+  border-radius: 15px;
+  padding: 25px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.detail-section h3 {
+  margin: 0 0 20px 0;
+  color: var(--text-color);
+  font-size: 1.3rem;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: var(--bg-color);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.detail-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.detail-icon {
+  font-size: 20px;
+  color: var(--primary-color);
+  min-width: 20px;
+}
+
+.detail-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.detail-content label {
+  font-size: 12px;
+  color: var(--secondary-text);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-content span {
+  font-size: 16px;
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.profile-footer {
+  text-align: center;
+  padding: 20px;
+  background: var(--card-bg);
+  border-radius: 15px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 30px;
+  border: 2px solid var(--danger-color);
+  background: transparent;
+  color: var(--danger-color);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.logout-button:hover {
+  background: var(--danger-color);
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Dark mode adjustments */
+.dark-mode .profile-view {
+  background: var(--dark-bg);
+}
+
+.dark-mode .profile-avatar,
+.dark-mode .detail-section,
+.dark-mode .profile-footer {
+  background: var(--dark-card-bg);
+}
+
+.dark-mode .detail-item {
+  background: var(--dark-bg);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .profile-view {
+    padding: 15px;
+  }
+  
+  .profile-header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+  
+  .detail-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+  
+  .detail-icon {
+    align-self: center;
+  }
+} 

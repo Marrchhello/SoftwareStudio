@@ -28,7 +28,7 @@ const Materials = ({ courseId, onBackToCourses }) => {
           setAssignments([]);
           return;
         }
-        const url = `/student/${studentId}/courses/${courseId}/assignments`;
+        const url = `/student/courses/${courseId}/assignments`;
         console.log('DEBUG: Fetching assignments from:', url);
         const response = await api.get(url, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -108,7 +108,7 @@ const Materials = ({ courseId, onBackToCourses }) => {
       );
       // Po sukcesie odśwież assignmenty
       const response = await api.get(
-        `/student/${studentId}/courses/${courseId}/assignments`,
+        `/student/courses/${courseId}/assignments`,
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       const data = response.data;

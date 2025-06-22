@@ -94,6 +94,26 @@ export const getUserNameUserID = async (user_id, token) => {
     return response.data;
 };
 
+// Get user email function
+export const getUserEmail = async (token) => {
+    const response = await api.get(`/email`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    return response.data.email;
+};
+
+// Get user profile function
+export const getUserProfile = async (token) => {
+    const response = await api.get(`/profile`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    return response.data;
+};
+
 // ----------------------------------------------------------------------------
 // Courses
 // ----------------------------------------------------------------------------

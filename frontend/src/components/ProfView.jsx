@@ -4,9 +4,11 @@ import {
   FaSearch, FaSignOutAlt, FaHome, FaChartBar, FaComments,
   FaSun, FaMoon, FaClock, FaCalendarDay, FaCalendarWeek, FaCalendar,
   FaEnvelope, FaPaperPlane, FaUsers, FaBuilding, FaGraduationCap,
-  FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaChalkboardTeacher
+  FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaChalkboardTeacher,
+  FaTimes, FaPlus
 } from 'react-icons/fa';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useDarkMode } from '../DarkModeContext';
 import './ProfView.css';
 import Courses from './courses';
 import api, {
@@ -26,6 +28,7 @@ import api, {
   createChat,
   getUserNameUserID
 } from '../api';
+import ProfileView from './ProfileView.jsx';
 
 const ProfDashboard = () => {
   const [activeView, setActiveView] = useState('dashboard');
@@ -67,6 +70,7 @@ const ProfDashboard = () => {
   const chatMessagesRef = useRef(null);
   const [universityEvents, setUniversityEvents] = useState([]);
   const [weeklyScheduleData, setWeeklyScheduleData] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   const navigate = useNavigate();
   const { professorId } = useParams();
@@ -269,7 +273,7 @@ const ProfDashboard = () => {
 
       // Fetch teacher's courses
       console.log('Fetching teacher courses...');
-      const teacherCoursesResponse = await getTeacherCourses(teacherId, token);
+      const teacherCoursesResponse = await getTeacherCourses(token);
       console.log('Fetched courses response:', teacherCoursesResponse);
       console.log('Fetched courses type:', typeof teacherCoursesResponse);
       console.log('Fetched courses length:', Array.isArray(teacherCoursesResponse) ? teacherCoursesResponse.length : 'Not an array');
@@ -334,7 +338,13 @@ const ProfDashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('teacher_id');
     navigate('/login');
+  };
+
+  const handleProfileClick = () => {
+    setShowProfile(true);
   };
 
   const scrollToBottom = () => {
@@ -923,13 +933,20 @@ const ProfDashboard = () => {
               <FaBell />
               <span className="notification-badge">3</span>
             </button>
-            <div className="user-profile">
+            <div className="user-profile" onClick={handleProfileClick}>
               <FaUserCircle className="profile-icon" />
             </div>
           </div>
         </header>
         <div className="content-wrapper">
-          {renderView()}
+          {showProfile ? (
+            <ProfileView 
+              onBack={() => setShowProfile(false)} 
+              userType="teacher" 
+            />
+          ) : (
+            renderView()
+          )}
         </div>
       </main>
     </div>

@@ -4,7 +4,7 @@ import {
   FaSearch, FaSignOutAlt, FaHome, FaChartBar, FaComments,
   FaSun, FaMoon, FaClock, FaCalendarDay, FaCalendarWeek, FaCalendar,
   FaEnvelope, FaPaperPlane, FaUserTie, FaBuilding, FaUsers, FaCreditCard,
-  FaMapMarkerAlt, FaChevronLeft, FaChevronRight
+  FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaTimes, FaPlus
 } from 'react-icons/fa'; 
 import './StudentView.css'; 
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +24,8 @@ import api, {
   getUserNameUserID
 } from '../api';
 import Materials from './Materials';
+import ProfileView from './ProfileView';
+import GradesStudent from './GradesStudent';
 
 const StudentDashboard = ({ studentData, studentId = 1 }) => { 
   const [activeView, setActiveView] = useState('dashboard'); 
@@ -60,6 +62,9 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const chatMessagesRef = useRef(null);
   const [selectedCourseId, setSelectedCourseId] = useState(null);
+  const [selectedCourseName, setSelectedCourseName] = useState('');
+  const [showProfile, setShowProfile] = useState(false);
+  const [expandedGrades, setExpandedGrades] = useState({}); // Track expanded course grades
   
   const navigate = useNavigate(); 
 
@@ -299,7 +304,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   }, [currentWeekStart]);
 
   const getGradeClass = (grade) => {
-    if (!grade || grade === null) return 'grade-pending';
+    if (!grade || grade === null) return 'grade-no-grade';
     if (grade >= 4.5) return 'grade-excellent';
     if (grade >= 3.5) return 'grade-good';
     if (grade >= 3.0) return 'grade-average';
@@ -358,7 +363,13 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('student_id');
     navigate('/login');
+  };
+
+  const handleProfileClick = () => {
+    setShowProfile(true);
   };
 
   const fetchUserName = async (userId) => {
@@ -776,11 +787,16 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                   <div className="course-actions">
                     <button onClick={() => {
                       setSelectedCourseId(course.ID);
+                      setSelectedCourseName(course.Course);
                       setActiveView('materials');
                     }}>
                       <FaBook /> Assignments
                     </button>
-                    <button onClick={() => setActiveView('grades')}>
+                    <button onClick={() => {
+                      setSelectedCourseId(course.ID);
+                      setSelectedCourseName(course.Course);
+                      setActiveView('course-grades');
+                    }}>
                       <FaGraduationCap /> Grades
                     </button>
                     <button onClick={() => setActiveView('messages')}>
@@ -798,6 +814,17 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
           </div>
         );
         
+      case 'course-grades':
+        return (
+          <div className="view-content">
+            <GradesStudent 
+              courseId={selectedCourseId} 
+              courseName={selectedCourseName}
+              onBackToCourses={() => setActiveView('courses')} 
+            />
+          </div>
+        );
+        
       case 'grades':
         const gradesByCourse = getGradesByCourse();
         return (
@@ -806,39 +833,53 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
             <div className="grades-container">
               {Object.entries(gradesByCourse).map(([courseName, courseGrades]) => (
                 <div key={courseName} className="course-grades">
-                  <div className="course-grades-header">
+                  <div 
+                    className="course-grades-header"
+                    onClick={() => setExpandedGrades(prev => ({
+                      ...prev,
+                      [courseName]: !prev[courseName]
+                    }))}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <h3>{courseName}</h3>
-                    <div className="average-grade">
-                      Average: <span className={getGradeClass(calculateCourseAverage(courseGrades))}>
-                        {calculateCourseAverage(courseGrades).toFixed(1)}%
-                        {' '}(
-                          {percentageToScale(calculateCourseAverage(courseGrades))}
-                        )
-                      </span>
+                    <div className="course-grades-summary">
+                      <div className="average-grade">
+                        Average: <span className={getGradeClass(calculateCourseAverage(courseGrades))}>
+                          {calculateCourseAverage(courseGrades).toFixed(1)}%
+                          {' '}(
+                            {percentageToScale(calculateCourseAverage(courseGrades))}
+                          )
+                        </span>
+                      </div>
+                      <div className="expand-icon">
+                        {expandedGrades[courseName] ? '▼' : '▶'}
+                      </div>
                     </div>
                   </div>
-                  <table className="grades-table">
-                    <thead>
-                      <tr>
-                        <th>Assignment</th>
-                        <th>Grade (%)</th>
-                        <th>AGH Grade</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {courseGrades.map((grade, idx) => (
-                        <tr key={idx}>
-                          <td>{grade.Assignment || 'Pending'}</td>
-                          <td className={getGradeClass(grade.Grade)}>
-                            {grade.Grade !== null ? grade.Grade.toFixed(1) : 'Pending'}
-                          </td>
-                          <td className={getGradeClass(parseFloat(percentageToScale(grade.Grade)))}>
-                            {grade.Grade !== null ? percentageToScale(grade.Grade) : 'Pending'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  
+                  {expandedGrades[courseName] && (
+                    <div className="course-grades-details">
+                      <div className="assignments-list">
+                        {courseGrades.map((grade, idx) => (
+                          <div key={idx} className="assignment-grade-item">
+                            <div className="assignment-name">
+                              {grade.Assignment || 'No Grade'}
+                            </div>
+                            <div className="assignment-grade">
+                              <span className={getGradeClass(grade.Grade)}>
+                                {grade.Grade !== null ? grade.Grade.toFixed(1) + '%' : 'No Grade'}
+                              </span>
+                              {grade.Grade !== null && (
+                                <span className={`agh-grade ${getGradeClass(parseFloat(percentageToScale(grade.Grade)))}`}>
+                                  ({percentageToScale(grade.Grade)})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -988,6 +1029,16 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         return (
           <div className="view-content">
             <Materials courseId={selectedCourseId} focusTab="assignments" onBackToCourses={() => setActiveView('courses')} />
+          </div>
+        );
+        
+      case 'profile':
+        return (
+          <div className="view-content">
+            <ProfileView 
+              onBack={() => setShowProfile(false)} 
+              userType="student" 
+            />
           </div>
         );
         
@@ -1155,13 +1206,20 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
               <FaBell />
               <span className="notification-badge">3</span>
             </button>
-            <div className="user-profile">
+            <div className="user-profile" onClick={handleProfileClick}>
               <FaUserCircle className="profile-icon" />
             </div>
           </div>
         </header>
         <div className="content-wrapper">
-          {renderView()}
+          {showProfile ? (
+            <ProfileView 
+              onBack={() => setShowProfile(false)} 
+              userType="student" 
+            />
+          ) : (
+            renderView()
+          )}
         </div>
       </main>
     </div>
