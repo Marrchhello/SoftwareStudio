@@ -13,11 +13,14 @@ from auth import (
 )
 from user_managment import create_user
 from Database import Roles
-from Query import getName, getNameFromUserId
-from db_session import get_db, engine, db
+from Query import getName, getNameFromUserId, getEmail
+from db_session import get_db, getEngine
 import os
 
 router = APIRouter()
+
+db = get_db()
+engine = getEngine()
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
@@ -136,10 +139,10 @@ async def get_name_by_id(
 async def get_email(
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    return {"email": db.get_email(current_user.role, current_user.role_id)}
+    return {"email": getEmail(engine=engine, role=current_user.role, role_id=current_user.role_id)}
 
-@router.get("/profile")
-async def get_profile(
-    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
-):
-    return db.get_profile(current_user.role, current_user.role_id) 
+# @router.get("/profile")
+# async def get_profile(
+#     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+# ):
+#     return db.get_profile(current_user.role, current_user.role_id) 

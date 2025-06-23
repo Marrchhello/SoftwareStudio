@@ -8,6 +8,25 @@ from db_session import engine
 
 router = APIRouter()
 
+# ----------------------------------------------------------------------------
+# Student Schedule
+# ----------------------------------------------------------------------------
+
+# Student Semester Schedule
+@router.get("/schedule/student/semester/", response_model=ScheduleModel)
+def student_schedule_semester_get(
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "STUDENT":
+        raise HTTPException(status_code=403, detail="Not authorized to access this student's data")
+    return getSemesterStudentSchedule(engine=engine, student_id=current_user.role_id)
+
+
+# ----------------------------------------------------------------------------
+# Combined Teacher and Student Schedule
+# ----------------------------------------------------------------------------
+
+# Combined Schedule for today
 @router.get("/schedule/day/", response_model=ScheduleModel)
 def combined_schedule_day_get(
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
@@ -18,6 +37,21 @@ def combined_schedule_day_get(
         return getDayStudentSchedule(engine=engine, student_id=current_user.role_id)
     raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
 
+
+# Combined Schedule for a specific day
+@router.get("/schedule/day/{date}", response_model=ScheduleModel)
+def combined_schedule_day_get(
+    date: str,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() == "TEACHER":
+        return getDayTeacherSchedule(engine=engine, teacher_id=current_user.role_id, date=convert_str_to_datetime(date))
+    if current_user.role.upper() == "STUDENT":
+        return getDayStudentSchedule(engine=engine, student_id=current_user.role_id, date=convert_str_to_datetime(date))
+    raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
+
+
+# Combined Schedule for this week
 @router.get("/schedule/week/", response_model=ScheduleModel)
 def combined_schedule_week_get(
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
@@ -28,6 +62,21 @@ def combined_schedule_week_get(
         return getWeekStudentSchedule(engine=engine, student_id=current_user.role_id)
     raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
 
+
+# Combined Schedule for a specific week
+@router.get("/schedule/week/{date}", response_model=ScheduleModel)
+def combined_schedule_week_get(
+    date: str,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() == "TEACHER":
+        return getWeekTeacherSchedule(engine=engine, teacher_id=current_user.role_id, date=convert_str_to_datetime(date))
+    if current_user.role.upper() == "STUDENT":
+        return getWeekStudentSchedule(engine=engine, student_id=current_user.role_id, date=convert_str_to_datetime(date))
+    raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
+
+
+# Combined Schedule for this month
 @router.get("/schedule/month/", response_model=ScheduleModel)
 def combined_schedule_month_get(
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
@@ -38,38 +87,10 @@ def combined_schedule_month_get(
         return getMonthStudentSchedule(engine=engine, student_id=current_user.role_id)
     raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
 
-@router.get("/schedule/student/semester/", response_model=ScheduleModel)
-def student_schedule_semester_get(
-    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
-):
-    if current_user.role.upper() != "STUDENT":
-        raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
-    return getSemesterStudentSchedule(engine=engine, student_id=current_user.role_id)
 
-@router.get("/schedule/day/{date}", response_model=ScheduleModel)
-def combined_schedule_day_get_date(
-    date: str,
-    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
-):
-    if current_user.role.upper() == "TEACHER":
-        return getDayTeacherSchedule(engine=engine, teacher_id=current_user.role_id, date=convert_str_to_datetime(date))
-    if current_user.role.upper() == "STUDENT":
-        return getDayStudentSchedule(engine=engine, student_id=current_user.role_id, date=convert_str_to_datetime(date))
-    raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
-
-@router.get("/schedule/week/{date}", response_model=ScheduleModel)
-def combined_schedule_week_get_date(
-    date: str,
-    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
-):
-    if current_user.role.upper() == "TEACHER":
-        return getWeekTeacherSchedule(engine=engine, teacher_id=current_user.role_id, date=convert_str_to_datetime(date))
-    if current_user.role.upper() == "STUDENT":
-        return getWeekStudentSchedule(engine=engine, student_id=current_user.role_id, date=convert_str_to_datetime(date))
-    raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
-
+# Combined Schedule for a specific month
 @router.get("/schedule/month/{date}", response_model=ScheduleModel)
-def combined_schedule_month_get_date(
+def combined_schedule_month_get(
     date: str,
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
@@ -77,4 +98,4 @@ def combined_schedule_month_get_date(
         return getMonthTeacherSchedule(engine=engine, teacher_id=current_user.role_id, date=convert_str_to_datetime(date))
     if current_user.role.upper() == "STUDENT":
         return getMonthStudentSchedule(engine=engine, student_id=current_user.role_id, date=convert_str_to_datetime(date))
-    raise HTTPException(status_code=403, detail="Not authorized to access this endpoint") 
+    raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")

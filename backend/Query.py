@@ -1067,7 +1067,34 @@ def getNameFromUserId(engine: Engine, user_id: int) -> str:
             role_id = result[1]
             return getName(engine=engine, role=role, role_id=role_id)
         return ''
+    
 
+# Get User's email
+def getEmail(engine: Engine, role: str, role_id: int) -> str:
+    """Get user's email from db.
+    
+    Args:
+        engine: Engine connection to use.
+        role: str (Role of the user)
+        role_id: int (Role ID of the user)
+
+    Returns:
+        output: str (User's email)
+    """
+
+    role = role.upper()
+    sel = None
+    if role == "STUDENT":
+        sel = select(Student.email).where(Student.studentId == role_id)
+    elif role == "TEACHER":
+        sel = select(Teacher.email).where(Teacher.teacherId == role_id)
+    else:
+        return ''
+
+    with engine.connect() as conn:
+        result = conn.execute(sel).scalar()
+        return result if result is not None else ''
+    
 
 # ----------------------------------------------------------------------------
 # Chat
