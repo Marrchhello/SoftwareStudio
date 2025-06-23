@@ -582,3 +582,96 @@ body {
     padding: 0 0.5rem 2rem;
   }
 }
+
+/* Dark mode toggle button */
+.dark-mode-toggle {
+  background: none;
+  border: 2px solid var(--accent-color);
+  color: var(--accent-color);
+  padding: 0.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.dark-mode-toggle:hover {
+  background: rgba(0, 212, 255, 0.1);
+  transform: scale(1.1);
+}
+
+/* Dark mode styles */
+.dark-mode {
+  --primary-color: #3498db;
+  --secondary-color: #2980b9;
+  --accent-color: #00d4ff;
+  --dark-color: #0a0a0a;
+  --light-color: #1a1a1a;
+  --text-color: #e0e0e0;
+  --text-light: #ffffff;
+  --gradient: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+}
+
+.dark-mode body {
+  background-color: var(--light-color);
+  color: var(--text-color);
+}
+
+.dark-mode .upsos-app {
+  background-color: var(--light-color);
+  color: var(--text-color);
+}
+
+.dark-mode .futuristic-header {
+  background-color: #0a0a0a;
+  border-bottom: 1px solid #333;
+}
+
+.dark-mode .hero-section {
+  background: var(--dark-color);
+}
+
+.dark-mode .announcement-card {
+  background-color: #2a2a2a;
+  border: 1px solid #404040;
+  color: var(--text-color);
+}
+
+.dark-mode .feature-card {
+  background-color: #2a2a2a;
+  border: 1px solid #404040;
+  color: var(--text-color);
+}
+
+.dark-mode .contact-card {
+  background-color: #2a2a2a;
+  border: 1px solid #404040;
+  color: var(--text-color);
+}
+
+.dark-mode .futuristic-footer {
+  background-color: #0a0a0a;
+  border-top: 1px solid #333;
+}
+
+.dark-mode .section-title {
+  color: var(--text-light);
+}
+
+.dark-mode .feature-card h3,
+.dark-mode .contact-card h3,
+.dark-mode .announcement-content h3 {
+  color: var(--text-light);
+}
+
+.dark-mode .contact-link {
+  color: var(--accent-color);
+}
+
+.dark-mode .contact-link:hover {
+  color: var(--primary-color);
+}

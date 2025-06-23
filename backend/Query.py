@@ -34,9 +34,11 @@ def __convert_grade_to_AGH__(grade: float) -> float:
     
 
 # Get all grades for a student.
-# V5: This function now returns all assignments for courses the student is enrolled in, with grades if they exist.
+# V7: This function now returns all assignments for courses the student is enrolled in for their current semester, with grades if they exist.
+# Only shows assignments that are either assigned to the student's group or have no group restriction.
 def getStudentGrades(engine: Engine, student_id: int):
-    """Gets all assignments for courses the student is enrolled in, with grades if they exist.
+    """Gets all assignments for courses the student is enrolled in for their current semester, with grades if they exist.
+    Only shows assignments that are either assigned to the student's group or have no group restriction.
     
     Args:
     engine: Engine connection to use
@@ -50,8 +52,9 @@ def getStudentGrades(engine: Engine, student_id: int):
     
     with engine.connect() as conn:
         
-        # Get all assignments for courses the student is enrolled in
+        # Get all assignments for courses the student is enrolled in for their current semester
         # Include assignments even if they don't have grades yet
+        # Filter by group: assignment has no group restriction OR assignment group matches student's group
         assignment_select = select(
             CourseCatalog.courseName, 
             Assignment.name, 
@@ -65,10 +68,20 @@ def getStudentGrades(engine: Engine, student_id: int):
                 CourseStudent.courseId == CourseCatalog.courseId,
                 CourseStudent.studentId == student_id
             )
+        ).join(
+            Student, and_(
+                Student.studentId == student_id,
+                Student.semester == CourseCatalog.semester
+            )
         ).outerjoin(
             Grade, and_(
                 Grade.assignmentId == Assignment.assignmentId,
                 Grade.studentId == student_id
+            )
+        ).where(
+            or_(
+                Assignment.group == None,  # Assignment has no group restriction
+                Assignment.group == CourseStudent.group  # Assignment group matches student's group for this course
             )
         ).order_by(CourseCatalog.courseName, Assignment.name)
         
@@ -84,9 +97,10 @@ def getStudentGrades(engine: Engine, student_id: int):
 
 
 # Get all grades for a student in a specific course.
-# V2: models output
+# V3: models output, now includes group filtering
 def getStudentGradesForCourse(engine: Engine, student_id: int, course_id: int):
     """Gets the grades for a student id and course_id.
+    Only shows assignments that are either assigned to the student's group or have no group restriction.
     
     Args:
     engine: Engine connection to use
@@ -101,7 +115,33 @@ def getStudentGradesForCourse(engine: Engine, student_id: int, course_id: int):
     
     with engine.connect() as conn:
         
-        grade_select = select(CourseCatalog.courseName, Assignment.name, Grade.grade).where(and_(Grade.studentId == student_id, Assignment.courseId == CourseCatalog.courseId, Assignment.courseId == course_id, Grade.assignmentId == Assignment.assignmentId))
+        # Get student's group for this course
+        student_group_query = select(CourseStudent.group).where(
+            and_(CourseStudent.studentId == student_id, CourseStudent.courseId == course_id)
+        )
+        student_group = conn.execute(student_group_query).scalar()
+        
+        # Get grades for assignments that either have no group restriction or match student's group
+        grade_select = select(
+            CourseCatalog.courseName, 
+            Assignment.name, 
+            Grade.grade
+        ).select_from(
+            Grade
+        ).join(
+            Assignment, Grade.assignmentId == Assignment.assignmentId
+        ).join(
+            CourseCatalog, Assignment.courseId == CourseCatalog.courseId
+        ).where(
+            and_(
+                Grade.studentId == student_id,
+                Assignment.courseId == course_id,
+                or_(
+                    Assignment.group == None,  # Assignment has no group restriction
+                    Assignment.group == student_group  # Assignment group matches student's group
+                )
+            )
+        )
         
         for row in conn.execute(grade_select):
             output.append(GradeModel(Course=row[0], Assignment=row[1], Grade=row[2], AGH_Grade=__convert_grade_to_AGH__(row[2])))
@@ -225,35 +265,10 @@ def postAssignment(engine: Engine, teacher_id: int, model: AssignmentPostModel):
 # Courses
 # ----------------------------------------------------------------------------
 
-# Get all courses a student is in.
-# V2: models output
+# Get all courses a student is in for their current semester.
+# V3: models output, now filters by current semester
 def getStudentCourses(engine: Engine, student_id: int):
-    """Gets the list of subjects for a student id.
-    
-    Args:
-    engine: Engine connection to use
-    student_id: student id to get all subjects for.
-    
-    Returns:
-    output: StudentCourseListModel from models.py
-    """
-    
-    output = []
-    
-    with engine.connect() as conn:
-    
-        course_select = select(CourseCatalog.courseName, CourseCatalog.courseId, CourseStudent.group).where(and_(CourseStudent.studentId == student_id, CourseCatalog.courseId == CourseStudent.courseId))
-
-        for row in conn.execute(course_select):
-                output.append(StudentCourseModel(Course=row[0], ID=row[1], Group=row[2]))
-
-    return StudentCourseListModel(CourseList=output)
-
-
-# Get all courses a student is in, limit by this semester.
-# V2: models output
-def getStudentCoursesSemester(engine: Engine, student_id: int):
-    """Gets the list of subjects for a student id, limit by current semester.
+    """Gets the list of subjects for a student id for their current semester.
     
     Args:
     engine: Engine connection to use
@@ -273,6 +288,9 @@ def getStudentCoursesSemester(engine: Engine, student_id: int):
                 output.append(StudentCourseModel(Course=row[0], ID=row[1], Group=row[2]))
 
     return StudentCourseListModel(CourseList=output)
+
+
+# Note: getStudentCoursesSemester function removed as getStudentCourses now filters by semester by default
 
 
 # Get all courses a teacher is in.
@@ -381,6 +399,270 @@ def getCourseSchedule(engine: Engine, course_id: int, date: datetime.date = None
 
 
 # ----------------------------------------------------------------------------
+# Schedule Helper Functions
+# ----------------------------------------------------------------------------
+
+def _calculate_date_range(date: datetime.date, period: str) -> tuple[datetime.datetime, datetime.datetime]:
+    """Calculate start and end datetime for different time periods.
+    
+    Args:
+        date: The reference date
+        period: 'day', 'week', or 'month'
+    
+    Returns:
+        tuple of (start_datetime, end_datetime)
+    """
+    if date is None:
+        date = datetime.date.today()
+    
+    if period == 'day':
+        start = datetime.datetime.combine(date, datetime.time.min)
+        end = datetime.datetime.combine(date, datetime.time.max)
+    elif period == 'week':
+        # Monday to Sunday
+        week_start = date - datetime.timedelta(days=date.weekday())
+        week_end = week_start + datetime.timedelta(days=6)
+        start = datetime.datetime.combine(week_start, datetime.time.min)
+        end = datetime.datetime.combine(week_end, datetime.time.max)
+    elif period == 'month':
+        # First day to last day of month
+        month_start = date.replace(day=1)
+        if date.month == 12:
+            next_month = date.replace(year=date.year + 1, month=1, day=1)
+        else:
+            next_month = date.replace(month=date.month + 1, day=1)
+        month_end = next_month - datetime.timedelta(days=1)
+        start = datetime.datetime.combine(month_start, datetime.time.min)
+        end = datetime.datetime.combine(month_end, datetime.time.max)
+    else:
+        raise ValueError(f"Invalid period: {period}. Must be 'day', 'week', or 'month'")
+    
+    return start, end
+
+
+def _get_events_in_range(conn, start_time: datetime.datetime, end_time: datetime.datetime) -> list[EventScheduleModel]:
+    """Get university events that overlap with the given time range.
+    
+    Args:
+        conn: Database connection
+        start_time: Start of time range
+        end_time: End of time range
+    
+    Returns:
+        List of EventScheduleModel objects
+    """
+    events_query = select(
+        UniversityEvents.eventName,
+        UniversityEvents.dateStartTime,
+        UniversityEvents.dateEndTime,
+        UniversityEvents.isHoliday
+    ).where(
+        and_(
+            UniversityEvents.dateStartTime <= end_time,
+            UniversityEvents.dateEndTime >= start_time
+        )
+    )
+    
+    events = []
+    for row in conn.execute(events_query):
+        event_name, date_start_time, date_end_time, is_holiday = row
+        event_times = StartEndTimeModel(
+            StartDateTime=date_start_time,
+            EndDateTime=date_end_time
+        )
+        event_model = EventScheduleModel(
+            EventTime=event_times,
+            EventName=event_name,
+            IsHoliday=is_holiday
+        )
+        events.append(event_model)
+    
+    return events
+
+
+def _get_class_times_for_course(conn, course_id: int, start_time: datetime.datetime, end_time: datetime.datetime) -> list[StartEndTimeModel]:
+    """Get class times for a specific course within a time range.
+    
+    Args:
+        conn: Database connection
+        course_id: Course ID
+        start_time: Start of time range
+        end_time: End of time range
+    
+    Returns:
+        List of StartEndTimeModel objects
+    """
+    class_times_sel = select(
+        ClassDateTime.dateStartTime,
+        ClassDateTime.endTime
+    ).where(
+        and_(
+            ClassDateTime.courseId == course_id,
+            ClassDateTime.dateStartTime >= start_time,
+            ClassDateTime.dateStartTime < end_time
+        )
+    )
+    
+    class_times = conn.execute(class_times_sel).fetchall()
+    return [StartEndTimeModel(
+        StartDateTime=date_start_time,
+        EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
+    ) for date_start_time, end_time in class_times]
+
+
+def _process_courses_data(conn, courses_query, start_time: datetime.datetime, end_time: datetime.datetime) -> list[CourseScheduleModel]:
+    """Process courses data into CourseScheduleModel objects.
+    
+    Args:
+        conn: Database connection
+        courses_query: SQLAlchemy query for courses
+        start_time: Start of time range
+        end_time: End of time range
+    
+    Returns:
+        List of CourseScheduleModel objects
+    """
+    courses = []
+    for row in conn.execute(courses_query):
+        # All queries now include course_id
+        course_name, course_id, is_biweekly, building, room_number = row
+        
+        class_times = _get_class_times_for_course(conn, course_id, start_time, end_time)
+        
+        class_model = ClassScheduleModel(
+            ClassTime=class_times,
+            CourseName=course_name,
+            Building=building,
+            RoomNumber=room_number
+        )
+        
+        course_model = CourseScheduleModel(
+            ClassSchedule=class_model,
+            isBiWeekly=is_biweekly
+        )
+        courses.append(course_model)
+    
+    return courses
+
+
+def _get_student_assignments_in_range(conn, student_id: int, start_time: datetime.datetime, end_time: datetime.datetime) -> list[AssignmentScheduleModel]:
+    """Get assignments for a student within a time range.
+    
+    Args:
+        conn: Database connection
+        student_id: Student ID
+        start_time: Start of time range
+        end_time: End of time range
+    
+    Returns:
+        List of AssignmentScheduleModel objects
+    """
+    assignments_query = select(
+        CourseCatalog.courseName,
+        Assignment.name,
+        Assignment.dueDateTime
+    ).select_from(Assignment).join(
+        CourseCatalog,
+        Assignment.courseId == CourseCatalog.courseId
+    ).outerjoin(
+        AssignmentSubmission,
+        and_(
+            Assignment.assignmentId == AssignmentSubmission.assignmentId,
+            AssignmentSubmission.studentId == student_id
+        )
+    ).outerjoin(
+        CourseStudent,
+        and_(
+            Assignment.courseId == CourseStudent.courseId,
+            CourseStudent.studentId == student_id
+        )
+    ).outerjoin(
+        Student,
+        Student.studentId == student_id
+    ).where(
+        and_(
+            Assignment.dueDateTime >= start_time,
+            Assignment.dueDateTime < end_time,
+            Student.semester == CourseCatalog.semester,
+            or_(
+                Assignment.needsSubmission == False,
+                and_(
+                    Assignment.needsSubmission == True,
+                    or_(
+                        AssignmentSubmission.submission == None,
+                        AssignmentSubmission.submission == ''
+                    )
+                )
+            ),
+            or_(
+                Assignment.group == None,
+                Assignment.group == CourseStudent.group
+            )
+        )
+    )
+    
+    assignments = []
+    for row in conn.execute(assignments_query):
+        course_name, assignment_name, due_date_time = row
+        assignment_model = AssignmentScheduleModel(
+            CourseName=course_name,
+            AssignmentDueDateTime=due_date_time,
+            AssignmentName=assignment_name,
+        )
+        assignments.append(assignment_model)
+    
+    return assignments
+
+
+def _get_teacher_courses_query(teacher_id: int, start_time: datetime.datetime, end_time: datetime.datetime):
+    """Create a query for teacher's courses within a time range.
+    
+    Args:
+        teacher_id: Teacher ID
+        start_time: Start of time range
+        end_time: End of time range
+    
+    Returns:
+        SQLAlchemy query object
+    """
+    return select(distinct(CourseCatalog.courseName), CourseCatalog.courseId, CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
+        and_(
+            ClassDateTime.dateStartTime >= start_time,
+            ClassDateTime.dateStartTime < end_time,
+            CourseCatalog.courseId == ClassDateTime.courseId,
+            Room.courseId == CourseCatalog.courseId,
+            CourseTeacher.teacherId == teacher_id,
+            CourseTeacher.courseId == CourseCatalog.courseId
+        )
+    )
+
+
+def _get_student_courses_query(student_id: int, start_time: datetime.datetime, end_time: datetime.datetime):
+    """Create a query for student's courses within a time range.
+    
+    Args:
+        student_id: Student ID
+        start_time: Start of time range
+        end_time: End of time range
+    
+    Returns:
+        SQLAlchemy query object
+    """
+    return select(distinct(CourseCatalog.courseName), CourseCatalog.courseId, CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
+        and_(
+            ClassDateTime.dateStartTime >= start_time,
+            ClassDateTime.dateStartTime < end_time,
+            CourseCatalog.courseId == ClassDateTime.courseId,
+            Room.courseId == CourseCatalog.courseId,
+            CourseStudent.studentId == student_id,
+            CourseStudent.courseId == CourseCatalog.courseId,
+            Student.studentId == student_id,
+            Student.semester == CourseCatalog.semester
+        )
+    )
+
+
+# ----------------------------------------------------------------------------
 # Student Schedule
 # ----------------------------------------------------------------------------
 
@@ -397,154 +679,21 @@ def getDayStudentSchedule(engine: Engine, student_id: int, date: datetime.date =
         ScheduleModel: Schedule Model containing classes, events, and assignments.
     """
     
-    courses = []
-    events = []
-    assignments = []
-
-    if date is None:
-        date = datetime.date.today()
-
-    day_start = datetime.datetime.combine(date, datetime.time.min)
-    day_end = datetime.datetime.combine(date, datetime.time.max)
+    day_start, day_end = _calculate_date_range(date, 'day')
 
     with engine.connect() as conn:
-        todays_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
-            and_(
-                ClassDateTime.dateStartTime >= day_start,
-                ClassDateTime.dateStartTime < day_end,
-                CourseCatalog.courseId == ClassDateTime.courseId,
-                Room.courseId == CourseCatalog.courseId,
-                CourseStudent.studentId == student_id,
-                CourseStudent.courseId == CourseCatalog.courseId
-            )
-        )
+        # Get student's courses for the day
+        courses_query = _get_student_courses_query(student_id, day_start, day_end)
         
-        # Select all events that have a start to end time range overlapping with the given date
-        # That is: event starts before the end of the day, and ends after the start of the day
-        
-        todays_events = select(
-            UniversityEvents.eventName,
-            UniversityEvents.dateStartTime,
-            UniversityEvents.dateEndTime,
-            UniversityEvents.isHoliday
-        ).where(
-            and_(
-                UniversityEvents.dateStartTime <= day_end,
-                UniversityEvents.dateEndTime >= day_start
-            )
-        )
+        courses = _process_courses_data(conn, courses_query, day_start, day_end)
+        events = _get_events_in_range(conn, day_start, day_end)
+        assignments = _get_student_assignments_in_range(conn, student_id, day_start, day_end)
 
-
-        # Get assignments due today that either:
-        # 1. Don't need submission
-        # 2. Need submission but student hasn't submitted
-        # And where either:
-        # 1. Assignment has no group restriction
-        # 2. Assignment group matches student's group for the course
-        todays_assignments = select(
-            CourseCatalog.courseName,
-            Assignment.name,
-            Assignment.dueDateTime
-        ).select_from(Assignment).join(
-            CourseCatalog,
-            Assignment.courseId == CourseCatalog.courseId
-        ).outerjoin(
-            AssignmentSubmission,
-            and_(
-                Assignment.assignmentId == AssignmentSubmission.assignmentId,
-                AssignmentSubmission.studentId == student_id
-            )
-        ).outerjoin(
-            CourseStudent,
-            and_(
-                Assignment.courseId == CourseStudent.courseId,
-                CourseStudent.studentId == student_id
-            )
-        ).where(
-            and_(
-                Assignment.dueDateTime >= day_start,
-                Assignment.dueDateTime < day_end,
-                or_(
-                    Assignment.needsSubmission == False,
-                    and_(
-                        Assignment.needsSubmission == True,
-                        or_(
-                            AssignmentSubmission.submission == None,
-                            AssignmentSubmission.submission == ''
-                        )
-                    )
-                ),
-                or_(
-                    Assignment.group == None,
-                    Assignment.group == CourseStudent.group
-                )
-            )
-        )
-
-        # Process today's classes
-        for row in conn.execute(todays_courses):
-            course_name, isBiWeekly, building, room_number = row
-            
-            class_times_sel = select(
-                ClassDateTime.dateStartTime,
-                ClassDateTime.endTime
-            ).where(
-                and_(
-                    ClassDateTime.courseId == CourseCatalog.courseId,
-                    ClassDateTime.dateStartTime >= day_start,
-                    ClassDateTime.dateStartTime < day_end
-                )
-            )
-            
-            class_times = conn.execute(class_times_sel).fetchall()
-            class_times = [StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
-            ) for date_start_time, end_time in class_times]
-
-            class_model = ClassScheduleModel(
-                ClassTime=class_times,
-                CourseName=course_name,
-                Building=building,
-                RoomNumber=room_number
-            )
-
-            course_model = CourseScheduleModel(
-                ClassSchedule=class_model,
-                isBiWeekly=isBiWeekly
-            )
-            courses.append(course_model)
-
-        # Process today's events
-        for row in conn.execute(todays_events):
-            event_name, date_start_time, date_end_time, is_holiday = row
-            event_times = StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=date_end_time
-            )
-            event_model = EventScheduleModel(
-                EventTime=event_times,
-                EventName=event_name,
-                IsHoliday=is_holiday
-            )
-            events.append(event_model)
-
-        # Process today's assignments
-        for row in conn.execute(todays_assignments):
-            course_name, assignment_name, due_date_time = row
-            assignment_model = AssignmentScheduleModel(
-                CourseName=course_name,
-                AssignmentDueDateTime=due_date_time,
-                AssignmentName=assignment_name,
-            )
-            assignments.append(assignment_model)
-
-    output = ScheduleModel(
+    return ScheduleModel(
         Courses=courses,
         Events=events,
         Assignments=assignments
     )
-    return output
 
 
 # Gets the week schedule for a student
@@ -561,151 +710,21 @@ def getWeekStudentSchedule(engine: Engine, student_id: int, date: datetime.date 
         ScheduleModel: Schedule Model containing classes, events, and assignments.
     """
     
-    courses = []
-    events = []
-    assignments = []
-
-    if date is None:
-        date = datetime.date.today()
-
-    # Calculate start of week (Monday) and end of week (Sunday)
-    week_start = date - datetime.timedelta(days=date.weekday())  # Monday
-    week_end = week_start + datetime.timedelta(days=6)  # Sunday
-    
-    # Convert to datetime for full day range
-    week_start = datetime.datetime.combine(week_start, datetime.time.min)
-    week_end = datetime.datetime.combine(week_end, datetime.time.max)
+    week_start, week_end = _calculate_date_range(date, 'week')
 
     with engine.connect() as conn:
-        weeks_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.courseId, CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
-            and_(
-                ClassDateTime.dateStartTime >= week_start,
-                ClassDateTime.dateStartTime < week_end,
-                CourseCatalog.courseId == ClassDateTime.courseId,
-                Room.courseId == CourseCatalog.courseId,
-                CourseStudent.studentId == student_id,
-                CourseStudent.courseId == CourseCatalog.courseId
-            )
-        )
+        # Get student's courses for the week
+        courses_query = _get_student_courses_query(student_id, week_start, week_end)
         
-        # Select all events that overlap with the week
-        weeks_events = select(
-            UniversityEvents.eventName,
-            UniversityEvents.dateStartTime,
-            UniversityEvents.dateEndTime,
-            UniversityEvents.isHoliday
-        ).where(
-            and_(
-                UniversityEvents.dateStartTime <= week_end,
-                UniversityEvents.dateEndTime >= week_start
-            )
-        )
+        courses = _process_courses_data(conn, courses_query, week_start, week_end)
+        events = _get_events_in_range(conn, week_start, week_end)
+        assignments = _get_student_assignments_in_range(conn, student_id, week_start, week_end)
 
-        # Get assignments due this week
-        weeks_assignments = select(
-            CourseCatalog.courseName,
-            Assignment.name,
-            Assignment.dueDateTime
-        ).select_from(Assignment).join(
-            CourseCatalog,
-            Assignment.courseId == CourseCatalog.courseId
-        ).outerjoin(
-            AssignmentSubmission,
-            and_(
-                Assignment.assignmentId == AssignmentSubmission.assignmentId,
-                AssignmentSubmission.studentId == student_id
-            )
-        ).outerjoin(
-            CourseStudent,
-            and_(
-                Assignment.courseId == CourseStudent.courseId,
-                CourseStudent.studentId == student_id
-            )
-        ).where(
-            and_(
-                Assignment.dueDateTime >= week_start,
-                Assignment.dueDateTime < week_end,
-                or_(
-                    Assignment.needsSubmission == False,
-                    and_(
-                        Assignment.needsSubmission == True,
-                        or_(
-                            AssignmentSubmission.submission == None,
-                            AssignmentSubmission.submission == ''
-                        )
-                    )
-                ),
-                or_(
-                    Assignment.group == None,
-                    Assignment.group == CourseStudent.group
-                )
-            )
-        )
-
-        # Process week's classes
-        for row in conn.execute(weeks_courses):
-            course_name, course_id, isBiWeekly, building, room_number = row
-            
-            class_times_sel = select(
-                ClassDateTime.dateStartTime,
-                ClassDateTime.endTime
-            ).where(
-                and_(
-                    ClassDateTime.courseId == course_id,
-                    ClassDateTime.dateStartTime >= week_start,
-                    ClassDateTime.dateStartTime < week_end
-                )
-            )
-            
-            class_times = conn.execute(class_times_sel).fetchall()
-            class_times = [StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
-            ) for date_start_time, end_time in class_times]
-
-            class_model = ClassScheduleModel(
-                ClassTime=class_times,
-                CourseName=course_name,
-                Building=building,
-                RoomNumber=room_number
-            )
-
-            course_model = CourseScheduleModel(
-                ClassSchedule=class_model,
-                isBiWeekly=isBiWeekly
-            )
-            courses.append(course_model)
-
-        # Process week's events
-        for row in conn.execute(weeks_events):
-            event_name, date_start_time, date_end_time, is_holiday = row
-            event_times = StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=date_end_time
-            )
-            event_model = EventScheduleModel(
-                EventTime=event_times,
-                EventName=event_name,
-                IsHoliday=is_holiday
-            )
-            events.append(event_model)
-
-        # Process week's assignments
-        for row in conn.execute(weeks_assignments):
-            course_name, assignment_name, due_date_time = row
-            assignment_model = AssignmentScheduleModel(
-                CourseName=course_name,
-                AssignmentDueDateTime=due_date_time,
-                AssignmentName=assignment_name,
-            )
-            assignments.append(assignment_model)
-
-    output = ScheduleModel(
+    return ScheduleModel(
         Courses=courses,
         Events=events,
         Assignments=assignments
     )
-    return output
 
 
 # Gets the month schedule for a student
@@ -721,156 +740,21 @@ def getMonthStudentSchedule(engine: Engine, student_id: int, date: datetime.date
         ScheduleModel: Schedule Model containing classes, events, and assignments.
     """
     
-    courses = []
-    events = []
-    assignments = []
-
-    if date is None:
-        date = datetime.date.today()
-
-    # Calculate start and end of month
-    month_start = date.replace(day=1)
-    # Get last day by getting first day of next month and subtracting one day
-    if date.month == 12:
-        next_month = date.replace(year=date.year + 1, month=1, day=1)
-    else:
-        next_month = date.replace(month=date.month + 1, day=1)
-    month_end = next_month - datetime.timedelta(days=1)
-    
-    # Convert to datetime for full day range
-    month_start = datetime.datetime.combine(month_start, datetime.time.min)
-    month_end = datetime.datetime.combine(month_end, datetime.time.max)
+    month_start, month_end = _calculate_date_range(date, 'month')
 
     with engine.connect() as conn:
-        months_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.courseId, CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
-            and_(
-                ClassDateTime.dateStartTime >= month_start,
-                ClassDateTime.dateStartTime < month_end,
-                CourseCatalog.courseId == ClassDateTime.courseId,
-                Room.courseId == CourseCatalog.courseId,
-                CourseStudent.studentId == student_id,
-                CourseStudent.courseId == CourseCatalog.courseId
-            )
-        )
-        
-        # Select all events that overlap with the month
-        months_events = select(
-            UniversityEvents.eventName,
-            UniversityEvents.dateStartTime,
-            UniversityEvents.dateEndTime,
-            UniversityEvents.isHoliday
-        ).where(
-            and_(
-                UniversityEvents.dateStartTime <= month_end,
-                UniversityEvents.dateEndTime >= month_start
-            )
-        )
+        # Get student's courses for the month
+        months_courses = _get_student_courses_query(student_id, month_start, month_end)
 
-        # Get assignments due this month
-        months_assignments = select(
-            CourseCatalog.courseName,
-            Assignment.name,
-            Assignment.dueDateTime
-        ).select_from(Assignment).join(
-            CourseCatalog,
-            Assignment.courseId == CourseCatalog.courseId
-        ).outerjoin(
-            AssignmentSubmission,
-            and_(
-                Assignment.assignmentId == AssignmentSubmission.assignmentId,
-                AssignmentSubmission.studentId == student_id
-            )
-        ).outerjoin(
-            CourseStudent,
-            and_(
-                Assignment.courseId == CourseStudent.courseId,
-                CourseStudent.studentId == student_id
-            )
-        ).where(
-            and_(
-                Assignment.dueDateTime >= month_start,
-                Assignment.dueDateTime < month_end,
-                or_(
-                    Assignment.needsSubmission == False,
-                    and_(
-                        Assignment.needsSubmission == True,
-                        or_(
-                            AssignmentSubmission.submission == None,
-                            AssignmentSubmission.submission == ''
-                        )
-                    )
-                ),
-                or_(
-                    Assignment.group == None,
-                    Assignment.group == CourseStudent.group
-                )
-            )
-        )
+        courses = _process_courses_data(conn, months_courses, month_start, month_end)
+        events = _get_events_in_range(conn, month_start, month_end)
+        assignments = _get_student_assignments_in_range(conn, student_id, month_start, month_end)
 
-        # Process month's classes
-        for row in conn.execute(months_courses):
-            course_name, course_id, isBiWeekly, building, room_number = row
-            
-            class_times_sel = select(
-                ClassDateTime.dateStartTime,
-                ClassDateTime.endTime
-            ).where(
-                and_(
-                    ClassDateTime.courseId == course_id,
-                    ClassDateTime.dateStartTime >= month_start,
-                    ClassDateTime.dateStartTime < month_end
-                )
-            )
-            
-            class_times = conn.execute(class_times_sel).fetchall()
-            class_times = [StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
-            ) for date_start_time, end_time in class_times]
-
-            class_model = ClassScheduleModel(
-                ClassTime=class_times,
-                CourseName=course_name,
-                Building=building,
-                RoomNumber=room_number
-            )
-
-            course_model = CourseScheduleModel(
-                ClassSchedule=class_model,
-                isBiWeekly=isBiWeekly
-            )
-            courses.append(course_model)
-
-        # Process month's events
-        for row in conn.execute(months_events):
-            event_name, date_start_time, date_end_time, is_holiday = row
-            event_times = StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=date_end_time
-            )
-            event_model = EventScheduleModel(
-                EventTime=event_times,
-                EventName=event_name,
-                IsHoliday=is_holiday
-            )
-            events.append(event_model)
-
-        # Process month's assignments
-        for row in conn.execute(months_assignments):
-            course_name, assignment_name, due_date_time = row
-            assignment_model = AssignmentScheduleModel(
-                CourseName=course_name,
-                AssignmentDueDateTime=due_date_time,
-                AssignmentName=assignment_name,
-            )
-            assignments.append(assignment_model)
-
-    output = ScheduleModel(
+    return ScheduleModel(
         Courses=courses,
         Events=events,
         Assignments=assignments
     )
-    return output
 
 
 # Gets one representative class time for each course in student's semester
@@ -966,94 +850,19 @@ def getDayTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date =
     Returns:
         ScheduleModel: Schedule Model containing courses and events
     """
-
-    courses = []
-    events = []
-
-    if date is None:
-        date = datetime.date.today()
-
-    day_start = datetime.datetime.combine(date, datetime.time.min)
-    day_end = datetime.datetime.combine(date, datetime.time.max)
+    
+    day_start, day_end = _calculate_date_range(date, 'day')
 
     with engine.connect() as conn:
-        todays_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
-            and_(
-                ClassDateTime.dateStartTime >= day_start,
-                ClassDateTime.dateStartTime < day_end,
-                CourseCatalog.courseId == ClassDateTime.courseId,
-                Room.courseId == CourseCatalog.courseId,
-                CourseTeacher.teacherId == teacher_id,
-                CourseTeacher.courseId == CourseCatalog.courseId
-            )
-        )
+        courses_query = _get_teacher_courses_query(teacher_id, day_start, day_end)
+        courses = _process_courses_data(conn, courses_query, day_start, day_end)
+        events = _get_events_in_range(conn, day_start, day_end)
 
-        todays_events = select(
-            UniversityEvents.eventName,
-            UniversityEvents.dateStartTime,
-            UniversityEvents.dateEndTime,
-            UniversityEvents.isHoliday
-        ).where(
-            and_(
-                UniversityEvents.dateStartTime <= day_end,
-                UniversityEvents.dateEndTime >= day_start
-            )
-        )
-
-        # Process month's classes
-        for row in conn.execute(todays_courses):
-            course_name, isBiWeekly, building, room_number = row
-            
-            class_times_sel = select(
-                ClassDateTime.dateStartTime,
-                ClassDateTime.endTime
-            ).where(
-                and_(
-                    ClassDateTime.courseId == CourseCatalog.courseId,
-                    ClassDateTime.dateStartTime >= day_start,
-                    ClassDateTime.dateStartTime < day_end
-                )
-            )
-            
-            class_times = conn.execute(class_times_sel).fetchall()
-            class_times = [StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
-            ) for date_start_time, end_time in class_times]
-
-            class_model = ClassScheduleModel(
-                ClassTime=class_times,
-                CourseName=course_name,
-                Building=building,
-                RoomNumber=room_number
-            )
-
-            course_model = CourseScheduleModel(
-                ClassSchedule=class_model,
-                isBiWeekly=isBiWeekly
-            )
-            courses.append(course_model)
-
-        # Process month's events
-        for row in conn.execute(todays_events):
-            event_name, date_start_time, date_end_time, is_holiday = row
-            event_times = StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=date_end_time
-            )
-            event_model = EventScheduleModel(
-                EventTime=event_times,
-                EventName=event_name,
-                IsHoliday=is_holiday
-            )
-            events.append(event_model)
-
-    output = ScheduleModel(
+    return ScheduleModel(
         Courses=courses,
         Events=events,
         Assignments=[]
     )
-    return output
 
 
 def getWeekTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date = None):
@@ -1069,99 +878,19 @@ def getWeekTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date 
     Returns:
         ScheduleModel: Schedule Model containing courses and events
     """
-
-    courses = []
-    events = []
-
-    if date is None:
-        date = datetime.date.today()
-
-    # Calculate start of week (Monday) and end of week (Sunday)
-    week_start = date - datetime.timedelta(days=date.weekday())  # Monday
-    week_end = week_start + datetime.timedelta(days=6)  # Sunday
     
-    # Convert to datetime for full day range
-    week_start = datetime.datetime.combine(week_start, datetime.time.min)
-    week_end = datetime.datetime.combine(week_end, datetime.time.max)
+    week_start, week_end = _calculate_date_range(date, 'week')
 
     with engine.connect() as conn:
-        weeks_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.courseId, CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
-            and_(
-                ClassDateTime.dateStartTime >= week_start,
-                ClassDateTime.dateStartTime < week_end,
-                CourseCatalog.courseId == ClassDateTime.courseId,
-                Room.courseId == CourseCatalog.courseId,
-                CourseTeacher.teacherId == teacher_id,
-                CourseTeacher.courseId == CourseCatalog.courseId
-            )
-        )
+        courses_query = _get_teacher_courses_query(teacher_id, week_start, week_end)
+        courses = _process_courses_data(conn, courses_query, week_start, week_end)
+        events = _get_events_in_range(conn, week_start, week_end)
 
-        weeks_events = select(
-            UniversityEvents.eventName,
-            UniversityEvents.dateStartTime,
-            UniversityEvents.dateEndTime,
-            UniversityEvents.isHoliday
-        ).where(
-            and_(
-                UniversityEvents.dateStartTime <= week_end,
-                UniversityEvents.dateEndTime >= week_start
-            )
-        )
-
-        # Process week's classes
-        for row in conn.execute(weeks_courses):
-            course_name, course_id, isBiWeekly, building, room_number = row
-            
-            class_times_sel = select(
-                ClassDateTime.dateStartTime,
-                ClassDateTime.endTime
-            ).where(
-                and_(
-                    ClassDateTime.courseId == course_id,
-                    ClassDateTime.dateStartTime >= week_start,
-                    ClassDateTime.dateStartTime < week_end
-                )
-            )
-            
-            class_times = conn.execute(class_times_sel).fetchall()
-            class_times = [StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
-            ) for date_start_time, end_time in class_times]
-
-            class_model = ClassScheduleModel(
-                ClassTime=class_times,
-                CourseName=course_name,
-                Building=building,
-                RoomNumber=room_number
-            )
-
-            course_model = CourseScheduleModel(
-                ClassSchedule=class_model,
-                isBiWeekly=isBiWeekly
-            )
-            courses.append(course_model)
-
-        # Process week's events
-        for row in conn.execute(weeks_events):
-            event_name, date_start_time, date_end_time, is_holiday = row
-            event_times = StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=date_end_time
-            )
-            event_model = EventScheduleModel(
-                EventTime=event_times,
-                EventName=event_name,
-                IsHoliday=is_holiday
-            )
-            events.append(event_model)
-
-    output = ScheduleModel(
+    return ScheduleModel(
         Courses=courses,
         Events=events,
         Assignments=[]
     )
-    return output
 
 
 def getMonthTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date = None):
@@ -1176,104 +905,19 @@ def getMonthTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date
     Returns:
         ScheduleModel: Schedule Model containing courses and events
     """
-
-    courses = []
-    events = []
-
-    if date is None:
-        date = datetime.date.today()
-
-    # Calculate start and end of month
-    month_start = date.replace(day=1)
-    # Get last day by getting first day of next month and subtracting one day
-    if date.month == 12:
-        next_month = date.replace(year=date.year + 1, month=1, day=1)
-    else:
-        next_month = date.replace(month=date.month + 1, day=1)
-    month_end = next_month - datetime.timedelta(days=1)
     
-    # Convert to datetime for full day range
-    month_start = datetime.datetime.combine(month_start, datetime.time.min)
-    month_end = datetime.datetime.combine(month_end, datetime.time.max)
+    month_start, month_end = _calculate_date_range(date, 'month')
 
     with engine.connect() as conn:
-        months_courses = select(distinct(CourseCatalog.courseName), CourseCatalog.courseId, CourseCatalog.isBiWeekly, Room.building, Room.roomNumber).where(
-            and_(
-                ClassDateTime.dateStartTime >= month_start,
-                ClassDateTime.dateStartTime < month_end,
-                CourseCatalog.courseId == ClassDateTime.courseId,
-                Room.courseId == CourseCatalog.courseId,
-                CourseTeacher.teacherId == teacher_id,
-                CourseTeacher.courseId == CourseCatalog.courseId
-            )
-        )
+        courses_query = _get_teacher_courses_query(teacher_id, month_start, month_end)
+        courses = _process_courses_data(conn, courses_query, month_start, month_end)
+        events = _get_events_in_range(conn, month_start, month_end)
 
-        months_events = select(
-            UniversityEvents.eventName,
-            UniversityEvents.dateStartTime,
-            UniversityEvents.dateEndTime,
-            UniversityEvents.isHoliday
-        ).where(
-            and_(
-                UniversityEvents.dateStartTime <= month_end,
-                UniversityEvents.dateEndTime >= month_start
-            )
-        )
-
-        # Process month's classes
-        for row in conn.execute(months_courses):
-            course_name, course_id, isBiWeekly, building, room_number = row
-            
-            class_times_sel = select(
-                ClassDateTime.dateStartTime,
-                ClassDateTime.endTime
-            ).where(
-                and_(
-                    ClassDateTime.courseId == course_id,
-                    ClassDateTime.dateStartTime >= month_start,
-                    ClassDateTime.dateStartTime < month_end
-                )
-            )
-            
-            class_times = conn.execute(class_times_sel).fetchall()
-            class_times = [StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=datetime.datetime.combine(date_start_time.date(), end_time)
-            ) for date_start_time, end_time in class_times]
-
-            class_model = ClassScheduleModel(
-                ClassTime=class_times,
-                CourseName=course_name,
-                Building=building,
-                RoomNumber=room_number
-            )
-
-            course_model = CourseScheduleModel(
-                ClassSchedule=class_model,
-                isBiWeekly=isBiWeekly
-            )
-            courses.append(course_model)
-
-        # Process month's events
-        for row in conn.execute(months_events):
-            event_name, date_start_time, date_end_time, is_holiday = row
-            event_times = StartEndTimeModel(
-                StartDateTime=date_start_time,
-                EndDateTime=date_end_time
-            )
-            event_model = EventScheduleModel(
-                EventTime=event_times,
-                EventName=event_name,
-                IsHoliday=is_holiday
-            )
-            events.append(event_model)
-
-    output = ScheduleModel(
+    return ScheduleModel(
         Courses=courses,
         Events=events,
         Assignments=[]
     )
-    return output
 
 
 # ----------------------------------------------------------------------------

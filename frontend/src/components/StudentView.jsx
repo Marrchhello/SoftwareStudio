@@ -4,7 +4,8 @@ import {
   FaSearch, FaSignOutAlt, FaHome, FaChartBar, FaComments,
   FaSun, FaMoon, FaClock, FaCalendarDay, FaCalendarWeek, FaCalendar,
   FaEnvelope, FaPaperPlane, FaUserTie, FaBuilding, FaUsers, FaCreditCard,
-  FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaTimes, FaPlus
+  FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaTimes, FaPlus,
+  FaChalkboardTeacher
 } from 'react-icons/fa'; 
 import './StudentView.css'; 
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +17,7 @@ import api, {
   getCombineScheduleWeekByDate,
   getCombinedScheduleDay,
   getUniversityEvents,
+  getUniversityEventsByDate,
   getUserName,
   getUserRoleId,
   getChats,
@@ -27,11 +29,12 @@ import api, {
 import Materials from './Materials';
 import ProfileView from './ProfileView';
 import GradesStudent from './GradesStudent';
+import { useDarkMode } from '../DarkModeContext';
 
 const StudentDashboard = ({ studentData, studentId = 1 }) => { 
   const [activeView, setActiveView] = useState('dashboard'); 
   const [activeScheduleTab, setActiveScheduleTab] = useState('weekly'); 
-  const [darkMode, setDarkMode] = useState(false); 
+  const { darkMode, toggleDarkMode } = useDarkMode(); // Use global dark mode context
   const [activeConversation, setActiveConversation] = useState(0); 
   const [messageText, setMessageText] = useState(''); 
   const [currentWeekStart, setCurrentWeekStart] = useState(getStartOfWeek(new Date())); 
@@ -104,6 +107,55 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         localStorage.removeItem('token');
         navigate('/login');
       }
+    }
+  };
+
+  // Fetch university events from today onwards
+  const fetchUniversityEvents = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+      
+      console.log('Fetching events using getUniversityEvents...'); // Debug log
+      const eventsData = await getUniversityEvents(token);
+      console.log('Events data received:', eventsData); // Debug log
+      
+      if (eventsData && eventsData.Events) {
+        console.log('Raw events from API:', eventsData.Events); // Debug log
+        console.log('Number of events received:', eventsData.Events.length); // Debug log
+        
+        if (eventsData.Events.length > 0) {
+          const events = eventsData.Events.map(event => {
+            console.log('Processing event:', event); // Debug log
+            return {
+              "Event ID": Math.random().toString(36).substr(2, 9),
+              "Event Name": event.EventName,  
+              "Date and Start Time": new Date(event.EventTime.StartDateTime),
+              "Date and End Time": new Date(event.EventTime.EndDateTime),
+              "Holiday": event.IsHoliday
+            };
+          });
+          console.log('Processed events:', events); // Debug log
+          setUniversityEvents(events);
+        } else {
+          console.log('Events array is empty');
+          setUniversityEvents([]);
+        }
+      } else {
+        console.log('No events data received or eventsData.Events is undefined');
+        console.log('eventsData:', eventsData);
+        setUniversityEvents([]);
+      }
+    } catch (error) {
+      console.error('Error fetching university events:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+      setUniversityEvents([]);
     }
   };
 
@@ -183,18 +235,8 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         setSemesterClasses(uniqueClasses);
       }
       
-      // Fetch university events using the proper API function
-      const eventsData = await getUniversityEvents(token);
-      if (eventsData) {
-        const events = eventsData.Events.map(event => ({
-          "Event ID": Math.random().toString(36).substr(2, 9),
-          "Event Name": event.EventName,
-          "Date and Start Time": new Date(event.EventTime.StartDateTime),
-          "Date and End Time": new Date(event.EventTime.EndDateTime),
-          "Holiday": event.IsHoliday
-        }));
-        setUniversityEvents(events);
-      }
+      // Fetch university events using the new dedicated function
+      await fetchUniversityEvents();
       
       setLoading(false);
     } catch (error) {
@@ -319,6 +361,20 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
     setShowTodayButton(currentWeekStart.getTime() !== currentWeek.getTime());
   }, [currentWeekStart]);
 
+  // Apply dark mode class to body
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.body.classList.remove('dark-mode');
+    };
+  }, [darkMode]);
+
   const getGradeClass = (grade) => {
     if (!grade || grade === null) return 'grade-no-grade';
     if (grade >= 4.5) return 'grade-excellent';
@@ -355,11 +411,6 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
     if (validGrades.length === 0) return 0;
     const sum = validGrades.reduce((acc, grade) => acc + grade.Grade, 0);
     return sum / validGrades.length;
-  };
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    document.body.classList.toggle('dark-mode', !darkMode);
   };
 
   const navigateWeek = (direction) => {
@@ -563,6 +614,14 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
     }
   }, [activeView, chats, userNames]);
 
+  // Refresh events when Events tab is viewed
+  useEffect(() => {
+    if (activeView === 'events') {
+      console.log('Events tab opened, refreshing events...');
+      fetchUniversityEvents();
+    }
+  }, [activeView]);
+
   // Auto-refresh chat messages
   useEffect(() => {
     let intervalId;
@@ -621,10 +680,8 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
           setAssignments(scheduleData.Assignments);
         }
         
-        // Extract events from the schedule
-        if (scheduleData.Events) {
-          setUniversityEvents(scheduleData.Events);
-        }
+        // Note: Events for the Events tab are fetched separately by fetchUniversityEvents()
+        // Schedule events are used only for the weekly schedule view
         
         // Extract classes from the schedule - TEMPORARY FIX: Backend deduplication not working
         if (scheduleData.Courses) {
@@ -1112,19 +1169,38 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         );
 
       case 'events':
+        console.log('Rendering events tab, universityEvents:', universityEvents); // Debug log
+        console.log('universityEvents.length:', universityEvents.length); // Debug log
+        
         return (
           <div className="view-content">
             <h2>University Events</h2>
-            <div className="events-container">
-              {universityEvents.map(event => (
-                <div key={event["Event ID"]} className={`event-card ${event.Holiday ? 'holiday' : ''}`}>
-                  <h3>{event["Event Name"]}</h3>
-                  <p><FaCalendarAlt /> {event["Date and Start Time"].toLocaleDateString()}</p>
-                  <p><FaClock /> {event["Date and Start Time"].toLocaleTimeString()} - {event["Date and End Time"].toLocaleTimeString()}</p>
-                  {event.Holiday && <span className="holiday-badge">Holiday</span>}
-                </div>
-              ))}
-            </div>
+            {loading ? (
+              <div className="loading-spinner">Loading events...</div>
+            ) : (
+              <div className="events-container">
+                {universityEvents.length > 0 ? (
+                  universityEvents.map(event => {
+                    console.log('Rendering event:', event); // Debug log
+                    return (
+                      <div key={event["Event ID"]} className={`event-card ${event.Holiday ? 'holiday' : ''}`}>
+                        <h3>{event["Event Name"]}</h3>
+                        <p><FaCalendarAlt /> {event["Date and Start Time"].toLocaleDateString()}</p>
+                        <p><FaClock /> {event["Date and Start Time"].toLocaleTimeString()} - {event["Date and End Time"].toLocaleTimeString()}</p>
+                        {event.Holiday && <span className="holiday-badge">Holiday</span>}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="no-events">
+                    <p>No university events scheduled from today onwards.</p>
+                    <button onClick={fetchUniversityEvents} className="refresh-events-btn">
+                      <FaCalendarAlt /> Refresh Events
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
         
