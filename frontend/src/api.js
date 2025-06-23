@@ -372,7 +372,8 @@ export const getChatMessages = async (chatId, token) => {
 
 // Post chat message function
 export const postChatMessage = async (chatId, message, token) => {
-    const response = await api.post(`/chats/${chatId}/messages/`, message, {
+    const response = await api.post(`/chats/${chatId}/messages/`, null, {
+        params: { message },
         headers: {
             'Authorization': `Bearer ${token}`
         }
@@ -382,7 +383,11 @@ export const postChatMessage = async (chatId, message, token) => {
 
 // Create chat function
 export const createChat = async (user2Role, user2RoleId, token) => {
-    const response = await api.post(`/chats/`, {
+    const response = await api.post(`/chats/`, null, {
+        params: { 
+            user2_role: user2Role, 
+            user2_role_id: user2RoleId 
+        },
         headers: {
             'Authorization': `Bearer ${token}`
         }

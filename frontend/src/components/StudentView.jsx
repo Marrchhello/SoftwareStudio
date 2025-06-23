@@ -14,6 +14,7 @@ import api, {
   getStudentSemesterSchedule,
   getCombineScheduleWeek,
   getCombineScheduleWeekByDate,
+  getCombinedScheduleDay,
   getUniversityEvents,
   getUserName,
   getUserRoleId,
@@ -41,6 +42,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   const [semesterClasses, setSemesterClasses] = useState([]);
   const [universityEvents, setUniversityEvents] = useState([]);
   const [weeklyScheduleData, setWeeklyScheduleData] = useState(null);
+  const [todayScheduleData, setTodayScheduleData] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true); 
   const [userInfo, setUserInfo] = useState({
@@ -146,27 +148,40 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
       const scheduleData = await getStudentSemesterSchedule(token);
       if (scheduleData) {
         console.log('Semester schedule data:', scheduleData); // Debug log
-        // Extract classes from schedule
-        const classes = scheduleData.Courses.map(course => {
-          const firstClass = course.ClassSchedule.ClassTime[0];
-          return {
+        // Extract classes from schedule - use all class times but deduplicate by course and day
+        const allClasses = scheduleData.Courses.flatMap(course =>
+          course.ClassSchedule.ClassTime.map(classTime => ({
             id: Math.random().toString(36).substr(2, 9),
             course: course.ClassSchedule.CourseName,
             type: "Class",
-            time: `${new Date(firstClass.StartDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}-${new Date(firstClass.EndDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
+            time: `${new Date(classTime.StartDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}-${new Date(classTime.EndDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
             room: `${course.ClassSchedule.Building} ${course.ClassSchedule.RoomNumber}`,
             lecturer: "Lecturer",
             roomLink: `/map?room=${course.ClassSchedule.Building}-${course.ClassSchedule.RoomNumber}`,
             frequency: course.isBiWeekly ? "biweekly" : "weekly",
-            startDate: new Date(firstClass.StartDateTime).toISOString().split('T')[0],
-            endDate: new Date(firstClass.EndDateTime).toISOString().split('T')[0],
-            startDateTime: new Date(firstClass.StartDateTime),
-            endDateTime: new Date(firstClass.EndDateTime),
-            dayOfWeek: new Date(firstClass.StartDateTime).getDay()
-          };
+            startDate: new Date(classTime.StartDateTime).toISOString().split('T')[0],
+            endDate: new Date(classTime.EndDateTime).toISOString().split('T')[0],
+            startDateTime: new Date(classTime.StartDateTime),
+            endDateTime: new Date(classTime.EndDateTime),
+            dayOfWeek: new Date(classTime.StartDateTime).getDay()
+          }))
+        );
+        
+        // Group by course and day of week, taking the first occurrence of each course on each day
+        const classesMap = new Map();
+        const uniqueClasses = [];
+        
+        allClasses.forEach(cls => {
+          const dayName = cls.startDateTime.toLocaleDateString('en-US', { weekday: 'long' });
+          const key = `${cls.course}-${dayName}`;
+          if (!classesMap.has(key)) {
+            classesMap.set(key, cls);
+            uniqueClasses.push(cls);
+          }
         });
-        console.log('Processed semester classes:', classes); // Debug log
-        setSemesterClasses(classes);
+        
+        console.log('Processed semester classes:', uniqueClasses); // Debug log
+        setSemesterClasses(uniqueClasses);
       }
       
       // Fetch university events using the proper API function
@@ -198,6 +213,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
     if (token) {
       fetchStudentData();
       fetchWeeklySchedule(); // Fetch current week schedule
+      fetchTodaySchedule(); // Fetch today's schedule
     } else {
       navigate('/login');
     }
@@ -364,12 +380,37 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   };
 
   const getTodayClasses = () => {
-    const today = new Date();
-    const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
-    return allClasses.filter(cls => {
-      const classDay = new Date(cls.startDate).toLocaleDateString('en-US', { weekday: 'long' });
-      return classDay === dayName && shouldShowClass(cls, getStartOfWeek(today));
+    if (!todayScheduleData?.Courses) {
+      return [];
+    }
+
+    const allTodayClasses = todayScheduleData.Courses.flatMap(course =>
+      course.ClassSchedule.ClassTime.map(classTime => ({
+        id: Math.random().toString(36).substr(2, 9),
+        course: course.ClassSchedule.CourseName,
+        type: "Class",
+        time: `${new Date(classTime.StartDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}-${new Date(classTime.EndDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
+        room: `${course.ClassSchedule.Building} ${course.ClassSchedule.RoomNumber}`,
+        lecturer: "Lecturer",
+        roomLink: `/map?room=${course.ClassSchedule.Building}-${course.ClassSchedule.RoomNumber}`,
+        startDateTime: new Date(classTime.StartDateTime),
+        endDateTime: new Date(classTime.EndDateTime)
+      }))
+    );
+
+    // Deduplicate today's classes the same way
+    const uniqueTodayClasses = [];
+    const classesMap = new Map();
+    
+    allTodayClasses.forEach(cls => {
+      const key = `${cls.course}-${cls.startDateTime.toISOString()}-${cls.endDateTime.toISOString()}`;
+      if (!classesMap.has(key)) {
+        classesMap.set(key, cls);
+        uniqueTodayClasses.push(cls);
+      }
     });
+
+    return uniqueTodayClasses;
   };
 
   const handleLogout = () => {
@@ -461,13 +502,14 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   const fetchChatMessages = async (chatId) => {
     try {
       setIsLoadingMessages(true);
+      // Clear messages immediately when switching chats to prevent old messages from showing
+      setChatMessages([]);
       const messagesData = await getChatMessages(chatId, token);
       setChatMessages(messagesData?.ChatMessageList || []);
     } catch (error) {
       console.error('Error fetching chat messages:', error);
-      if (isInitialLoad) {
-        setChatMessages([]);
-      }
+      // Always clear messages on error, regardless of initial load state
+      setChatMessages([]);
     } finally {
       setIsLoadingMessages(false);
       setIsInitialLoad(false);
@@ -595,8 +637,10 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
           setUniversityEvents(scheduleData.Events);
         }
         
-        // Extract classes from the schedule
+        // Extract classes from the schedule - TEMPORARY FIX: Backend deduplication not working
         if (scheduleData.Courses) {
+          console.log('Backend returning duplicates - applying frontend deduplication');
+          
           const classes = scheduleData.Courses.flatMap(course =>
             course.ClassSchedule.ClassTime.map(classTime => ({
               id: Math.random().toString(36).substr(2, 9),
@@ -612,11 +656,49 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
               dayOfWeek: new Date(classTime.StartDateTime).getDay()
             }))
           );
-          setAllClasses(classes);
+          
+          // TEMPORARY: Deduplicate identical time slots until backend is fixed
+          const uniqueClasses = [];
+          const classesMap = new Map();
+          
+          classes.forEach(cls => {
+            const key = `${cls.startDateTime.toISOString()}-${cls.endDateTime.toISOString()}-${cls.room}`;
+            if (!classesMap.has(key)) {
+              classesMap.set(key, cls);
+              uniqueClasses.push(cls);
+            }
+          });
+          
+          console.log(`Deduplication: ${classes.length} → ${uniqueClasses.length} classes`);
+          setAllClasses(uniqueClasses);
         }
       }
     } catch (error) {
       console.error('Error fetching weekly schedule:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/login');
+      }
+    }
+  };
+
+  // Fetch today's schedule data
+  const fetchTodaySchedule = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      const scheduleData = await getCombinedScheduleDay(token);
+      console.log('Today\'s schedule data:', scheduleData); // Debug log
+
+      if (scheduleData) {
+        setTodayScheduleData(scheduleData);
+      }
+    } catch (error) {
+      console.error('Error fetching today\'s schedule:', error);
       if (error.response?.status === 401) {
         localStorage.removeItem('token');
         navigate('/login');
@@ -949,21 +1031,42 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                         <>
                           {chatMessages.map((msg, idx) => {
                             const isCurrentUser = msg.senderName === userInfo.name;
+                            const currentMsgDate = new Date(msg.timestamp);
+                            const previousMsgDate = idx > 0 ? new Date(chatMessages[idx - 1].timestamp) : null;
+                            
+                            // Check if we need to show a date separator
+                            const showDateSeparator = !previousMsgDate || 
+                              currentMsgDate.toDateString() !== previousMsgDate.toDateString();
+                            
                             return (
-                              <div 
-                                key={idx} 
-                                className={`message ${isCurrentUser ? 'sent' : 'received'}`}
-                              >
-                                <div className="message-content">
-                                  <div className="message-header">
-                                    <span className="sender-name">{msg.senderName}</span>
+                              <React.Fragment key={idx}>
+                                {showDateSeparator && (
+                                  <div className="date-separator">
+                                    <span className="date-separator-text">
+                                      {currentMsgDate.toLocaleDateString('en-US', { 
+                                        weekday: 'long', 
+                                        year: 'numeric', 
+                                        month: 'long', 
+                                        day: 'numeric' 
+                                      })}
+                                    </span>
                                   </div>
-                                  <p>{msg.message}</p>
+                                )}
+                                <div className={`message ${isCurrentUser ? 'sent' : 'received'}`}>
+                                  <div className="message-content">
+                                    <div className="message-header">
+                                      <span className="sender-name">{msg.senderName}</span>
+                                    </div>
+                                    <p>{msg.message}</p>
+                                  </div>
+                                  <div className="message-time">
+                                    {currentMsgDate.toLocaleDateString() === new Date().toLocaleDateString() 
+                                      ? currentMsgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                      : `${currentMsgDate.toLocaleDateString()} ${currentMsgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                    }
+                                  </div>
                                 </div>
-                                <div className="message-time">
-                                  {new Date(msg.timestamp).toLocaleTimeString()}
-                                </div>
-                              </div>
+                              </React.Fragment>
                             );
                           })}
                           {isLoadingMessages && (
@@ -1083,7 +1186,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                   <FaCalendarAlt />
                 </div>
                 <div className="stat-info">
-                  <h3>Today's Classes</h3>
+                  <h3>Schedule</h3>
                   <p>{todayClasses.length} classes</p>
                 </div>
               </div>
@@ -1107,21 +1210,71 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
               </div>
             </section>
             <section className="upcoming-classes">
-              <h2>Today's Classes</h2>
-              {todayClasses.length > 0 ? (
-                <div className="upcoming-classes-list">
-                  {todayClasses.map((cls, index) => (
-                    <div key={index} className="upcoming-class-card">
-                      <h3>{cls.course}</h3>
-                      <p><FaClock /> {cls.time}</p>
-                      <p>{cls.type} | <a href={cls.roomLink} className="room-link"><FaMapMarkerAlt /> {cls.room}</a></p>
-                      <p><FaUserTie /> {cls.lecturer}</p>
+              <h2>Today's Schedule - {new Date().toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}</h2>
+              <div className="today-schedule-content">
+                {/* Today's Classes */}
+                {todayClasses.length > 0 && (
+                  <div className="today-section">
+                    <h3>Classes</h3>
+                    <div className="upcoming-classes-list">
+                      {todayClasses.map((cls, index) => (
+                        <div key={index} className="upcoming-class-card">
+                          <h4>{cls.course}</h4>
+                          <p><FaClock /> {cls.time}</p>
+                          <p>{cls.type} | <a href={cls.roomLink} className="room-link"><FaMapMarkerAlt /> {cls.room}</a></p>
+                          <p><FaUserTie /> {cls.lecturer}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p>No classes today</p>
-              )}
+                  </div>
+                )}
+
+                {/* Today's Events */}
+                {todayScheduleData?.Events && todayScheduleData.Events.length > 0 && (
+                  <div className="today-section">
+                    <h3>Events</h3>
+                    <div className="today-events-list">
+                      {todayScheduleData.Events.map((event, index) => (
+                        <div key={index} className={`event-card ${event.IsHoliday ? 'holiday' : ''}`}>
+                          <h4>{event.EventName}</h4>
+                          <p><FaClock /> {new Date(event.EventTime.StartDateTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</p>
+                          {event.IsHoliday && <span className="holiday-badge">Holiday</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Today's Assignments */}
+                {todayScheduleData?.Assignments && todayScheduleData.Assignments.length > 0 && (
+                  <div className="today-section">
+                    <h3>Assignments Due</h3>
+                    <div className="today-assignments-list">
+                      {todayScheduleData.Assignments.map((assignment, index) => (
+                        <div key={index} className="assignment-card">
+                          <h4>{assignment.AssignmentName}</h4>
+                          <p><FaBook /> {assignment.CourseName}</p>
+                          <p><FaClock /> Due: {new Date(assignment.AssignmentDueDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* No activities today */}
+                {todayClasses.length === 0 && 
+                 (!todayScheduleData?.Events || todayScheduleData.Events.length === 0) && 
+                 (!todayScheduleData?.Assignments || todayScheduleData.Assignments.length === 0) && (
+                  <div className="no-activities">
+                    <p>No classes, events, or assignments scheduled for today.</p>
+                  </div>
+                )}
+              </div>
             </section>
           </div>
         );

@@ -420,12 +420,47 @@ body {
   .upcoming-classes h2 {
     color: var(--primary-color);
     margin-bottom: 20px;
+    font-size: 1.5rem;
+  }
+  
+  .today-schedule-content {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+  }
+  
+  .today-section {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    box-shadow: var(--card-shadow);
+    border-left: 4px solid var(--secondary-color);
+  }
+  
+  .today-section h3 {
+    color: var(--primary-color);
+    margin: 0 0 15px 0;
+    font-size: 1.2rem;
+    border-bottom: 2px solid var(--secondary-color);
+    padding-bottom: 5px;
   }
   
   .upcoming-classes-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 20px;
+  }
+  
+  .today-events-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+  }
+  
+  .today-assignments-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
   }
   
   .upcoming-class-card {
@@ -442,7 +477,7 @@ body {
     box-shadow: var(--hover-shadow);
   }
   
-  .upcoming-class-card h3 {
+  .upcoming-class-card h3, .upcoming-class-card h4 {
     margin-top: 0;
     color: var(--primary-color);
   }
@@ -452,6 +487,21 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+  
+  .no-activities {
+    text-align: center;
+    padding: 40px;
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    border: 2px dashed rgba(52, 152, 219, 0.3);
+    color: var(--text-color);
+    opacity: 0.8;
+  }
+  
+  .no-activities p {
+    font-size: 1.1rem;
+    margin: 0;
   }
   
   /* Schedule View */
@@ -1142,18 +1192,43 @@ body {
   
   .message-time {
     font-size: 0.75em;
-    color: #6c757d;
+    color: #343a40 !important;
     margin-top: 4px;
     text-align: left;
   }
   
   .message.sent .message-time {
-    color: #e3f2fd;
+    color: #e3f2fd !important;
     text-align: right;
   }
   
   .message.received .message-time {
+    color: #343a40 !important;
     text-align: left;
+  }
+  
+  /* Very specific override for message timestamps - this should be visible immediately */
+  .chat-messages .message .message-time {
+    color: #2d3748 !important;
+    font-weight: normal !important;
+  }
+  
+  .chat-messages .message.sent .message-time {
+    color: #2d3748 !important;
+    font-weight: normal !important;
+    opacity: 0.9;
+  }
+  
+  /* Dark mode timestamp styles */
+  .dark-mode .chat-messages .message .message-time {
+    color: #e2e8f0 !important;
+    font-weight: normal !important;
+  }
+  
+  .dark-mode .chat-messages .message.sent .message-time {
+    color: #ffffff !important;
+    font-weight: normal !important;
+    opacity: 0.9;
   }
   
   .chat-input {
@@ -1555,4 +1630,53 @@ body {
   background: linear-gradient(135deg, var(--secondary-color), rgba(52, 152, 219, 0.8));
   color: white;
   border-color: var(--secondary-color);
+}
+
+/* Date separator styles */
+.date-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+  position: relative;
+}
+
+.date-separator::before {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
+  margin-right: 15px;
+}
+
+.date-separator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
+  margin-left: 15px;
+}
+
+.date-separator-text {
+  background: var(--card-bg);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #6c757d;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+  white-space: nowrap;
+}
+
+.dark-mode .date-separator::before,
+.dark-mode .date-separator::after {
+  background: #404040;
+}
+
+.dark-mode .date-separator-text {
+  background: var(--card-bg);
+  color: #aaa;
+  border-color: #404040;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
