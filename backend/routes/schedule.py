@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import Annotated
 from Models import ScheduleModel
 from auth import UserAuth, get_current_active_user
-from Query import getDayStudentSchedule, getWeekStudentSchedule, getMonthStudentSchedule, getDayTeacherSchedule, getWeekTeacherSchedule, getMonthTeacherSchedule
+from Query import getDayStudentSchedule, getWeekStudentSchedule, getMonthStudentSchedule, getDayTeacherSchedule, getWeekTeacherSchedule, getMonthTeacherSchedule, getSemesterStudentSchedule
 from Util import convert_str_to_datetime
 from db_session import engine
 
@@ -44,7 +44,7 @@ def student_schedule_semester_get(
 ):
     if current_user.role.upper() != "STUDENT":
         raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
-    return getStudentSemesterSchedule(engine=engine, student_id=current_user.role_id)
+    return getSemesterStudentSchedule(engine=engine, student_id=current_user.role_id)
 
 @router.get("/schedule/day/{date}", response_model=ScheduleModel)
 def combined_schedule_day_get_date(

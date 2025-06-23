@@ -1,11 +1,27 @@
-import React from 'react';
-import { FaSignInAlt, FaUserPlus, FaBell, FaBook, FaCalendarAlt, FaGraduationCap, FaQuestionCircle, FaEnvelope, FaFileAlt, FaShieldAlt } from 'react-icons/fa';
+import React, { useEffect } from 'react';
+import { FaSignInAlt, FaUserPlus, FaBell, FaBook, FaCalendarAlt, FaGraduationCap, FaQuestionCircle, FaEnvelope, FaFileAlt, FaShieldAlt, FaSun, FaMoon } from 'react-icons/fa';
 import logoUPSOS from '../assets/logoUPSOS.png';
 import './UpsosHomepage.css';
 import { useNavigate } from "react-router-dom";
+import { useDarkMode } from '../DarkModeContext';
 
 const UpsosHomepage = () => {
   const navigate = useNavigate();
+  const { darkMode, toggleDarkMode } = useDarkMode();
+
+  // Apply dark mode class to body
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.body.classList.remove('dark-mode');
+    };
+  }, [darkMode]);
 
   const handleLoginClick = () => {
     navigate("/login");
@@ -16,7 +32,7 @@ const UpsosHomepage = () => {
   };
 
   return (
-    <div className="upsos-app">
+    <div className={`upsos-app ${darkMode ? 'dark-mode' : ''}`}>
       <h1 style={{ padding: '20px', textAlign: 'center' }}>UPSOS Platform</h1>
       {/* Header */}
       <header className="futuristic-header">
@@ -29,6 +45,11 @@ const UpsosHomepage = () => {
               <li><a href="#about">About</a></li>
               <li><a href="#help">Help</a></li>
               <li><a href="#contact">Contact</a></li>
+              <li>
+                <button className="dark-mode-toggle" onClick={toggleDarkMode}>
+                  {darkMode ? <FaSun /> : <FaMoon />}
+                </button>
+              </li>
             </ul>
           </nav>
         </div>

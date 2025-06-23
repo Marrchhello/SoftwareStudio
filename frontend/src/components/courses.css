@@ -759,7 +759,7 @@
 /* Dark mode styles */
 .dark-mode .teacher-courses-container {
   color: #e0e0e0;
-  background-color: #1a1a1a;
+  background-color: #2a2a2a;
 }
 
 .dark-mode .course-header h1 {
@@ -1036,7 +1036,7 @@
 }
 
 .dark-mode .debug-logs {
-  background-color: #1a1a1a;
+  background-color: #2a2a2a;
   border: 1px solid #444;
   padding: 10px;
   border-radius: 4px;
@@ -1058,7 +1058,7 @@
 }
 
 .dark-mode .debug-data {
-  background-color: #1a1a1a;
+  background-color: #2a2a2a;
   color: #e0e0e0;
   border: 1px solid #444;
 }
