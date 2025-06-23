@@ -41,6 +41,7 @@ const Materials = ({ courseId, onBackToCourses }) => {
           ? rawAssignments.map(a => ({
               id: a.assignment_id || a.id,
               name: a.assignment_name || a.name,
+              description: a.desc || '',
               date: a.due_date_time || a.date,
               status: a.submission_status || a.status || (a.needs_submission ? 'Not Submitted' : 'N/A'),
               submittedLink: a.submitted_link || '',
@@ -117,6 +118,7 @@ const Materials = ({ courseId, onBackToCourses }) => {
         ? rawAssignments.map(a => ({
             id: a.assignment_id || a.id,
             name: a.assignment_name || a.name,
+            description: a.desc || '',
             date: a.due_date_time || a.date,
             status: a.submission_status || a.status || (a.needs_submission ? 'Not Submitted' : 'N/A'),
             submittedLink: a.submitted_link || '',
@@ -153,6 +155,9 @@ const Materials = ({ courseId, onBackToCourses }) => {
               <h4>{assignment.name}</h4>
             </div>
             <div className="material-details">
+              {assignment.description && (
+                <p><span>Description:</span> {assignment.description}</p>
+              )}
               <p><span>Date:</span> {assignment.date}</p>
               <p><span>Status:</span> {assignment.status || 'Not Submitted'}</p>
               {assignment.status === 'Submitted' && (

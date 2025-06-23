@@ -28,6 +28,20 @@
     --hover-shadow: 0 10px 15px rgba(0, 0, 0, 0.3);
 }
 
+.dark-mode .welcome-section {
+    background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .welcome-section h1 {
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .welcome-section p {
+    color: #cccccc;
+}
 
 * {
     margin: 0;
@@ -324,16 +338,29 @@ body {
   }
   
   /* Dashboard View */
+  .welcome-section {
+    margin-bottom: 25px;
+    text-align: center;
+    padding: 30px 35px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    position: relative;
+    overflow: hidden;
+  }
+
   .welcome-section h1 {
-    margin: 0 0 10px;
-    color: var(--primary-color);
+    margin: 0;
+    color: white;
     font-size: 2.2rem;
     font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
   
   .welcome-section p {
     margin: 0;
-    color: var(--text-color);
+    color: rgba(255, 255, 255, 0.8);
     opacity: 0.8;
     font-size: 1.1rem;
   }
