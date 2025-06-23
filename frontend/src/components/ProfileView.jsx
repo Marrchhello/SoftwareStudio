@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaUser, FaEnvelope, FaIdCard, FaGraduationCap, FaBuilding, FaCalendarAlt, FaSignOutAlt, FaTimes } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import * as api from '../api.js';
+import { getUserProfile } from '../api.js';
 import './ProfileView.css';
 
 const ProfileView = ({ onBack, userType = 'student' }) => {
@@ -29,13 +29,25 @@ const ProfileView = ({ onBack, userType = 'student' }) => {
         return;
       }
 
-      // Get profile data from new endpoint
-      const profileData = await api.getUserProfile(token);
+      // Get profile data from the /profile endpoint
+      const profileData = await getUserProfile(token);
       
+      console.log('Profile data fetched:', profileData);
+
       setUserInfo(profileData);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      // Set empty values instead of leaving them undefined
+      setUserInfo({
+        name: '',
+        email: '',
+        roleId: '',
+        role: '',
+        title: '',
+        semester: '',
+        degreeId: ''
+      });
       setLoading(false);
     }
   };

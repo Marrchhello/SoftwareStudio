@@ -1096,6 +1096,80 @@ def getEmail(engine: Engine, role: str, role_id: int) -> str:
         return result if result is not None else ''
     
 
+# Get User's title
+def getTitle(engine: Engine, role: str, role_id: int) -> str:
+    """Get user's title from db.
+    
+    Args:
+        engine: Engine connection to use.
+        role: str (Role of the user)
+        role_id: int (Role ID of the user)
+        
+    Returns:
+        output: str (User's title)
+    """
+    
+    role = role.upper()
+    sel = None
+    if role == "TEACHER":
+        sel = select(Teacher.title).where(Teacher.teacherId == role_id)
+    else:
+        return ''
+    
+    with engine.connect() as conn:
+        result = conn.execute(sel).scalar()
+        return result if result is not None else ''
+    
+
+# Get User's semester
+def getSemester(engine: Engine, role: str, role_id: int) -> str:
+    """Get user's semester from db.
+    
+    Args:
+        engine: Engine connection to use.
+        role: str (Role of the user)
+        role_id: int (Role ID of the user)
+        
+    Returns:
+        output: str (User's semester)
+    """
+    
+    role = role.upper()
+    sel = None
+    if role == "STUDENT":
+        sel = select(Student.semester).where(Student.studentId == role_id)
+    else:
+        return ''
+    
+    with engine.connect() as conn:
+        result = conn.execute(sel).scalar()
+        return result if result is not None else ''
+    
+
+# Get User's degreeId
+def getDegreeId(engine: Engine, role: str, role_id: int) -> str:
+    """Get user's degreeId from db.
+    
+    Args:
+        engine: Engine connection to use.
+        role: str (Role of the user)
+        role_id: int (Role ID of the user)
+        
+    Returns:
+        output: str (User's degreeId)
+    """
+    
+    role = role.upper()
+    sel = None
+    if role == "STUDENT":
+        sel = select(Student.degreeId).where(Student.studentId == role_id)
+    else:
+        return ''
+    
+    with engine.connect() as conn:
+        result = conn.execute(sel).scalar()
+        return result if result is not None else ''
+
 # ----------------------------------------------------------------------------
 # Chat
 # ----------------------------------------------------------------------------

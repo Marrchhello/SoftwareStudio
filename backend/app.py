@@ -8,6 +8,7 @@ from routes.events import router as events_router
 from routes.chats import router as chats_router
 from routes.assignments import router as assignments_router
 from routes.misc import router as misc_router
+from routes.user_data import router as user_data_router
 
 # Initialize FastAPI
 app = FastAPI()
@@ -39,3 +40,4 @@ app.include_router(events_router)
 app.include_router(chats_router)
 app.include_router(assignments_router)
 app.include_router(misc_router)
+app.include_router(user_data_router)

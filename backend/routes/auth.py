@@ -13,9 +13,7 @@ from auth import (
 )
 from user_managment import create_user
 from Database import Roles
-from Query import getName, getNameFromUserId, getEmail
 from db_session import get_db, getEngine
-import os
 
 router = APIRouter()
 
@@ -109,40 +107,3 @@ async def read_users_me(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(e)}"
         )
-
-@router.get("/role")
-async def get_role(
-    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
-):
-    return {"role": current_user.role}
-
-@router.get("/role_id")
-async def get_role_id(
-    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
-):
-    return {"role_id": current_user.role_id}
-
-@router.get("/name")
-async def get_name(
-    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
-):
-    role = current_user.role
-    return {"name": getName(engine=engine, role=role, role_id=current_user.role_id)}
-
-@router.get("/name/{user_id}")
-async def get_name_by_id(
-    user_id: int
-):
-    return {"name": getNameFromUserId(engine=engine, user_id=user_id)}
-
-@router.get("/email")
-async def get_email(
-    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
-):
-    return {"email": getEmail(engine=engine, role=current_user.role, role_id=current_user.role_id)}
-
-# @router.get("/profile")
-# async def get_profile(
-#     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
-# ):
-#     return db.get_profile(current_user.role, current_user.role_id) 
