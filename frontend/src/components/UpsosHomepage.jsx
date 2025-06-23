@@ -51,18 +51,7 @@ const UpsosHomepage = () => {
         </div>
       </section>
 
-      {/* Announcement Section */}
-      <section className="announcement-section">
-        <div className="announcement-card">
-          <div className="announcement-icon">
-            <FaBell />
-          </div>
-          <div className="announcement-content">
-            <h3>New features available!</h3>
-            <p>Discover our latest updates including personalized schedule.</p>
-          </div>
-        </div>
-      </section>
+      
 
       {/* Features Section */}
       <section id="about" className="features-section">
@@ -79,15 +68,15 @@ const UpsosHomepage = () => {
             <div className="feature-icon">
               <FaCalendarAlt />
             </div>
-            <h3>Schedule Management</h3>
-            <p>Personalized class calendar with synchronization options.</p>
+            <h3>Real-time Communication</h3>
+            <p>Instant messaging system for students and teachers with chat functionality.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon">
               <FaGraduationCap />
             </div>
-            <h3>Progress Tracking</h3>
-            <p>Monitor your academic achievements and learning progress.</p>
+            <h3>Academic Analytics</h3>
+            <p>Track your grades, view course averages, and monitor your academic performance.</p>
           </div>
         </div>
       </section>
@@ -103,17 +92,17 @@ const UpsosHomepage = () => {
             <h3>Technical Support</h3>
             <p>Having issues with the platform?</p>
             <a href="mailto:upsos-support@agh.edu.pl" className="contact-link">
-              <FaEnvelope /> upsos-support@agh.edu.pl
+              <FaEnvelope /> upsos-support@gmail.com
             </a>
           </div>
           <div className="contact-card">
             <div className="contact-icon">
               <FaFileAlt />
             </div>
-            <h3>FAQ & Regulations</h3>
+            <h3>FAQ</h3>
             <p>Find answers to frequently asked questions.</p>
-            <a href="/regulations" className="contact-link">
-              <FaFileAlt /> Read regulations
+            <a href="/FAQPage" className="contact-link">
+              <FaFileAlt /> FAQ
             </a>
           </div>
         </div>
