@@ -11,6 +11,10 @@ const UpsosHomepage = () => {
     navigate("/login");
   };
 
+  const handleFAQClick = () => {
+    navigate("/faq");
+  };
+
   return (
     <div className="upsos-app">
       <h1 style={{ padding: '20px', textAlign: 'center' }}>UPSOS Platform</h1>
@@ -101,7 +105,7 @@ const UpsosHomepage = () => {
             </div>
             <h3>FAQ</h3>
             <p>Find answers to frequently asked questions.</p>
-            <a href="/FAQPage" className="contact-link">
+            <a href="/FAQPage" className="contact-link" onClick={(e) => { e.preventDefault(); handleFAQClick(); }}>
               <FaFileAlt /> FAQ
             </a>
           </div>
