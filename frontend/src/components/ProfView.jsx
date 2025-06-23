@@ -931,8 +931,7 @@ const ProfDashboard = () => {
         return (
           <div className="view-content">
             <section className="welcome-section">
-              <h1>Welcome, Professor {userInfo.name}!</h1>
-              <p>Department: {userInfo.department} | Email: {userInfo.email}</p>
+              <h1>Welcome back, Professor {userInfo.name}!</h1>
             </section>
             <section className="quick-stats">
               <div className="stat-card" onClick={() => setActiveView('courses')}>
@@ -1003,6 +1002,7 @@ const ProfDashboard = () => {
           <div className="user-info">
             <span className="user-name">Prof. {userInfo.name}</span>
             <span className="user-title">{userInfo.title}</span>
+            <span className="user-id">Teacher ID: {userInfo.teacherId}</span>
           </div>
         </div>
         <ul className="nav-menu">

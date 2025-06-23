@@ -141,6 +141,16 @@
   margin-right: 0.5rem;
 }
 
+.material-details p:first-child span {
+  min-width: 80px;
+}
+
+.material-details p:first-child {
+  font-weight: 500;
+  color: var(--text-color);
+  margin-bottom: 0.8rem;
+}
+
 .material-details a {
   color: var(--primary-color);
   text-decoration: none;

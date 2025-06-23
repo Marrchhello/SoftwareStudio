@@ -5,7 +5,7 @@ import {
   FaSun, FaMoon, FaClock, FaCalendarDay, FaCalendarWeek, FaCalendar,
   FaEnvelope, FaPaperPlane, FaUserTie, FaBuilding, FaUsers, FaCreditCard,
   FaMapMarkerAlt, FaChevronLeft, FaChevronRight, FaTimes, FaPlus,
-  FaChalkboardTeacher
+  FaChalkboardTeacher, FaFileAlt
 } from 'react-icons/fa'; 
 import './StudentView.css'; 
 import { useNavigate } from 'react-router-dom';
@@ -191,6 +191,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
       
       // Fetch grades using the proper API function
       const gradesData = await getAllStudentGrades(token);
+      console.log('All student grades:', gradesData); // Debug log
       if (gradesData) {
         setGrades(gradesData);
       }
@@ -411,6 +412,16 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
     if (validGrades.length === 0) return 0;
     const sum = validGrades.reduce((acc, grade) => acc + grade.Grade, 0);
     return sum / validGrades.length;
+  };
+
+  // Helper function to count graded assignments
+  const getGradedAssignmentsCount = () => {
+    return grades.GradeList?.filter(grade => grade.Grade !== null).length || 0;
+  };
+
+  // Helper function to count total assignments (from weekly schedule)
+  const getTotalAssignmentsCount = () => {
+    return grades.GradeList?.length || 0;
   };
 
   const navigateWeek = (direction) => {
@@ -1225,6 +1236,8 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         const todayClasses = getTodayClasses();
         const totalCourses = courses.length || 0;
         const totalGrades = grades.GradeList?.length || 0;
+        const gradedAssignments = getGradedAssignmentsCount();
+        const totalAssignments = getTotalAssignmentsCount();
         const upcomingEvents = universityEvents.filter(event => 
           event["Date and Start Time"] >= new Date()
         ).length;
@@ -1233,7 +1246,6 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
           <div className="view-content">
             <section className="welcome-section">
               <h1>Welcome back, {userInfo.name}!</h1>
-              <p>Faculty: {userInfo.faculty} | Semester: {userInfo.semester}</p>
             </section>
             <section className="quick-stats">
               <div className="stat-card" onClick={() => setActiveView('courses')}>
@@ -1256,11 +1268,11 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
               </div>
               <div className="stat-card" onClick={() => setActiveView('grades')}>
                 <div className="stat-icon">
-                  <FaGraduationCap />
+                  <FaFileAlt />
                 </div>
                 <div className="stat-info">
-                  <h3>Total Grades</h3>
-                  <p>{totalGrades} grades</p>
+                  <h3>Assignments</h3>
+                  <p>{gradedAssignments} graded of {totalAssignments}</p>
                 </div>
               </div>
               <div className="stat-card" onClick={() => setActiveView('events')}>
@@ -1352,7 +1364,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
           <FaUserCircle className="user-icon" />
           <div className="user-info">
             <span className="user-name">{userInfo.name}</span>
-            <span className="user-id">{userInfo.roleId}</span>
+            <span className="user-id">Student ID: {userInfo.roleId}</span>
           </div>
         </div>
         <ul className="nav-menu">
