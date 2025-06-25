@@ -4,12 +4,14 @@ import { Link } from 'react-router-dom';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import Banner from './Banner';
 import { getFAQ } from '../api'; // Import the FAQ function from your API
+import { useDarkMode } from '../DarkModeContext'; // Import dark mode context
 
 const FAQPage = () => {
   const [faqs, setFaqs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openIndices, setOpenIndices] = useState([]);
+  const { darkMode } = useDarkMode(); // Use dark mode context
 
   // Fetch FAQ data from API
   useEffect(() => {
@@ -52,7 +54,7 @@ const FAQPage = () => {
     return (
       <>
         <Banner />
-        <div className="faq-page-outer">
+        <div className={`faq-page-outer ${darkMode ? 'dark-mode' : ''}`}>
           <div className="faq-title-bg">
             <div className="faq-title-row">
               <span className="faq-title-main">FAQ</span>
@@ -75,7 +77,7 @@ const FAQPage = () => {
     return (
       <>
         <Banner />
-        <div className="faq-page-outer">
+        <div className={`faq-page-outer ${darkMode ? 'dark-mode' : ''}`}>
           <div className="faq-title-bg">
             <div className="faq-title-row">
               <span className="faq-title-main">FAQ</span>
@@ -96,7 +98,7 @@ const FAQPage = () => {
   return (
     <>
       <Banner />
-      <div className="faq-page-outer">
+      <div className={`faq-page-outer ${darkMode ? 'dark-mode' : ''}`}>
         <div className="faq-title-bg">
           <div className="faq-title-row">
             <span className="faq-title-main">FAQ</span>
