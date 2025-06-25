@@ -149,6 +149,16 @@ export const getCourseStudents = async (courseId, token) => {
     return response.data;
 };
 
+// Delete course function
+export const deleteCourse = async (courseId, token) => {
+    const response = await api.delete(`/course/${courseId}`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    return response.data;
+};
+
 // ----------------------------------------------------------------------------
 // Grades
 // ----------------------------------------------------------------------------
@@ -232,12 +242,22 @@ export const getCourseAssignmentsTeacher = async (courseId, token) => {
 // Delete assignment
 export const deleteAssignment = async (assignmentId, token) => {
     const response = await api.delete(`/assignment/${assignmentId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
     });
     return response.data;
-  };
+};
+
+// Get assignment submissions function
+export const getAssignmentSubmissions = async (courseId, assignmentId, token) => {
+    const response = await api.get(`/course/${courseId}/assignment/${assignmentId}/submissions`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    return response.data;
+};
 
 // ----------------------------------------------------------------------------
 // Schedule

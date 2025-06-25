@@ -13,12 +13,10 @@ from auth import (
 )
 from user_managment import create_user
 from Database import Roles
-from db_session import get_db, getEngine
+from db_session import get_db, engine, db
+import os
 
 router = APIRouter()
-
-db = get_db()
-engine = getEngine()
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(

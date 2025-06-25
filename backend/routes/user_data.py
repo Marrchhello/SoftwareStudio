@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status, HTTPException
 from typing import Annotated
-from Query import getName, getNameFromUserId, getEmail, getTitle, getSemester, getDegreeId
+from Query import getName, getNameFromUserId, getUserProfile
 from db_session import get_db, getEngine
 from auth import get_current_active_user, UserAuth
 
@@ -38,47 +38,39 @@ async def get_name_by_id(
 async def get_email(
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    return {"email": getEmail(engine=engine, role=current_user.role, role_id=current_user.role_id)}
+    profile = getUserProfile(engine=engine, user_id=current_user.user_id)
+    return {"email": profile.get("email", "") if profile else ""}
 
 @router.get("/title")
-async def get_email(
+async def get_title(
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    return {"title": getTitle(engine=engine, role=current_user.role, role_id=current_user.role_id)}
+    profile = getUserProfile(engine=engine, user_id=current_user.user_id)
+    return {"title": profile.get("title", "") if profile else ""}
 
 @router.get("/semester")
-async def get_email(
+async def get_semester(
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    return {"semester": getSemester(engine=engine, role=current_user.role, role_id=current_user.role_id)}
+    profile = getUserProfile(engine=engine, user_id=current_user.user_id)
+    return {"semester": profile.get("semester", "") if profile else ""}
 
 @router.get("/degreeId")
-async def get_email(
+async def get_degree_id(
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
-    return {"degreeId": getDegreeId(engine=engine, role=current_user.role, role_id=current_user.role_id)}
+    profile = getUserProfile(engine=engine, user_id=current_user.user_id)
+    return {"degreeId": profile.get("degreeId", "") if profile else ""}
 
 @router.get("/profile")
 async def get_profile(
     current_user: Annotated[UserAuth, Depends(get_current_active_user)]
 ):
     try:
-        # Get user profile data using individual functions
-        name = getName(engine=engine, role=current_user.role, role_id=current_user.role_id)
-        email = getEmail(engine=engine, role=current_user.role, role_id=current_user.role_id)
-        title = getTitle(engine=engine, role=current_user.role, role_id=current_user.role_id)
-        semester = getSemester(engine=engine, role=current_user.role, role_id=current_user.role_id)
-        degreeId = getDegreeId(engine=engine, role=current_user.role, role_id=current_user.role_id)
-        
-        return {
-            "name": name,
-            "email": email,
-            "roleId": current_user.role_id,
-            "role": current_user.role,
-            "title": title,
-            "semester": semester,
-            "degreeId": degreeId
-        }
+        profile_data = getUserProfile(engine=engine, user_id=current_user.user_id)
+        if not profile_data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+        return profile_data
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
