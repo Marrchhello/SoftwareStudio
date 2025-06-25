@@ -70,7 +70,7 @@ class AssignmentPostModel(BaseModel):
     Args:
         assignment_name: str
         desc: opt str
-        due_date_time: datetime.datetime
+        due_date_time: Optional[datetime.datetime]
         needs_submission: bool
         assignment_intro: opt str
         valid_file_types: opt str
@@ -80,7 +80,7 @@ class AssignmentPostModel(BaseModel):
     
     assignment_name: str
     desc: Optional[str]
-    due_date_time: datetime.datetime
+    due_date_time: Optional[datetime.datetime]
     needs_submission: bool
     valid_file_types: Optional[str]
     group: Optional[int]
@@ -205,12 +205,12 @@ class AssignmentScheduleModel(BaseModel):
 
     Args:
         CourseName: str
-        AssignmentDueDateTime: datetime.datetime
+        AssignmentDueDateTime: Optional[datetime.datetime]
         AssignmentName: str
     """
     
     CourseName: str
-    AssignmentDueDateTime: datetime.datetime
+    AssignmentDueDateTime: Optional[datetime.datetime]
     AssignmentName: str
 
 
@@ -372,7 +372,7 @@ class AssignmentInfoModel(BaseModel):
         assignment_id: int
         assignment_name: str
         desc: Optional[str]
-        due_date_time: datetime.datetime
+        due_date_time: Optional[datetime.datetime]
         needs_submission: bool
         valid_file_types: Optional[str]
         group: Optional[int]
@@ -384,7 +384,7 @@ class AssignmentInfoModel(BaseModel):
     assignment_id: int
     assignment_name: str
     desc: Optional[str]
-    due_date_time: datetime.datetime
+    due_date_time: Optional[datetime.datetime]
     needs_submission: bool
     valid_file_types: Optional[str]
     group: Optional[int]

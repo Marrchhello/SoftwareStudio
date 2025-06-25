@@ -336,6 +336,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
 
   function getAssignmentsForDay(dayDate) {
     return assignments.filter(assignment => {
+      if (!assignment.AssignmentDueDateTime) return false;
       const assignmentDate = new Date(assignment.AssignmentDueDateTime);
       return assignmentDate.toDateString() === dayDate.toDateString();
     });
@@ -834,7 +835,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                         <div key={`assignment-${idx}`} className="assignment-card">
                           <h4>{assignment.AssignmentName}</h4>
                           <p><FaBook /> {assignment.CourseName}</p>
-                          <p><FaClock /> Due: {new Date(assignment.AssignmentDueDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                          <p><FaClock /> Due: {assignment.AssignmentDueDateTime ? new Date(assignment.AssignmentDueDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'No due date'}</p>
                         </div>
                       ))}
                       
@@ -1335,7 +1336,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                         <div key={index} className="assignment-card">
                           <h4>{assignment.AssignmentName}</h4>
                           <p><FaBook /> {assignment.CourseName}</p>
-                          <p><FaClock /> Due: {new Date(assignment.AssignmentDueDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                          <p><FaClock /> Due: {assignment.AssignmentDueDateTime ? new Date(assignment.AssignmentDueDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'No due date'}</p>
                         </div>
                       ))}
                     </div>

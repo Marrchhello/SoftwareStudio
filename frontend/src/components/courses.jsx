@@ -403,15 +403,17 @@ const Courses = ({ courseId: propCourseId }) => {
   const handleAddAssignment = async (e) => {
     e.preventDefault();
     try {
-      const response = await postAssignment({
+      const assignmentData = {
         assignment_name: newAssignment.title,
         desc: newAssignment.description,
-        due_date_time: new Date(newAssignment.dueDate).toISOString(),
+        due_date_time: newAssignment.dueDate ? new Date(newAssignment.dueDate).toISOString() : null,
         needs_submission: false,
         valid_file_types: null,
         group: newAssignment.group ? parseInt(newAssignment.group) : null,
         course_id: parseInt(courseId)
-      }, token);
+      };
+
+      const response = await postAssignment(assignmentData, token);
       
       if (response) {
         // Refresh assignments
@@ -911,12 +913,12 @@ const Courses = ({ courseId: propCourseId }) => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Due Date:</label>
+                  <label>Due Date (optional):</label>
                   <input
                     type="datetime-local"
                     value={newAssignment.dueDate}
                     onChange={(e) => setNewAssignment({...newAssignment, dueDate: e.target.value})}
-                    required
+                    placeholder="Leave empty for no due date"
                   />
                 </div>
                 <div className="form-group">
@@ -1029,7 +1031,7 @@ const Courses = ({ courseId: propCourseId }) => {
                   <tr key={assignment.assignment_id}>
                     <td>{assignment.assignment_name}</td>
                     <td>{assignment.desc}</td>
-                    <td>{new Date(assignment.due_date_time).toLocaleString()}</td>
+                    <td>{assignment.due_date_time ? new Date(assignment.due_date_time).toLocaleString() : 'No due date'}</td>
                     <td>{assignment.group || 'All'}</td>
                     <td>
                       <button 
