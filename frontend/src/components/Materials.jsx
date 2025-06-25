@@ -42,7 +42,7 @@ const Materials = ({ courseId, onBackToCourses }) => {
               id: a.assignment_id || a.id,
               name: a.assignment_name || a.name,
               description: a.desc || '',
-              date: a.due_date_time || a.date,
+              date: a.due_date_time || a.date || null,
               status: a.submission_status || a.status || (a.needs_submission ? 'Not Submitted' : 'N/A'),
               submittedLink: a.submitted_link || '',
               submittedComment: a.submitted_comment || ''
@@ -119,7 +119,7 @@ const Materials = ({ courseId, onBackToCourses }) => {
             id: a.assignment_id || a.id,
             name: a.assignment_name || a.name,
             description: a.desc || '',
-            date: a.due_date_time || a.date,
+            date: a.due_date_time || a.date || null,
             status: a.submission_status || a.status || (a.needs_submission ? 'Not Submitted' : 'N/A'),
             submittedLink: a.submitted_link || '',
             submittedComment: a.submitted_comment || ''
@@ -158,7 +158,7 @@ const Materials = ({ courseId, onBackToCourses }) => {
               {assignment.description && (
                 <p><span>Description:</span> {assignment.description}</p>
               )}
-              <p><span>Date:</span> {assignment.date}</p>
+              <p><span>Date:</span> {assignment.date ? new Date(assignment.date).toLocaleString() : 'No due date'}</p>
               <p><span>Status:</span> {assignment.status || 'Not Submitted'}</p>
               {assignment.status === 'Submitted' && (
                 <>
