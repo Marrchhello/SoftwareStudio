@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
-from Models import StudentCourseListModel, TeacherCourseListModel, CourseStudentsListModel
+from Models import StudentCourseListModel, TeacherCourseListModel, CourseStudentsListModel, CourseScheduleViewModel
 from Database import CourseTeacher
 from auth import UserAuth
 from auth import get_current_active_user
-from Query import getTeacherCourses, getStudentCourses, getCourseStudents
+from Query import getTeacherCourses, getStudentCourses, getCourseStudents, deleteCourse, getCourseScheduleView
 from sqlalchemy import and_
 from db_session import engine
 from fastapi import APIRouter, Depends, HTTPException
@@ -64,3 +64,45 @@ def course_students_get(
             )
     
     return getCourseStudents(engine=engine, course_id=course_id)
+
+# GET Course Schedule View
+@router.get("/course/{course_id}/schedule-view", response_model=CourseScheduleViewModel)
+def course_schedule_view_get(
+    course_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER":
+        raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
+    
+    # Check if teacher is assigned to this course
+    with Session(engine) as session:
+        teacher_course = session.query(CourseTeacher).filter(
+            and_(
+                CourseTeacher.teacherId == current_user.role_id,
+                CourseTeacher.courseId == course_id
+            )
+        ).first()
+        
+        if not teacher_course:
+            raise HTTPException(
+                status_code=403, 
+                detail="Teacher is not assigned to this course"
+            )
+    
+    return getCourseScheduleView(engine=engine, course_id=course_id)
+
+# DELETE Course (Teacher only)
+@router.delete("/course/{course_id}")
+def course_delete(
+    course_id: int,
+    current_user: Annotated[UserAuth, Depends(get_current_active_user)]
+):
+    if current_user.role.upper() != "TEACHER":
+        raise HTTPException(status_code=403, detail="Not authorized to access this endpoint")
+    
+    result = deleteCourse(engine=engine, teacher_id=current_user.role_id, course_id=course_id)
+    
+    if result["status_code"] != 200:
+        raise HTTPException(status_code=result["status_code"], detail=result["detail"])
+    
+    return result

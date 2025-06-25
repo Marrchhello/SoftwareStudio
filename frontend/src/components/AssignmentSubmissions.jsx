@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api, { postGrade } from '../api';
+import api, { postGrade, getAssignmentSubmissions } from '../api';
 import './AssignmentSubmissions.css';
 
 const aghScaleOptions = ["2.0", "3.0", "3.5", "4.0", "4.5", "5.0"];
@@ -20,10 +20,8 @@ const AssignmentSubmissions = () => {
     setError(null);
     try {
       const token = localStorage.getItem('token');
-      const response = await api.get(`/course/${courseId}/assignment/${assignmentId}/submissions`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setSubmissions(response.data.submissions || []);
+      const response = await getAssignmentSubmissions(courseId, assignmentId, token);
+      setSubmissions(response.submissions || []);
     } catch (err) {
       setError('Error fetching submissions');
     } finally {

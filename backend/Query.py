@@ -1067,108 +1067,7 @@ def getNameFromUserId(engine: Engine, user_id: int) -> str:
             role_id = result[1]
             return getName(engine=engine, role=role, role_id=role_id)
         return ''
-    
 
-# Get User's email
-def getEmail(engine: Engine, role: str, role_id: int) -> str:
-    """Get user's email from db.
-    
-    Args:
-        engine: Engine connection to use.
-        role: str (Role of the user)
-        role_id: int (Role ID of the user)
-
-    Returns:
-        output: str (User's email)
-    """
-
-    role = role.upper()
-    sel = None
-    if role == "STUDENT":
-        sel = select(Student.email).where(Student.studentId == role_id)
-    elif role == "TEACHER":
-        sel = select(Teacher.email).where(Teacher.teacherId == role_id)
-    else:
-        return ''
-
-    with engine.connect() as conn:
-        result = conn.execute(sel).scalar()
-        return result if result is not None else ''
-    
-
-# Get User's title
-def getTitle(engine: Engine, role: str, role_id: int) -> str:
-    """Get user's title from db.
-    
-    Args:
-        engine: Engine connection to use.
-        role: str (Role of the user)
-        role_id: int (Role ID of the user)
-        
-    Returns:
-        output: str (User's title)
-    """
-    
-    role = role.upper()
-    sel = None
-    if role == "TEACHER":
-        sel = select(Teacher.title).where(Teacher.teacherId == role_id)
-    else:
-        return ''
-    
-    with engine.connect() as conn:
-        result = conn.execute(sel).scalar()
-        return result if result is not None else ''
-    
-
-# Get User's semester
-def getSemester(engine: Engine, role: str, role_id: int) -> str:
-    """Get user's semester from db.
-    
-    Args:
-        engine: Engine connection to use.
-        role: str (Role of the user)
-        role_id: int (Role ID of the user)
-        
-    Returns:
-        output: str (User's semester)
-    """
-    
-    role = role.upper()
-    sel = None
-    if role == "STUDENT":
-        sel = select(Student.semester).where(Student.studentId == role_id)
-    else:
-        return ''
-    
-    with engine.connect() as conn:
-        result = conn.execute(sel).scalar()
-        return result if result is not None else ''
-    
-
-# Get User's degreeId
-def getDegreeId(engine: Engine, role: str, role_id: int) -> str:
-    """Get user's degreeId from db.
-    
-    Args:
-        engine: Engine connection to use.
-        role: str (Role of the user)
-        role_id: int (Role ID of the user)
-        
-    Returns:
-        output: str (User's degreeId)
-    """
-    
-    role = role.upper()
-    sel = None
-    if role == "STUDENT":
-        sel = select(Student.degreeId).where(Student.studentId == role_id)
-    else:
-        return ''
-    
-    with engine.connect() as conn:
-        result = conn.execute(sel).scalar()
-        return result if result is not None else ''
 
 # ----------------------------------------------------------------------------
 # Chat
@@ -1667,3 +1566,259 @@ def postAssignmentSubmission(engine, model):
             conn.commit()
             return {"status_code": 200, "detail": "Submission posted successfully"}
     
+def getUserProfile(engine: Engine, user_id: int):
+    """Gets the profile information for a given user ID."""
+    with engine.connect() as conn:
+        user_query = select(User.role, User.roleId).where(User.userId == user_id)
+        user_result = conn.execute(user_query).fetchone()
+
+        if not user_result:
+            return None
+
+        role_enum, role_id = user_result
+        role = str(role_enum).split('.')[-1].lower()
+
+        profile_data = {
+            "name": "",
+            "email": "",
+            "roleId": role_id,
+            "role": role,
+            "title": None,
+            "semester": None,
+        }
+
+        if role == "student":
+            student_query = select(Student.name, Student.email, Student.semester).where(Student.studentId == role_id)
+            student_result = conn.execute(student_query).fetchone()
+            if student_result:
+                profile_data["name"] = student_result.name
+                profile_data["email"] = student_result.email
+                profile_data["semester"] = student_result.semester
+        elif role == "teacher":
+            teacher_query = select(Teacher.name, Teacher.email, Teacher.title).where(Teacher.teacherId == role_id)
+            teacher_result = conn.execute(teacher_query).fetchone()
+            if teacher_result:
+                profile_data["name"] = teacher_result.name
+                profile_data["email"] = teacher_result.email
+                profile_data["title"] = teacher_result.title
+        
+        return profile_data
+
+def getAssignmentSubmissions(engine: Engine, course_id: int, assignment_id: int):
+    """Gets all submissions for a specific assignment.
+    
+    Args:
+    engine: Engine connection to use
+    course_id: course id
+    assignment_id: assignment id to get submissions for
+    
+    Returns:
+    dictionary with submissions list
+    """
+    
+    try:
+        with engine.connect() as conn:
+            # Check if assignment exists and belongs to the course
+            assignment_exists = select(Assignment).where(
+                and_(
+                    Assignment.assignmentId == assignment_id,
+                    Assignment.courseId == course_id
+                )
+            )
+            if not conn.execute(assignment_exists).first():
+                return {"status_code": 404, "detail": "Assignment not found in this course"}
+            
+            # Get all submissions for this assignment with student information
+            submissions_query = select(
+                Student.studentId,
+                Student.name,
+                Student.email,
+                AssignmentSubmission.submission,
+                AssignmentSubmission.submissionDateTime,
+                Grade.grade
+            ).select_from(
+                AssignmentSubmission
+            ).join(
+                Student,
+                AssignmentSubmission.studentId == Student.studentId
+            ).outerjoin(
+                Grade,
+                and_(
+                    Grade.studentId == AssignmentSubmission.studentId,
+                    Grade.assignmentId == assignment_id
+                )
+            ).where(
+                AssignmentSubmission.assignmentId == assignment_id
+            )
+            
+            submissions_result = conn.execute(submissions_query).fetchall()
+            
+            submissions = []
+            for submission in submissions_result:
+                # Extract submission link and comment from submission field
+                submission_data = submission.submission or ""
+                submission_link = None
+                submission_comment = None
+                
+                # Simple parsing - assume format "link|comment" or just "link"
+                if "|" in submission_data:
+                    parts = submission_data.split("|", 1)
+                    submission_link = parts[0].strip()
+                    submission_comment = parts[1].strip() if len(parts) > 1 else None
+                else:
+                    submission_link = submission_data.strip() if submission_data else None
+                
+                submissions.append({
+                    "student_id": submission.studentId,
+                    "student_name": submission.name or f"Student {submission.studentId}",
+                    "student_email": submission.email or "",
+                    "submission_link": submission_link,
+                    "submission_comment": submission_comment,
+                    "submission_datetime": submission.submissionDateTime,
+                    "grade": submission.grade
+                })
+            
+            return {
+                "status_code": 200,
+                "submissions": submissions
+            }
+            
+    except Exception as e:
+        print(f"Error in getAssignmentSubmissions: {e}")
+        return {"status_code": 500, "detail": f"Internal server error: {str(e)}"}
+
+def deleteCourse(engine: Engine, teacher_id: int, course_id: int):
+    """Deletes a course and all associated data (grades, enrollments, rooms, assignments, submissions).
+    
+    Args:
+    engine: Engine connection to use
+    teacher_id: teacher id who is attempting to delete the course
+    course_id: course id to delete
+    
+    Returns:
+    dictionary with status_code and detail
+    """
+    
+    try:
+        with engine.connect() as conn:
+            # Check if teacher is assigned to this course
+            teacher_teaching = select(CourseTeacher).where(
+                and_(
+                    CourseTeacher.courseId == course_id,
+                    CourseTeacher.teacherId == teacher_id
+                )
+            )
+            teacher_result = conn.execute(teacher_teaching).fetchone()
+            if teacher_result is None:
+                return {"status_code": 403, "detail": "Teacher is not assigned to this course"}
+            
+            # Check if course exists
+            course_exists = select(CourseCatalog).where(CourseCatalog.courseId == course_id)
+            if not conn.execute(course_exists).fetchone():
+                return {"status_code": 404, "detail": "Course does not exist"}
+            
+            # Delete assignment submissions for this course
+            submissions_delete = delete(AssignmentSubmission).where(
+                AssignmentSubmission.assignmentId.in_(
+                    select(Assignment.assignmentId).where(Assignment.courseId == course_id)
+                )
+            )
+            conn.execute(submissions_delete)
+            
+            # Delete grades for assignments in this course
+            grades_delete = delete(Grade).where(
+                Grade.assignmentId.in_(
+                    select(Assignment.assignmentId).where(Assignment.courseId == course_id)
+                )
+            )
+            conn.execute(grades_delete)
+            
+            # Delete assignments for this course
+            assignments_delete = delete(Assignment).where(Assignment.courseId == course_id)
+            conn.execute(assignments_delete)
+            
+            # Delete class times for this course
+            class_times_delete = delete(ClassDateTime).where(ClassDateTime.courseId == course_id)
+            conn.execute(class_times_delete)
+            
+            # Delete rooms for this course
+            rooms_delete = delete(Room).where(Room.courseId == course_id)
+            conn.execute(rooms_delete)
+            
+            # Delete course-student associations
+            course_students_delete = delete(CourseStudent).where(CourseStudent.courseId == course_id)
+            conn.execute(course_students_delete)
+            
+            # Delete course-teacher associations
+            course_teachers_delete = delete(CourseTeacher).where(CourseTeacher.courseId == course_id)
+            conn.execute(course_teachers_delete)
+            
+            # Finally delete the course itself
+            course_delete = delete(CourseCatalog).where(CourseCatalog.courseId == course_id)
+            conn.execute(course_delete)
+            
+            # Commit all changes
+            conn.commit()
+            
+            return {"status_code": 200, "detail": "Course deleted successfully"}
+            
+    except Exception as e:
+        print(f"Error in deleteCourse: {e}")
+        return {"status_code": 500, "detail": f"Internal server error: {str(e)}"}
+
+def deleteAssignment(engine: Engine, teacher_id: int, assignment_id: int):
+    """Deletes an assignment and all associated data (submissions, grades).
+    
+    Args:
+    engine: Engine connection to use
+    teacher_id: teacher id who is attempting to delete the assignment
+    assignment_id: assignment id to delete
+    
+    Returns:
+    dictionary with status_code and detail
+    """
+    
+    try:
+        with engine.connect() as conn:
+            # Check if assignment exists
+            assignment_exists = select(Assignment).where(Assignment.assignmentId == assignment_id)
+            assignment_result = conn.execute(assignment_exists).fetchone()
+            if not assignment_result:
+                return {"status_code": 404, "detail": "Assignment does not exist"}
+            
+            # Get course_id from assignment
+            course_id = assignment_result.courseId
+            
+            # Check if teacher is assigned to this course
+            teacher_teaching = select(CourseTeacher).where(
+                and_(
+                    CourseTeacher.courseId == course_id,
+                    CourseTeacher.teacherId == teacher_id
+                )
+            )
+            teacher_result = conn.execute(teacher_teaching).fetchone()
+            if teacher_result is None:
+                return {"status_code": 403, "detail": "Teacher is not assigned to this course"}
+            
+            # Delete assignment submissions for this assignment
+            submissions_delete = delete(AssignmentSubmission).where(
+                AssignmentSubmission.assignmentId == assignment_id
+            )
+            conn.execute(submissions_delete)
+            
+            # Delete grades for this assignment
+            grades_delete = delete(Grade).where(Grade.assignmentId == assignment_id)
+            conn.execute(grades_delete)
+            
+            # Finally delete the assignment itself
+            assignment_delete = delete(Assignment).where(Assignment.assignmentId == assignment_id)
+            conn.execute(assignment_delete)
+            
+            # Commit all changes
+            conn.commit()
+            
+            return {"status_code": 200, "detail": "Assignment deleted successfully"}
+            
+    except Exception as e:
+        print(f"Error in deleteAssignment: {e}")
+        return {"status_code": 500, "detail": f"Internal server error: {str(e)}"}
