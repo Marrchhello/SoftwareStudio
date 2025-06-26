@@ -43,8 +43,7 @@ const UpsosHomepage = () => {
           <nav className="main-nav">
             <ul>
               <li><a href="#about">About</a></li>
-              <li><a href="#help">Help</a></li>
-              <li><a href="#contact">Contact</a></li>
+              <li><a href="#contact">Help</a></li>
               <li>
                 <button className="dark-mode-toggle" onClick={toggleDarkMode}>
                   {darkMode ? <FaSun /> : <FaMoon />}
@@ -108,7 +107,7 @@ const UpsosHomepage = () => {
 
       {/* Contact Section */}
       <section id="contact" className="contact-section">
-        <h2 className="section-title">Contact</h2>
+        <h2 className="section-title">Help</h2>
         <div className="contact-cards">
           <div className="contact-card">
             <div className="contact-icon">
