@@ -41,7 +41,7 @@ SoftwareStudio/
 
 ### Authentication Flow
 
-1. **Register**: `/register` endpoint (role, user_id, email, etc.)
+1. **Register**: `/register` endpoint (role, role_id, email, etc.)
 2. **Login**: `/token` endpoint (returns JWT)
 3. **Protected Endpoints**: Require JWT in `Authorization: Bearer <token>`
 
