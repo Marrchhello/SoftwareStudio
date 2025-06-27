@@ -143,7 +143,7 @@ SoftwareStudio/
 
 1. Build and start all services:
    ```sh
-   docker-compose up --build
+   docker-compose up -d --build
    ```
 2. Frontend: http://localhost:5173  
    Backend: http://localhost:8000
@@ -161,7 +161,7 @@ uvicorn app:app --reload
 **Frontend:**
 ```sh
 cd frontend
-npm install
+npm install --legacy-peer-deps
 npm run dev
 ```
 
