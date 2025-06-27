@@ -1,4 +1,4 @@
-﻿# **Upsos Project — Cleaned Version** 
+﻿# **Upsos Project** 
 ## **Team Members** 
 - **Bartosz Wołek** (bwolek@student.agh.edu.pl) 
 - **Markiian Voloshyn** (mvoloshyn@student.agh.edu.pl) 
