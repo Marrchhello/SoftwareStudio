@@ -667,7 +667,7 @@ def _get_student_courses_query(student_id: int, start_time: datetime.datetime, e
 # ----------------------------------------------------------------------------
 
 # Gets the day schedule for a student
-def getDayStudentSchedule(engine: Engine, student_id: int, date: datetime.date = None):
+def getDayStudentSchedule(engine: Engine, student_id: int, date: datetime.date = datetime.datetime.today()):
     """Gets the student's schedule for a given day (default today).
 
     Args:
@@ -697,7 +697,7 @@ def getDayStudentSchedule(engine: Engine, student_id: int, date: datetime.date =
 
 
 # Gets the week schedule for a student
-def getWeekStudentSchedule(engine: Engine, student_id: int, date: datetime.date = None):
+def getWeekStudentSchedule(engine: Engine, student_id: int, date: datetime.date = datetime.datetime.today()):
     """Gets the student's schedule for a given week (default current week).
     Week is considered Monday through Sunday.
 
@@ -728,7 +728,7 @@ def getWeekStudentSchedule(engine: Engine, student_id: int, date: datetime.date 
 
 
 # Gets the month schedule for a student
-def getMonthStudentSchedule(engine: Engine, student_id: int, date: datetime.date = None):
+def getMonthStudentSchedule(engine: Engine, student_id: int, date: datetime.date = datetime.datetime.today()):
     """Gets the student's schedule for a given month (default current month).
 
     Args:
@@ -838,7 +838,7 @@ def getSemesterStudentSchedule(engine: Engine, student_id: int):
 # Teacher Schedule
 # ----------------------------------------------------------------------------
 
-def getDayTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date = None):
+def getDayTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date = datetime.datetime.today()):
     """
     Gets the teacher's schedule for a given day (default current day).
 
@@ -865,7 +865,7 @@ def getDayTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date =
     )
 
 
-def getWeekTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date = None):
+def getWeekTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date = datetime.datetime.today()):
     """
     Gets the teacher's schedule for a given week (default current week).
     Week is considered Monday through Sunday.
@@ -893,7 +893,7 @@ def getWeekTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date 
     )
 
 
-def getMonthTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date = None):
+def getMonthTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date = datetime.datetime.today()):
     """
     Gets the teacher's schedule for a given month (default current month).
 
@@ -926,7 +926,7 @@ def getMonthTeacherSchedule(engine: Engine, teacher_id: int, date: datetime.date
 
 
 # Get University Events From Today On or From Custom Start Date/Time
-def getUniversityEvents(engine: Engine, start_date: datetime.datetime = None):
+def getUniversityEvents(engine: Engine, start_date: datetime.datetime = datetime.datetime.today()):
     """Gets all the events stored in UniversityEvents starting from either today, or custom start.
     
     Note:
@@ -941,9 +941,9 @@ def getUniversityEvents(engine: Engine, start_date: datetime.datetime = None):
     """
     
     output = []
-    
-    if start_date is None:
-        start_date = datetime.datetime.today()
+
+    # Ensure the date is at 00:00:00
+    start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
     
     with engine.connect() as conn:
         
@@ -975,6 +975,9 @@ def getHolidays(engine: Engine, start_date: datetime.datetime = None):
     
     if start_date is None:
         start_date = datetime.datetime.today()
+
+    # Ensure the date is at 00:00:00
+    start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
     
     with engine.connect() as conn:
         

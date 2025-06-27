@@ -44,6 +44,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   const [allClasses, setAllClasses] = useState([]); 
   const [semesterClasses, setSemesterClasses] = useState([]);
   const [universityEvents, setUniversityEvents] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [weeklyScheduleData, setWeeklyScheduleData] = useState(null);
   const [todayScheduleData, setTodayScheduleData] = useState(null);
   const [assignments, setAssignments] = useState([]);
@@ -110,7 +111,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
     }
   };
 
-  // Fetch university events from today onwards
+  // Fetch university events from today onwards (for Events tab only)
   const fetchUniversityEvents = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -119,17 +120,11 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         return;
       }
       
-      console.log('Fetching events using getUniversityEvents...'); // Debug log
       const eventsData = await getUniversityEvents(token);
-      console.log('Events data received:', eventsData); // Debug log
       
-      if (eventsData && eventsData.Events) {
-        console.log('Raw events from API:', eventsData.Events); // Debug log
-        console.log('Number of events received:', eventsData.Events.length); // Debug log
-        
+      if (eventsData && eventsData.Events) {        
         if (eventsData.Events.length > 0) {
           const events = eventsData.Events.map(event => {
-            console.log('Processing event:', event); // Debug log
             return {
               "Event ID": Math.random().toString(36).substr(2, 9),
               "Event Name": event.EventName,  
@@ -138,24 +133,20 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
               "Holiday": event.IsHoliday
             };
           });
-          console.log('Processed events:', events); // Debug log
-          setUniversityEvents(events);
+          setUpcomingEvents(events);
         } else {
-          console.log('Events array is empty');
-          setUniversityEvents([]);
+          setUpcomingEvents([]);
         }
       } else {
-        console.log('No events data received or eventsData.Events is undefined');
-        console.log('eventsData:', eventsData);
-        setUniversityEvents([]);
+        setUpcomingEvents([]);
       }
     } catch (error) {
-      console.error('Error fetching university events:', error);
+      console.error('Error fetching upcoming events:', error);
       if (error.response?.status === 401) {
         localStorage.removeItem('token');
         navigate('/login');
       }
-      setUniversityEvents([]);
+      setUpcomingEvents([]);
     }
   };
 
@@ -173,25 +164,17 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
       await fetchUserInfo();
       
       // Fetch courses using the proper API function
-      console.log('About to fetch student courses...');
       const coursesData = await getStudentCourses(token);
-      console.log('Raw courses response:', coursesData); // Debug log
-      console.log('Type of coursesData:', typeof coursesData); // Debug log
-      console.log('coursesData.CourseList:', coursesData?.CourseList); // Debug log
       
       if (coursesData) {
         const coursesList = coursesData.CourseList || coursesData || [];
-        console.log('Final courses list to set:', coursesList); // Debug log
-        console.log('Number of courses:', coursesList.length); // Debug log
         setCourses(coursesList);
       } else {
-        console.log('No courses data received');
         setCourses([]);
       }
       
       // Fetch grades using the proper API function
       const gradesData = await getAllStudentGrades(token);
-      console.log('All student grades:', gradesData); // Debug log
       if (gradesData) {
         setGrades(gradesData);
       }
@@ -199,8 +182,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
       // Fetch schedule (for classes) using the proper API function
       const scheduleData = await getStudentSemesterSchedule(token);
       if (scheduleData) {
-        console.log('Semester schedule data:', scheduleData); // Debug log
-        // Extract classes from schedule - use all class times but deduplicate by course and day
+        // Extract classes from schedule - Backend deduplication is now working
         const allClasses = scheduleData.Courses.flatMap(course =>
           course.ClassSchedule.ClassTime.map(classTime => ({
             id: Math.random().toString(36).substr(2, 9),
@@ -219,25 +201,8 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
           }))
         );
         
-        // Group by course and day of week, taking the first occurrence of each course on each day
-        const classesMap = new Map();
-        const uniqueClasses = [];
-        
-        allClasses.forEach(cls => {
-          const dayName = cls.startDateTime.toLocaleDateString('en-US', { weekday: 'long' });
-          const key = `${cls.course}-${dayName}`;
-          if (!classesMap.has(key)) {
-            classesMap.set(key, cls);
-            uniqueClasses.push(cls);
-          }
-        });
-        
-        console.log('Processed semester classes:', uniqueClasses); // Debug log
-        setSemesterClasses(uniqueClasses);
+        setSemesterClasses(allClasses);
       }
-      
-      // Fetch university events using the new dedicated function
-      await fetchUniversityEvents();
       
       setLoading(false);
     } catch (error) {
@@ -347,7 +312,6 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
       // For semester schedule, we need to get the day from the first class time
       const classDate = new Date(cls.startDateTime || cls.startDate);
       const classDay = classDate.toLocaleDateString('en-US', { weekday: 'long' });
-      console.log(`Comparing ${classDay} with ${dayName} for class ${cls.course}`); // Debug log
       return classDay === dayName;
     });
   }
@@ -450,19 +414,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
       }))
     );
 
-    // Deduplicate today's classes the same way
-    const uniqueTodayClasses = [];
-    const classesMap = new Map();
-    
-    allTodayClasses.forEach(cls => {
-      const key = `${cls.course}-${cls.startDateTime.toISOString()}-${cls.endDateTime.toISOString()}`;
-      if (!classesMap.has(key)) {
-        classesMap.set(key, cls);
-        uniqueTodayClasses.push(cls);
-      }
-    });
-
-    return uniqueTodayClasses;
+    return allTodayClasses;
   };
 
   const handleLogout = () => {
@@ -629,7 +581,6 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
   // Refresh events when Events tab is viewed
   useEffect(() => {
     if (activeView === 'events') {
-      console.log('Events tab opened, refreshing events...');
       fetchUniversityEvents();
     }
   }, [activeView]);
@@ -665,7 +616,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
     }
   };
 
-  // Fetch weekly schedule data
+  // Fetch weekly schedule data (includes events for the specific week)
   const fetchWeeklySchedule = async (weekStart = null) => {
     try {
       const token = localStorage.getItem('token');
@@ -682,8 +633,6 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         scheduleData = await getCombineScheduleWeek(token);
       }
 
-      console.log('Weekly schedule data:', scheduleData); // Debug log
-
       if (scheduleData) {
         setWeeklyScheduleData(scheduleData);
         
@@ -692,13 +641,28 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
           setAssignments(scheduleData.Assignments);
         }
         
-        // Note: Events for the Events tab are fetched separately by fetchUniversityEvents()
-        // Schedule events are used only for the weekly schedule view
+        // Extract events from the weekly schedule and convert to the format expected by getEventsForDay
+        if (scheduleData.Events) {
+          const weeklyEvents = scheduleData.Events.map(event => ({
+            "Event ID": Math.random().toString(36).substr(2, 9),
+            "Event Name": event.EventName,
+            "Date and Start Time": new Date(event.EventTime.StartDateTime),
+            "Date and End Time": new Date(event.EventTime.EndDateTime),
+            "Holiday": event.IsHoliday,
+            // Keep both formats for compatibility
+            EventName: event.EventName,
+            EventTime: event.EventTime,
+            IsHoliday: event.IsHoliday
+          }));
+          // For weekly schedule view, we update the universityEvents to include weekly schedule events
+          // This ensures getEventsForDay() can find them
+          setUniversityEvents(weeklyEvents);
+        } else {
+          setUniversityEvents([]);
+        }
         
-        // Extract classes from the schedule - TEMPORARY FIX: Backend deduplication not working
+        // Extract classes from the schedule - Backend deduplication is now working
         if (scheduleData.Courses) {
-          console.log('Backend returning duplicates - applying frontend deduplication');
-          
           const classes = scheduleData.Courses.flatMap(course =>
             course.ClassSchedule.ClassTime.map(classTime => ({
               id: Math.random().toString(36).substr(2, 9),
@@ -715,20 +679,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
             }))
           );
           
-          // TEMPORARY: Deduplicate identical time slots until backend is fixed
-          const uniqueClasses = [];
-          const classesMap = new Map();
-          
-          classes.forEach(cls => {
-            const key = `${cls.startDateTime.toISOString()}-${cls.endDateTime.toISOString()}-${cls.room}`;
-            if (!classesMap.has(key)) {
-              classesMap.set(key, cls);
-              uniqueClasses.push(cls);
-            }
-          });
-          
-          console.log(`Deduplication: ${classes.length} → ${uniqueClasses.length} classes`);
-          setAllClasses(uniqueClasses);
+          setAllClasses(classes);
         }
       }
     } catch (error) {
@@ -750,7 +701,6 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
       }
 
       const scheduleData = await getCombinedScheduleDay(token);
-      console.log('Today\'s schedule data:', scheduleData); // Debug log
 
       if (scheduleData) {
         setTodayScheduleData(scheduleData);
@@ -923,7 +873,6 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         return renderScheduleView();
         
       case 'courses':
-        console.log('Current courses data:', courses); // Debug log
         return (
           <div className="view-content">
             <h2>Your Courses</h2>
@@ -1181,9 +1130,6 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         );
 
       case 'events':
-        console.log('Rendering events tab, universityEvents:', universityEvents); // Debug log
-        console.log('universityEvents.length:', universityEvents.length); // Debug log
-        
         return (
           <div className="view-content">
             <h2>University Events</h2>
@@ -1191,9 +1137,8 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
               <div className="loading-spinner">Loading events...</div>
             ) : (
               <div className="events-container">
-                {universityEvents.length > 0 ? (
-                  universityEvents.map(event => {
-                    console.log('Rendering event:', event); // Debug log
+                {upcomingEvents.length > 0 ? (
+                  upcomingEvents.map(event => {
                     return (
                       <div key={event["Event ID"]} className={`event-card ${event.Holiday ? 'holiday' : ''}`}>
                         <h3>{event["Event Name"]}</h3>
@@ -1239,7 +1184,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
         const totalGrades = grades.GradeList?.length || 0;
         const gradedAssignments = getGradedAssignmentsCount();
         const totalAssignments = getTotalAssignmentsCount();
-        const upcomingEvents = universityEvents.filter(event => 
+        const upcomingEventsCount = upcomingEvents.filter(event => 
           event["Date and Start Time"] >= new Date()
         ).length;
         
@@ -1282,7 +1227,7 @@ const StudentDashboard = ({ studentData, studentId = 1 }) => {
                 </div>
                 <div className="stat-info">
                   <h3>Upcoming Events</h3>
-                  <p>{upcomingEvents} events</p>
+                  <p>{upcomingEventsCount} events</p>
                 </div>
               </div>
             </section>

@@ -1184,7 +1184,7 @@ insert into public."FAQ" (question, answer) values
 ('Where can I find the map?', 'In the homepage, there is a button called Map. This will take you to the map. Also, any class that has an assigned room will redirect you to the map.'),
 ('What if I am not in the system?', 'Please contact a staff memeber and they will help you out.'),
 ('What makes UPSOS unqiue?', 'This combines UPEL and USOS. When you are assigned to a course, the course will automatically appear for you. You can see your grades, schedule, chats, etc all from your student page.'),
-('Can I grade my asignments using a 2.0-5.0 scale?', 'Of course! In UPSOS, you can grade using either a percent score, or a 2.0-5.0 scale.');
+('Can I grade my assignments using a 2.0-5.0 scale?', 'Of course! In UPSOS, you can grade using either a percent score, or a 2.0-5.0 scale.');
 
 -- Staff
 insert into public."Staff" (name, email, administrator) values
