@@ -70,6 +70,7 @@ const ProfDashboard = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const chatMessagesRef = useRef(null);
   const [universityEvents, setUniversityEvents] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [weeklyScheduleData, setWeeklyScheduleData] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
 
@@ -184,11 +185,8 @@ const ProfDashboard = () => {
 
   const fetchUserInfo = async () => {
     try {
-      console.log('Fetching user info with token:', token);
       const userData = await getUserRole(token);
       const roleIdData = await getUserRoleId(token);
-      console.log('Received user data:', userData);
-      console.log('Received role ID data:', roleIdData);
       
       if (userData && roleIdData) {
         // Get user's name
@@ -247,13 +245,26 @@ const ProfDashboard = () => {
         scheduleData = await getCombineScheduleWeek(token);
       }
 
-      console.log('Weekly schedule data:', scheduleData); // Debug log
-
       if (scheduleData) {
         setWeeklyScheduleData(scheduleData);
         
-        // Note: Events for the Events tab are fetched separately by fetchUniversityEvents()
-        // Schedule events are used only for the weekly schedule view
+        // Extract events from the weekly schedule for the weekly schedule view
+        if (scheduleData.Events) {
+          const weeklyEvents = scheduleData.Events.map(event => ({
+            "Event ID": Math.random().toString(36).substr(2, 9),
+            "Event Name": event.EventName,
+            "Date and Start Time": new Date(event.EventTime.StartDateTime),
+            "Date and End Time": new Date(event.EventTime.EndDateTime),
+            "Holiday": event.IsHoliday,
+            // Keep both formats for compatibility
+            EventName: event.EventName,
+            EventTime: event.EventTime,
+            IsHoliday: event.IsHoliday
+          }));
+          setUniversityEvents(weeklyEvents);
+        } else {
+          setUniversityEvents([]);
+        }
         
         // Extract and parse classes for backward compatibility
         const parsedClasses = parseScheduleData(scheduleData);
@@ -269,7 +280,7 @@ const ProfDashboard = () => {
     }
   };
 
-  // Fetch university events from today onwards
+  // Fetch university events from today onwards (for Events tab only)
   const fetchUniversityEvents = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -278,17 +289,11 @@ const ProfDashboard = () => {
         return;
       }
       
-      console.log('Fetching events using getUniversityEvents...'); // Debug log
       const eventsData = await getUniversityEvents(token);
-      console.log('Events data received:', eventsData); // Debug log
       
-      if (eventsData && eventsData.Events) {
-        console.log('Raw events from API:', eventsData.Events); // Debug log
-        console.log('Number of events received:', eventsData.Events.length); // Debug log
-        
+      if (eventsData && eventsData.Events) {        
         if (eventsData.Events.length > 0) {
           const events = eventsData.Events.map(event => {
-            console.log('Processing event:', event); // Debug log
             return {
               "Event ID": Math.random().toString(36).substr(2, 9),
               "Event Name": event.EventName,  
@@ -297,66 +302,46 @@ const ProfDashboard = () => {
               "Holiday": event.IsHoliday
             };
           });
-          console.log('Processed events:', events); // Debug log
-          setUniversityEvents(events);
+          setUpcomingEvents(events);
         } else {
-          console.log('Events array is empty');
-          setUniversityEvents([]);
+          setUpcomingEvents([]);
         }
       } else {
-        console.log('No events data received or eventsData.Events is undefined');
-        console.log('eventsData:', eventsData);
-        setUniversityEvents([]);
+        setUpcomingEvents([]);
       }
     } catch (error) {
-      console.error('Error fetching university events:', error);
+      console.error('Error fetching upcoming events:', error);
       if (error.response?.status === 401) {
         localStorage.removeItem('token');
         navigate('/login');
       }
-      setUniversityEvents([]);
+      setUpcomingEvents([]);
     }
   };
 
   const fetchProfessorData = async () => {
     try {
       setLoading(true);
-      console.log('Starting to fetch professor data...');
 
       // Get user info and teacher ID
       const teacherId = await fetchUserInfo();
-      console.log('Fetched teacher ID:', teacherId);
       
       if (!teacherId) {
-        console.log('No teacher ID found, stopping...');
         setLoading(false);
         return;
       }
 
       // Fetch teacher's courses
-      console.log('Fetching teacher courses...');
       const teacherCoursesResponse = await getTeacherCourses(token);
-      console.log('Fetched courses response:', teacherCoursesResponse);
-      console.log('Fetched courses type:', typeof teacherCoursesResponse);
-      console.log('Fetched courses length:', Array.isArray(teacherCoursesResponse) ? teacherCoursesResponse.length : 'Not an array');
       
       // The getTeacherCourses function already returns the CourseList array
       setCourses(teacherCoursesResponse);
       setQuickStats(prev => ({ ...prev, courses: teacherCoursesResponse.length }));
-      
-      // If no courses found, add a test course for debugging
-      if (!teacherCoursesResponse || teacherCoursesResponse.length === 0) {
-        console.log('No courses found, adding test course');
-        setCourses([{ Course: 'Test Course', ID: 1 }]);
-        setQuickStats(prev => ({ ...prev, courses: 1 }));
-      }
 
       // Fetch today's schedule
-      console.log('Fetching today schedule...');
       await fetchTodaySchedule(teacherId);
 
       // Fetch weekly schedule
-      console.log('Fetching weekly schedule...');
       await fetchWeeklySchedule(teacherId);
 
       // Fetch chats if we're on the messages view
@@ -365,7 +350,6 @@ const ProfDashboard = () => {
       }
 
       setLoading(false);
-      console.log('Finished fetching professor data');
     } catch (error) {
       console.error('Error fetching professor data:', error);
       setLoading(false);
@@ -565,7 +549,6 @@ const ProfDashboard = () => {
   // Refresh events when Events tab is opened
   useEffect(() => {
     if (activeView === 'events') {
-      console.log('Events tab opened, refreshing events...');
       fetchUniversityEvents();
     }
   }, [activeView]);
@@ -826,16 +809,11 @@ const ProfDashboard = () => {
       case 'schedule':
         return renderScheduleView();
       case 'courses':
-        console.log('Rendering courses section, courses data:', courses);
         return (
           <div className="view-content">
             <h2>Your Courses</h2>
             <div className="courses-list">
               {courses && courses.length > 0 ? courses.map((course, index) => {
-                console.log(`Course ${index}:`, course);
-                console.log(`Course ${index} ID:`, course.ID, 'Type:', typeof course.ID);
-                console.log(`Course ${index} properties:`, Object.keys(course));
-                console.log(`Course ${index} Course property:`, course.Course);
                 return (
                   <div key={course.ID || index} className="course-card">
                     <h3>{course.Course || 'Unknown Course'}</h3>
@@ -844,13 +822,8 @@ const ProfDashboard = () => {
                     </div>
                     <div className="course-actions">
                       <button onClick={() => {
-                        console.log('Button clicked for course:', course);
-                        console.log('Setting selected course:', course.ID);
-                        console.log('Current activeView:', activeView);
                         setSelectedCourse(course.ID);
-                        console.log('About to set activeView to course-detail');
                         setActiveView('course-detail');
-                        console.log('activeView should now be course-detail');
                       }}>
                         <FaChalkboardTeacher /> Manage Course
                       </button>
@@ -866,20 +839,16 @@ const ProfDashboard = () => {
           </div>
         );
 
-      case 'events':
-        console.log('Rendering events tab, universityEvents:', universityEvents); // Debug log
-        console.log('universityEvents.length:', universityEvents.length); // Debug log
-        
-        return (
-          <div className="view-content">
-            <h2>University Events</h2>
-            {loading ? (
-              <div className="loading-spinner">Loading events...</div>
-            ) : (
-              <div className="events-container">
-                {universityEvents.length > 0 ? (
-                  universityEvents.map(event => {
-                    console.log('Rendering event:', event); // Debug log
+              case 'events':          
+          return (
+            <div className="view-content">
+              <h2>University Events</h2>
+              {loading ? (
+                <div className="loading-spinner">Loading events...</div>
+              ) : (
+                <div className="events-container">
+                  {upcomingEvents.length > 0 ? (
+                    upcomingEvents.map(event => {
                     return (
                       <div key={event["Event ID"]} className={`event-card ${event.Holiday ? 'holiday' : ''}`}>
                         <h3>{event["Event Name"]}</h3>
@@ -906,9 +875,7 @@ const ProfDashboard = () => {
         return renderMessagesView();
 
       case 'course-detail':
-        console.log('Rendering course-detail with selectedCourse:', selectedCourse);
         if (!selectedCourse) {
-          console.log('No selected course, going back to courses');
           setActiveView('courses');
           return null;
         }
@@ -958,7 +925,7 @@ const ProfDashboard = () => {
                 </div>
                 <div className="stat-info">
                   <h3>Upcoming Events</h3>
-                  <p>{universityEvents.filter(event => 
+                  <p>{upcomingEvents.filter(event => 
                     event["Date and Start Time"] >= new Date()
                   ).length} events</p>
                 </div>
