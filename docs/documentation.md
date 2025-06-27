@@ -68,7 +68,7 @@ A web-based app merging USOS and UPEL for AGH students and staff.
 20. **As a teacher**, I want grades to be automatically calculated in AGH format if I entered a percentage, so that the two formats are interchangeable. 
 20. **As a user**, I want to have both light and dark modes, so that I can see the website in different colors. 
 20. **As a user**, I want to be able to find technical support contact information, so that I can contact support if I encounter any issues. 
-27. **As a teacher**, when I'm in a course I teach, I want to be able to search for students by name and email so I can quickly and efficiently locate specific individuals within my course roster. ![ref1]
+27. **As a teacher**, when I'm in a course I teach, I want to be able to search for students by name and email so I can quickly and efficiently locate specific individuals within my course roster. 
 
 **Acceptance Criteria Must Be** 
 1. ### **Student Sign in:** 
