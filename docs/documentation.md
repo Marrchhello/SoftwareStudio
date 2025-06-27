@@ -299,7 +299,7 @@ A web-based app merging USOS and UPEL for AGH students and staff.
 
   **When** the teacher clears the search input field, 
 
-  **Then** the system displays the full list of all students in that course again. ![ref1]
+  **Then** the system displays the full list of all students in that course again.
 ## **Constraints & UX Details** 
 - **Password requirements:** minimum 8 characters, at least 1 char, at least 1 digit, 
 - Name and Surname requirments: starts with capital char  
