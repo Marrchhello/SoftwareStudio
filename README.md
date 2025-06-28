@@ -28,6 +28,18 @@ SoftwareStudio/
 
 ## Backend
 
+## Credentials to log in
+
+  roleId=1, username="Patrick", password="StarPat1", role=Roles.TEACHER
+roleId=2, username="Spongebob", password="SquarePants2", role=Roles.TEACHER
+roleId=3, username="Squidward", password="Tentacles3", role=Roles.TEACHER
+roleId=4, username="Sandy", password="Cheeks45", role=Roles.TEACHER
+
+roleId=1, username="Rick", password="Roll1234", role=Roles.STUDENT
+roleId=2, username="Timmy", password="Turner12", role=Roles.STUDENT
+roleId=3, username="Robyn", password="Banks987", role=Roles.STUDENT
+
+
 ### Overview
 
 - **Framework:** FastAPI
