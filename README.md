@@ -53,7 +53,7 @@ roleId=3, username="Robyn", password="Banks987", role=Roles.STUDENT
 
 ### Authentication Flow
 
-1. **Register**: `/register` endpoint (role, user_id, email, etc.)
+1. **Register**: `/register` endpoint (role, role_id, email, etc.)
 2. **Login**: `/token` endpoint (returns JWT)
 3. **Protected Endpoints**: Require JWT in `Authorization: Bearer <token>`
 
@@ -155,7 +155,7 @@ roleId=3, username="Robyn", password="Banks987", role=Roles.STUDENT
 
 1. Build and start all services:
    ```sh
-   docker-compose up --build
+   docker-compose up -d --build
    ```
 2. Frontend: http://localhost:5173  
    Backend: http://localhost:8000
@@ -173,7 +173,7 @@ uvicorn app:app --reload
 **Frontend:**
 ```sh
 cd frontend
-npm install
+npm install --legacy-peer-deps
 npm run dev
 ```
 
