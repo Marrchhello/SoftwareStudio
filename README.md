@@ -28,17 +28,6 @@ SoftwareStudio/
 
 ## Backend
 
-## Credentials to log in
-
-  roleId=1, username="Patrick", password="StarPat1", role=Roles.TEACHER
-roleId=2, username="Spongebob", password="SquarePants2", role=Roles.TEACHER
-roleId=3, username="Squidward", password="Tentacles3", role=Roles.TEACHER
-roleId=4, username="Sandy", password="Cheeks45", role=Roles.TEACHER
-
-roleId=1, username="Rick", password="Roll1234", role=Roles.STUDENT
-roleId=2, username="Timmy", password="Turner12", role=Roles.STUDENT
-roleId=3, username="Robyn", password="Banks987", role=Roles.STUDENT
-
 
 ### Overview
 
@@ -160,6 +149,17 @@ roleId=3, username="Robyn", password="Banks987", role=Roles.STUDENT
 2. Frontend: http://localhost:5173  
    Backend: http://localhost:8000
 
+## Credentials to log in
+
+- **Teacher 1**roleId=1, username="Patrick", password="StarPat1", role=Roles.TEACHER
+- **Teacher 2**roleId=2, username="Spongebob", password="SquarePants2", role=Roles.TEACHER
+- **Teacher 3**roleId=3, username="Squidward", password="Tentacles3", role=Roles.TEACHER
+- **Teacher 4**roleId=4, username="Sandy", password="Cheeks45", role=Roles.TEACHER
+
+- **Student 1**roleId=1, username="Rick", password="Roll1234", role=Roles.STUDENT
+- **Student 2**roleId=2, username="Timmy", password="Turner12", role=Roles.STUDENT
+- **Student 3**roleId=3, username="Robyn", password="Banks987", role=Roles.STUDENT
+
 
 ### Running Locally (Dev)
 
@@ -179,8 +179,11 @@ npm run dev
 
 ---
 
+
+
 ## Additional Notes
 
 - **Database Schema:** See `init.sql` for initial schema.
 - **Environment Variables:** Configure DB connection in backend as needed.
 - **Extending:** Add new routes/components as needed for new features.
+
